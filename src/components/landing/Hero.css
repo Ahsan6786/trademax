@@ -1,0 +1,558 @@
+/* ==========================================================================
+   TRADEMAX — Desktop Homepage Hero Section (Exact Match to reff.png)
+   High-Fidelity Re-creation with /hero-image.png & Scroll Transition
+   ========================================================================== */
+
+/* Outer Scroll Track for smooth scroll transition */
+.tm-hero-scroll-track {
+  position: relative;
+  width: 100%;
+  min-height: 230vh;
+  background-color: #FFFFFF;
+}
+
+/* Sticky Viewport Stage Pinned in Viewport */
+.tm-hero-sticky-stage {
+  position: sticky;
+  top: var(--nav-height, 68px);
+  width: 100%;
+  height: calc(100vh - var(--nav-height, 68px));
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: #FFFFFF;
+}
+
+/* ==========================================================================
+   LAYER 1: The Exact Hero Section from reff.png
+   ========================================================================== */
+.tm-reff-hero-viewport {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  background-color: #FFFFFF;
+  z-index: 2;
+  will-change: transform, opacity;
+  transition: opacity 0.12s linear, transform 0.12s linear;
+}
+
+/* Background Artwork Layer (/heroo.png) - Finely tuned position */
+.tm-reff-art-backdrop {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  bottom: 0;
+  width: 72%;
+  height: calc(100% - 36px);
+  transform: translateX(-35px);
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.tm-reff-art-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: left center;
+  display: block;
+  opacity: 0.95;
+  filter: contrast(0.95);
+}
+
+/* Smooth gradient mask into pure white canvas on the left */
+.tm-reff-art-blend-left {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right,
+      #FFFFFF 0%,
+      rgba(255, 255, 255, 0.98) 10%,
+      rgba(255, 255, 255, 0.75) 24%,
+      rgba(255, 255, 255, 0) 48%);
+  pointer-events: none;
+}
+
+.tm-reff-art-blend-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 90px;
+  background: linear-gradient(to top, #FFFFFF 0%, rgba(255, 255, 255, 0.6) 50%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Inner Layout Container */
+.tm-reff-hero-inner {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  max-width: 1380px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 20px 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Main Body Row */
+.tm-reff-hero-main-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  position: relative;
+}
+
+/* Left Column Typography - Shifted higher up per request */
+.tm-reff-hero-left {
+  max-width: 540px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  z-index: 10;
+  padding-bottom: 12px;
+  transform: translateY(-30px);
+}
+
+/* Eyebrow: DISCIPLINE · STRATEGY · CONSISTENCY */
+.tm-reff-eyebrow {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: #64748B;
+  text-transform: uppercase;
+  margin-bottom: 22px;
+}
+
+/* Main Bold Headline */
+.tm-reff-headline {
+  font-size: clamp(54px, 5.2vw, 76px);
+  font-weight: 850;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  color: #071524;
+  margin: 0 0 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tm-reff-headline-line {
+  display: block;
+}
+
+.tm-reff-red-word {
+  color: #DC2626;
+  font-weight: 850;
+}
+
+/* Subtitle */
+.tm-reff-subtitle {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #475569;
+  max-width: 440px;
+  margin: 0 0 32px;
+  font-weight: 400;
+}
+
+/* Action Buttons */
+.tm-reff-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.tm-reff-btn-courses {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 26px;
+  background-color: #071524;
+  color: #FFFFFF;
+  font-size: 14.5px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(7, 21, 36, 0.15);
+}
+
+.tm-reff-btn-courses:hover {
+  background-color: #0E2238;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(7, 21, 36, 0.2);
+}
+
+.tm-reff-arrow {
+  font-size: 16px;
+  transition: transform 0.15s ease;
+}
+
+.tm-reff-btn-courses:hover .tm-reff-arrow {
+  transform: translateX(3px);
+}
+
+.tm-reff-btn-terminal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0 26px;
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  color: #071524;
+  font-size: 14.5px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.tm-reff-btn-terminal:hover {
+  background-color: #F8FAFC;
+  border-color: #CBD5E1;
+  transform: translateY(-1px);
+}
+
+
+
+
+/* ==========================================================================
+   LAYER 2: Supercharged Supercharts Theater on White Canvas
+   ========================================================================== */
+.tm-supercharts-theater {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #FFFFFF;
+  z-index: 3;
+  will-change: opacity;
+  transition: opacity 0.15s linear;
+}
+
+.tm-supercharts-inner {
+  width: 100%;
+  max-width: 1360px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 32px 36px;
+  position: relative;
+  z-index: 2;
+}
+
+.tm-supercharts-header {
+  text-align: center;
+  margin-bottom: 24px;
+  will-change: transform, opacity;
+}
+
+.tm-supercharts-title {
+  font-size: clamp(40px, 4.5vw, 64px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: #071524;
+  margin: 0;
+  text-align: center;
+}
+
+.tm-supercharts-video-wrap {
+  width: 100%;
+  max-width: 1220px;
+  will-change: transform, opacity;
+  display: flex;
+  justify-content: center;
+}
+
+.tm-supercharts-video-frame {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 64vh;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px -10px rgba(7, 21, 36, 0.18);
+  border: 1px solid #E2E8F0;
+  background-color: #000000;
+}
+
+.tm-supercharts-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ==========================================================================
+   Responsive Adaptations
+   ========================================================================== */
+@media (max-width: 1200px) {
+  .tm-reff-art-backdrop {
+    width: 68%;
+    transform: translateX(-15px);
+  }
+
+  .tm-reff-hero-left {
+    transform: translateY(-18px);
+  }
+
+  .tm-reff-feature-col {
+    padding: 6px 16px;
+  }
+}
+
+@media (max-width: 992px) {
+  .tm-hero-scroll-track {
+    min-height: auto;
+  }
+
+  .tm-hero-sticky-stage {
+    position: relative;
+    top: 0;
+    height: auto;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .tm-reff-hero-viewport {
+    position: relative;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+    padding: 16px 0 32px;
+  }
+
+  .tm-reff-hero-inner {
+    padding: 24px 28px 0;
+    height: auto;
+  }
+
+  .tm-reff-hero-main-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tm-reff-hero-left {
+    max-width: 100%;
+    transform: none;
+    padding-bottom: 0;
+  }
+
+  .tm-reff-art-backdrop {
+    position: relative;
+    top: 0;
+    right: 0;
+    width: 100%;
+    max-width: 560px;
+    height: auto;
+    aspect-ratio: 16 / 10;
+    margin: 24px auto 0;
+    transform: none;
+    opacity: 1;
+    overflow: hidden;
+    border-radius: 0 0 28px 28px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .tm-reff-art-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    border-radius: 0 0 28px 28px;
+    opacity: 0.95;
+    filter: contrast(0.95);
+  }
+
+  .tm-reff-art-blend-left,
+  .tm-reff-art-blend-bottom {
+    display: none;
+  }
+
+  /* Supercharged Supercharts Mobile Visibility & Flow (Perfect Center) */
+  .tm-supercharts-theater {
+    position: relative !important;
+    inset: auto !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    width: 100%;
+    background-color: #FFFFFF;
+    padding: 48px 24px 60px;
+    margin-top: 20px;
+    z-index: 5;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .tm-supercharts-inner {
+    padding: 0;
+    max-width: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin: 0 auto;
+  }
+
+  .tm-supercharts-header {
+    opacity: 1 !important;
+    transform: none !important;
+    margin-bottom: 22px;
+    width: 100%;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .tm-supercharts-title {
+    font-size: clamp(34px, 7vw, 44px);
+    line-height: 1.1;
+    text-align: center;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .tm-supercharts-video-wrap {
+    opacity: 1 !important;
+    transform: none !important;
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto;
+  }
+
+  .tm-supercharts-video-frame {
+    width: 100%;
+    max-width: 680px;
+    aspect-ratio: 16 / 9;
+    max-height: none;
+    border-radius: 16px;
+    box-shadow: 0 12px 36px rgba(7, 21, 36, 0.14);
+    border: 1px solid #E2E8F0;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .tm-reff-hero-inner {
+    padding: 18px 20px 0;
+  }
+
+  .tm-reff-eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    margin-bottom: 14px;
+  }
+
+  .tm-reff-headline {
+    font-size: 38px;
+    line-height: 1.08;
+    margin-bottom: 16px;
+  }
+
+  .tm-reff-subtitle {
+    font-size: 14.5px;
+    margin-bottom: 22px;
+    line-height: 1.55;
+  }
+
+  .tm-reff-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .tm-reff-btn-courses,
+  .tm-reff-btn-terminal {
+    width: 100%;
+    height: 48px;
+    justify-content: center;
+  }
+
+  .tm-reff-art-backdrop {
+    margin: 20px auto 0;
+    max-width: 100%;
+    aspect-ratio: 16 / 11;
+    border-radius: 0 0 24px 24px;
+  }
+
+  .tm-reff-art-img {
+    border-radius: 0 0 24px 24px;
+  }
+
+  .tm-supercharts-theater {
+    padding: 36px 16px 52px;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .tm-supercharts-inner {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin: 0 auto;
+  }
+
+  .tm-supercharts-header {
+    width: 100%;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .tm-supercharts-title {
+    font-size: 32px;
+    text-align: center;
+    margin: 0 auto;
+  }
+
+  .tm-supercharts-video-wrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto;
+  }
+
+  .tm-supercharts-video-frame {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 12px;
+    margin: 0 auto;
+  }
+}

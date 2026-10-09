@@ -1,0 +1,203 @@
+/* ==========================================================================
+   TRADEMAX — Institutional Design System
+   Color Identity: White + Deep Navy (#071A2B) + Graphite (#17212B)
+   Accents: Trading Green (#059669) & Trading Red (#DC2626)
+   ========================================================================== */
+
+:root {
+  /* Brand Core Colors */
+  --tm-navy-deep: #071A2B;
+  --tm-navy-dark: #0B2238;
+  --tm-navy-surface: #102A45;
+  --tm-graphite: #17212B;
+  --tm-graphite-light: #2A3644;
+  
+  /* Neutrals & Surfaces */
+  --tm-bg-page: #FFFFFF;
+  --tm-bg-white: #FFFFFF;
+  --tm-bg-subtle: #F1F4F9;
+  --tm-border-light: #E6EAF0;
+  --tm-border-subtle: #EEF2F6;
+  --tm-border-hover: #D0D7E2;
+  
+  /* Text & Typography */
+  --tm-text-primary: #071A2B;
+  --tm-text-secondary: #17212B;
+  --tm-text-muted: #667085;
+  --tm-text-light: #8E9BAE;
+  
+  /* Trading Market Accents (Selective & Restrained) */
+  --tm-green: #059669;
+  --tm-green-light: #10B981;
+  --tm-green-subtle: rgba(5, 150, 105, 0.08);
+  --tm-green-border: rgba(16, 185, 129, 0.25);
+  
+  --tm-red: #DC2626;
+  --tm-red-light: #EF4444;
+  --tm-red-subtle: rgba(220, 38, 38, 0.08);
+  --tm-red-border: rgba(239, 68, 68, 0.25);
+
+  /* Shadows */
+  --tm-shadow-sm: 0 1px 2px rgba(7, 26, 43, 0.04);
+  --tm-shadow-card: 0 12px 36px -8px rgba(7, 26, 43, 0.07), 0 4px 12px -2px rgba(7, 26, 43, 0.03);
+  --tm-shadow-floating: 0 24px 54px -12px rgba(7, 26, 43, 0.12), 0 8px 24px -4px rgba(7, 26, 43, 0.04);
+  --tm-shadow-button: 0 2px 8px rgba(7, 26, 43, 0.12);
+
+  /* Typography */
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  /* Layout */
+  --max-width: 1400px;
+  --nav-height: 68px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-sans);
+  background-color: var(--tm-bg-page);
+  color: var(--tm-text-primary);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background-color: var(--tm-bg-page);
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   Utility Classes & Layout
+   ========================================================================== */
+.container {
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 20px;
+  }
+}
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes visualEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes pulseSubtle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes chartLineDraw {
+  0% {
+    stroke-dashoffset: 1200;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.anim-nav {
+  animation: slideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.anim-eyebrow {
+  opacity: 0;
+  animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+}
+
+.anim-headline {
+  opacity: 0;
+  animation: slideUpFade 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.22s forwards;
+}
+
+.anim-description {
+  opacity: 0;
+  animation: slideUpFade 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.34s forwards;
+}
+
+.anim-cta {
+  opacity: 0;
+  animation: slideUpFade 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.46s forwards;
+}
+
+.anim-badges {
+  opacity: 0;
+  animation: slideUpFade 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.58s forwards;
+}
+
+.anim-visual {
+  opacity: 0;
+  animation: visualEnter 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.28s forwards;
+}
