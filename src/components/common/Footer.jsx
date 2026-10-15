@@ -16,6 +16,10 @@ export const Footer = ({ onNavigate, theme = 'dark' }) => {
         const el = document.getElementById('courses');
         if (el) el.scrollIntoView({ behavior: 'smooth' });
       }
+    } else if (target === 'founder') {
+      if (onNavigate) onNavigate('founder');
+    } else if (target === 'gallery') {
+      if (onNavigate) onNavigate('gallery');
     } else if (target === 'home') {
       if (onNavigate) onNavigate('landing');
     }
@@ -146,6 +150,24 @@ export const Footer = ({ onNavigate, theme = 'dark' }) => {
           <div className="tm-footer-col">
             <h4 className="tm-footer-col-title">Platform</h4>
             <ul className="tm-footer-list">
+              <li>
+                <a
+                  href="/founder"
+                  onClick={(e) => handleNav(e, 'founder')}
+                  className="tm-footer-item-link"
+                >
+                  Founder &amp; Vision
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/gallery"
+                  onClick={(e) => handleNav(e, 'gallery')}
+                  className="tm-footer-item-link"
+                >
+                  Photo Gallery
+                </a>
+              </li>
               <li>
                 <a
                   href="#home"

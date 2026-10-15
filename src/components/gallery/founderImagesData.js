@@ -1,0 +1,32 @@
+export const FOUNDER_IMAGES = [
+  {
+    id: 'dubai-night',
+    src: '/founder/083d7906-70de-437e-ac32-09e902bfb8cf.jpg',
+    alt: 'Patil Trader, Founder of TRADEMAX, in tailored olive suit in Dubai',
+    title: 'Dubai, UAE',
+    subtitle: 'Moments behind TRADEMAX',
+    width: 3120,
+    height: 4160,
+    aspectRatio: '3 / 4',
+  },
+  {
+    id: 'winprofx-showcase',
+    src: '/founder/bdff6eed-3aad-41bd-a826-804e30d8977f.JPG',
+    alt: 'Patil Trader at the WINPROFX Global Markets showcase',
+    title: 'Global Markets Showcase',
+    subtitle: 'Time Moves. So Do You.',
+    width: 720,
+    height: 1280,
+    aspectRatio: '9 / 16',
+  },
+  {
+    id: 'forex-expo-dubai',
+    src: '/founder/f72e1486-e151-4d5e-8218-05f751b5c11f.JPG',
+    alt: 'Patil Trader attending Forex Expo Dubai 2026',
+    title: 'Forex Expo Dubai 2026',
+    subtitle: 'Connecting with global liquidity & market institutions',
+    width: 960,
+    height: 1280,
+    aspectRatio: '3 / 4',
+  },
+];

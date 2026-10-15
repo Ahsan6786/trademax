@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Menu, X, ArrowRight } from 'lucide-react';
 import { ThemeToggle } from '../common/ThemeToggle';
 import './Navbar.css';
 
@@ -10,23 +11,24 @@ export const Navbar = ({
   theme = 'dark',
   onToggleTheme,
   isHome = true,
+  currentView = 'landing',
   onBack,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleAuthClick = (e, mode) => {
     e.preventDefault();
+    setMobileMenuOpen(false);
     if (onOpenAuth) {
       onOpenAuth(e.currentTarget, mode);
     }
   };
 
   const handleNavClick = (e, target) => {
-    if (target === 'terminal' || target === 'dashboard') {
-      e.preventDefault();
-      if (onNavigate) {
-        onNavigate('dashboard');
-      }
+    e.preventDefault();
+    setMobileMenuOpen(false);
+    if (onNavigate) {
+      onNavigate(target);
     }
   };
 
@@ -45,7 +47,7 @@ export const Navbar = ({
   return (
     <header className={`tm-navbar-header anim-nav ${theme === 'dark' ? 'tm-navbar-dark' : 'tm-navbar-light'}`}>
       {/* ------------------------------------------------------------------
-          DESKTOP NAVIGATION (min-width: 769px) - Preserved completely
+          DESKTOP NAVIGATION (min-width: 769px)
           ------------------------------------------------------------------ */}
       <div className="tm-navbar-desktop-container">
         {/* Brand Logo */}
@@ -74,39 +76,39 @@ export const Navbar = ({
         <nav className="tm-navbar-nav" aria-label="Main Navigation">
           <a
             href="#home"
-            className="tm-nav-link active"
-            onClick={(e) => {
-              if (onNavigate) {
-                e.preventDefault();
-                onNavigate('landing');
-              }
-            }}
+            className={`tm-nav-link ${currentView === 'landing' ? 'active' : ''}`}
+            onClick={(e) => handleNavClick(e, 'landing')}
           >
             Home
           </a>
           <a
             href="#courses"
-            className="tm-nav-link"
-            onClick={(e) => {
-              e.preventDefault();
-              if (onNavigate) {
-                onNavigate('courses');
-              } else {
-                const el = document.getElementById('courses');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }
-            }}
+            className={`tm-nav-link ${currentView === 'course-details' ? 'active' : ''}`}
+            onClick={(e) => handleNavClick(e, 'courses')}
           >
             Courses
           </a>
           <a
+            href="/founder"
+            className={`tm-nav-link ${currentView === 'founder' ? 'active' : ''}`}
+            onClick={(e) => handleNavClick(e, 'founder')}
+          >
+            Founder
+          </a>
+          <a
+            href="/gallery"
+            className={`tm-nav-link ${currentView === 'gallery' ? 'active' : ''}`}
+            onClick={(e) => handleNavClick(e, 'gallery')}
+          >
+            Gallery
+          </a>
+          <a
             href="#terminal"
             className="tm-nav-link"
-            onClick={(e) => handleNavClick(e, 'terminal')}
+            onClick={(e) => handleNavClick(e, 'dashboard')}
           >
             Trading Terminal
           </a>
-          <a href="#about" className="tm-nav-link">About</a>
         </nav>
 
         {/* Right CTA Actions */}
@@ -154,11 +156,11 @@ export const Navbar = ({
       </div>
 
       {/* ------------------------------------------------------------------
-          MOBILE NAVIGATION (max-width: 768px)
+          MOBILE NAVIGATION HEADER (max-width: 768px)
           ------------------------------------------------------------------ */}
       <div className="tm-navbar-mobile-container">
         {isHome ? (
-          /* HOME PAGE MOBILE HEADER: Logo (Left) + Day/Night Toggle (Right) */
+          /* HOME PAGE MOBILE HEADER */
           <div className="tm-mobile-home-header">
             <a
               href="/"
@@ -181,12 +183,22 @@ export const Navbar = ({
               </span>
             </a>
 
-            {onToggleTheme && (
-              <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-            )}
+            <div className="tm-mobile-home-actions">
+              {onToggleTheme && (
+                <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+              )}
+              <button
+                type="button"
+                className="tm-mobile-menu-toggle-btn"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label={mobileMenuOpen ? 'Close Menu' : 'Open Menu'}
+              >
+                {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
+            </div>
           </div>
         ) : (
-          /* ALL OTHER PAGES MOBILE HEADER: Back button (Left) + Day/Night Toggle (Right) */
+          /* INTERNAL PAGES MOBILE HEADER */
           <div className="tm-mobile-internal-header">
             <button
               type="button"
@@ -198,11 +210,130 @@ export const Navbar = ({
               <span className="tm-mobile-back-text">Back</span>
             </button>
 
-            {onToggleTheme && (
-              <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-            )}
+            <div className="tm-mobile-home-actions">
+              {onToggleTheme && (
+                <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+              )}
+              <button
+                type="button"
+                className="tm-mobile-menu-toggle-btn"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label={mobileMenuOpen ? 'Close Menu' : 'Open Menu'}
+              >
+                {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
+            </div>
           </div>
         )}
+      </div>
+
+      {/* ------------------------------------------------------------------
+          MOBILE SLIDE-OUT DRAWER MENU
+          ------------------------------------------------------------------ */}
+      {mobileMenuOpen && (
+        <div
+          className="tm-mobile-drawer-backdrop"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <div className={`tm-mobile-drawer ${mobileMenuOpen ? 'open' : ''}`}>
+        <div className="tm-mobile-drawer-header">
+          <div className="tm-drawer-brand">
+            <img src="/tm-logo.png" alt="TRADEMAX" className="tm-drawer-logo" />
+            <span className="tm-drawer-brand-name">
+              TRADE<span className="tm-brand-red">MAX</span>
+            </span>
+          </div>
+          <button
+            type="button"
+            className="tm-drawer-close-btn"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Close Navigation"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <nav className="tm-mobile-drawer-nav" aria-label="Mobile Navigation Links">
+          <a
+            href="#home"
+            className={`tm-drawer-link ${currentView === 'landing' ? 'active' : ''}`}
+            onClick={(e) => handleNavClick(e, 'landing')}
+          >
+            <span>Home</span>
+          </a>
+          <a
+            href="#courses"
+            className={`tm-drawer-link ${currentView === 'course-details' ? 'active' : ''}`}
+            onClick={(e) => handleNavClick(e, 'courses')}
+          >
+            <span>Courses</span>
+          </a>
+          <a
+            href="/founder"
+            className={`tm-drawer-link ${currentView === 'founder' ? 'active' : ''}`}
+            onClick={(e) => handleNavClick(e, 'founder')}
+          >
+            <span>Founder</span>
+            <span className="tm-drawer-badge">Vision</span>
+          </a>
+          <a
+            href="/gallery"
+            className={`tm-drawer-link ${currentView === 'gallery' ? 'active' : ''}`}
+            onClick={(e) => handleNavClick(e, 'gallery')}
+          >
+            <span>Gallery</span>
+            <span className="tm-drawer-badge">Photos</span>
+          </a>
+          <a
+            href="#terminal"
+            className="tm-drawer-link"
+            onClick={(e) => handleNavClick(e, 'dashboard')}
+          >
+            <span>Trading Terminal</span>
+          </a>
+        </nav>
+
+        <div className="tm-mobile-drawer-footer">
+          {user ? (
+            <div className="tm-drawer-user-box">
+              <div className="tm-drawer-user-info">
+                <span className="tm-drawer-user-dot" />
+                <span className="tm-drawer-user-name">{user.name || 'Account'}</span>
+              </div>
+              <button
+                type="button"
+                className="tm-drawer-logout-btn"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (onLogout) onLogout();
+                }}
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <div className="tm-drawer-auth-actions">
+              <button
+                type="button"
+                className="tm-drawer-btn-login"
+                onClick={(e) => handleAuthClick(e, 'login')}
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                className="tm-drawer-btn-primary"
+                onClick={(e) => handleAuthClick(e, 'register')}
+              >
+                <span>Get Started</span>
+                <ArrowRight size={15} />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

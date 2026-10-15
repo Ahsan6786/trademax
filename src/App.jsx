@@ -8,6 +8,9 @@ import { CourseDetailsPage } from './components/courses/CourseDetailsPage';
 import { CourseRegistrationModal } from './components/courses/CourseRegistrationModal';
 import { AdminDashboardModal } from './components/admin/AdminDashboardModal';
 import { AdminPanel } from './components/admin/AdminPanel';
+import { FounderPage } from './components/founder/FounderPage';
+import { GalleryPage } from './components/gallery/GalleryPage';
+import { HomeGallerySection } from './components/landing/HomeGallerySection';
 import { MobileBottomNav } from './components/common/MobileBottomNav';
 import { Footer } from './components/common/Footer';
 import { authService } from './services/auth';
@@ -30,6 +33,26 @@ function App() {
         hash === '#course-details'
       ) {
         return 'course-details';
+      }
+
+      // Direct URL check for dedicated Founder page
+      if (
+        pathname === '/founder' ||
+        pathname === '/founder/' ||
+        hash === '#founder' ||
+        hash === '#/founder'
+      ) {
+        return 'founder';
+      }
+
+      // Direct URL check for dedicated Gallery page
+      if (
+        pathname === '/gallery' ||
+        pathname === '/gallery/' ||
+        hash === '#gallery' ||
+        hash === '#/gallery'
+      ) {
+        return 'gallery';
       }
 
       const cached = authService.getCachedUser();
@@ -147,8 +170,14 @@ function App() {
         if (
           pathname !== '/courses/trading-masterclass' &&
           pathname !== '/courses/trading-masterclass/' &&
+          pathname !== '/founder' &&
+          pathname !== '/founder/' &&
+          pathname !== '/gallery' &&
+          pathname !== '/gallery/' &&
           hash !== '#course-details' &&
-          hash !== '#courses/trading-masterclass'
+          hash !== '#courses/trading-masterclass' &&
+          hash !== '#founder' &&
+          hash !== '#gallery'
         ) {
           setCurrentView('dashboard');
           if (hash !== '#dashboard') {
@@ -190,6 +219,28 @@ function App() {
           }
           return;
         }
+      }
+
+      if (
+        pathname === '/founder' ||
+        pathname === '/founder/' ||
+        hash === '#founder' ||
+        hash === '#/founder'
+      ) {
+        setCurrentView('founder');
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        return;
+      }
+
+      if (
+        pathname === '/gallery' ||
+        pathname === '/gallery/' ||
+        hash === '#gallery' ||
+        hash === '#/gallery'
+      ) {
+        setCurrentView('gallery');
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        return;
       }
 
       if (
@@ -339,6 +390,16 @@ function App() {
         window.history.pushState(null, '', '/courses/trading-masterclass');
       }
       setCurrentView('course-details');
+    } else if (view === 'founder') {
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', '/founder');
+      }
+      setCurrentView('founder');
+    } else if (view === 'gallery') {
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', '/gallery');
+      }
+      setCurrentView('gallery');
     } else if (view === 'courses') {
       const currentUser = authService.getCachedUser();
       if (currentUser) {
@@ -410,6 +471,7 @@ function App() {
             theme={theme}
             onToggleTheme={toggleTheme}
             isHome={false}
+            currentView="course-details"
             onBack={handleNavigateBack}
           />
           <CourseDetailsPage
@@ -419,6 +481,56 @@ function App() {
             settings={courseSettings}
             theme={theme}
             onToggleTheme={toggleTheme}
+          />
+          <Footer onNavigate={handleNavigate} theme={theme} />
+          <AuthOverlay
+            ref={authRef}
+            onLoginSuccess={handleLoginSuccess}
+            onRegisterSuccess={handleRegisterSuccess}
+          />
+        </div>
+      ) : currentView === 'founder' ? (
+        <div className={`tm-founder-page-wrapper tm-theme-${theme}`}>
+          <Navbar
+            onOpenAuth={handleOpenAuth}
+            onNavigate={handleNavigate}
+            user={user}
+            onLogout={handleLogout}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            isHome={false}
+            currentView="founder"
+            onBack={handleNavigateBack}
+          />
+          <FounderPage
+            onBack={handleNavigateBack}
+            onNavigate={handleNavigate}
+            theme={theme}
+          />
+          <Footer onNavigate={handleNavigate} theme={theme} />
+          <AuthOverlay
+            ref={authRef}
+            onLoginSuccess={handleLoginSuccess}
+            onRegisterSuccess={handleRegisterSuccess}
+          />
+        </div>
+      ) : currentView === 'gallery' ? (
+        <div className={`tm-gallery-page-wrapper tm-theme-${theme}`}>
+          <Navbar
+            onOpenAuth={handleOpenAuth}
+            onNavigate={handleNavigate}
+            user={user}
+            onLogout={handleLogout}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            isHome={false}
+            currentView="gallery"
+            onBack={handleNavigateBack}
+          />
+          <GalleryPage
+            onBack={handleNavigateBack}
+            onNavigate={handleNavigate}
+            theme={theme}
           />
           <Footer onNavigate={handleNavigate} theme={theme} />
           <AuthOverlay
@@ -437,6 +549,7 @@ function App() {
             theme={theme}
             onToggleTheme={toggleTheme}
             isHome={true}
+            currentView="landing"
           />
           <Hero
             onOpenAuth={handleOpenAuth}
@@ -448,6 +561,11 @@ function App() {
             onRegister={handleRegisterForCourse}
             course={primaryCourse}
             settings={courseSettings}
+            theme={theme}
+          />
+          {/* Life Behind TRADEMAX — Homepage Gallery Section */}
+          <HomeGallerySection
+            onNavigate={handleNavigate}
             theme={theme}
           />
           <AuthOverlay

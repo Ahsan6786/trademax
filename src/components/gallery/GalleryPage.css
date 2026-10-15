@@ -1,0 +1,510 @@
+/* ==========================================================================
+   TRADEMAX — Dedicated Editorial Gallery Page
+   Edge-to-edge layout, natural aspect ratios, zero card containers.
+   Full-screen cinema lightbox with touch and keyboard navigation.
+   ========================================================================== */
+
+.tm-gallery-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Theme Tokens */
+.tm-gallery-theme-dark {
+  --gal-bg: #0B0E14;
+  --gal-surface: #10141C;
+  --gal-text: #FFFFFF;
+  --gal-text-secondary: #CBD5E1;
+  --gal-text-muted: #8E9BAE;
+  --gal-border: #1B2230;
+  --gal-red: #DC2626;
+  --gal-red-hover: #B91C1C;
+}
+
+.tm-gallery-theme-light {
+  --gal-bg: #F8FAFC;
+  --gal-surface: #FFFFFF;
+  --gal-text: #0F172A;
+  --gal-text-secondary: #334155;
+  --gal-text-muted: #64748B;
+  --gal-border: #E2E8F0;
+  --gal-red: #DC2626;
+  --gal-red-hover: #B91C1C;
+}
+
+.tm-gallery-page {
+  background-color: var(--gal-bg);
+  color: var(--gal-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* --------------------------------------------------------------------------
+   HEADER SECTION
+   -------------------------------------------------------------------------- */
+.tm-gallery-header-section {
+  padding: 44px 24px 36px;
+  border-bottom: 1px solid var(--gal-border);
+  background: var(--gal-bg);
+}
+
+.tm-gallery-header-container {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.tm-gallery-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+.tm-gallery-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 1px solid var(--gal-border);
+  color: var(--gal-text);
+  font-size: 13px;
+  font-weight: 650;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.tm-gallery-back-btn:hover {
+  background: var(--gal-surface);
+  border-color: var(--gal-red);
+  color: var(--gal-red);
+}
+
+.tm-gallery-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--gal-text-muted);
+}
+
+.tm-crumb-link {
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.tm-crumb-link:hover {
+  color: var(--gal-red);
+}
+
+.tm-crumb-sep {
+  opacity: 0.4;
+}
+
+.tm-crumb-current {
+  color: var(--gal-text);
+  font-weight: 600;
+}
+
+.tm-gallery-title-block {
+  max-width: 760px;
+}
+
+.tm-gallery-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--gal-red);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.tm-gallery-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--gal-red);
+  display: inline-block;
+}
+
+.tm-gallery-main-title {
+  margin: 0 0 14px 0;
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--gal-text);
+}
+
+.tm-text-red {
+  color: var(--gal-red);
+}
+
+.tm-gallery-subtitle {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--gal-text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   EDITORIAL MASONRY / ASYMMETRIC GRID (NO CARD BOXES)
+   -------------------------------------------------------------------------- */
+.tm-gallery-content {
+  flex: 1;
+  padding: 48px 24px 80px;
+}
+
+.tm-gallery-grid-container {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.tm-gallery-editorial-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+/* Individual Photograph Frame — Edge-to-edge aesthetic */
+.tm-gallery-item-wrap {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  background-color: var(--gal-surface);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease;
+  outline: none;
+}
+
+.tm-gallery-item-wrap:focus-visible {
+  box-shadow: 0 0 0 3px var(--gal-red);
+}
+
+.tm-gallery-item-wrap:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.35);
+}
+
+.tm-gallery-photo-frame {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  display: block;
+}
+
+.tm-gallery-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), filter 0.3s ease;
+}
+
+.tm-gallery-item-wrap:hover .tm-gallery-img {
+  transform: scale(1.035);
+}
+
+/* Minimal Overlay on Hover */
+.tm-gallery-photo-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(11, 14, 20, 0.92) 0%,
+    rgba(11, 14, 20, 0.3) 45%,
+    transparent 100%
+  );
+  opacity: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 24px 20px;
+  transition: opacity 0.3s ease;
+}
+
+.tm-gallery-item-wrap:hover .tm-gallery-photo-overlay {
+  opacity: 1;
+}
+
+.tm-gallery-overlay-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tm-gallery-photo-title {
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+
+.tm-gallery-photo-sub {
+  color: #CBD5E1;
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.tm-gallery-expand-hint {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.tm-gallery-item-wrap:hover .tm-gallery-expand-hint {
+  transform: scale(1.08);
+  background: var(--gal-red);
+}
+
+/* --------------------------------------------------------------------------
+   FULL-SCREEN CINEMA LIGHTBOX
+   -------------------------------------------------------------------------- */
+.tm-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(6, 9, 13, 0.96);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: tm-fadeIn 0.25s ease-out;
+  user-select: none;
+}
+
+@keyframes tm-fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.tm-lightbox-topbar {
+  position: absolute;
+  top: 18px;
+  left: 24px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10001;
+}
+
+.tm-lightbox-counter {
+  font-size: 13px;
+  font-weight: 700;
+  color: #94A3B8;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+
+.tm-counter-current {
+  color: #FFFFFF;
+}
+
+.tm-counter-sep {
+  margin: 0 4px;
+  opacity: 0.4;
+}
+
+.tm-lightbox-title-text {
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 650;
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+
+.tm-lightbox-close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #FFFFFF;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.tm-lightbox-close-btn:hover {
+  background: var(--gal-red);
+  border-color: var(--gal-red);
+  transform: rotate(90deg);
+}
+
+/* Arrows */
+.tm-lightbox-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10001;
+  transition: all 0.2s ease;
+}
+
+.tm-lightbox-nav-btn.prev {
+  left: 24px;
+}
+
+.tm-lightbox-nav-btn.next {
+  right: 24px;
+}
+
+.tm-lightbox-nav-btn:hover {
+  background: var(--gal-red);
+  border-color: var(--gal-red);
+  transform: translateY(-50%) scale(1.08);
+}
+
+/* Photo Stage */
+.tm-lightbox-stage {
+  max-width: 90vw;
+  max-height: 84vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.tm-lightbox-photo {
+  max-width: 88vw;
+  max-height: 76vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8);
+  animation: tm-zoomIn 0.25s ease-out;
+}
+
+@keyframes tm-zoomIn {
+  from {
+    opacity: 0.8;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.tm-lightbox-caption {
+  margin-top: 14px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tm-caption-title {
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.tm-caption-sub {
+  color: #94A3B8;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* --------------------------------------------------------------------------
+   RESPONSIVE DESIGN (TABLET & MOBILE)
+   -------------------------------------------------------------------------- */
+@media (max-width: 992px) {
+  .tm-gallery-editorial-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
+@media (max-width: 680px) {
+  .tm-gallery-header-section {
+    padding: 28px 16px 24px;
+  }
+
+  .tm-gallery-content {
+    padding: 24px 16px 60px;
+  }
+
+  .tm-gallery-editorial-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .tm-gallery-photo-overlay {
+    opacity: 1;
+    background: linear-gradient(
+      to top,
+      rgba(11, 14, 20, 0.9) 0%,
+      rgba(11, 14, 20, 0.2) 40%,
+      transparent 100%
+    );
+    padding: 16px 14px;
+  }
+
+  .tm-lightbox-topbar {
+    top: 12px;
+    left: 14px;
+    right: 14px;
+  }
+
+  .tm-lightbox-title-text {
+    display: none;
+  }
+
+  .tm-lightbox-nav-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .tm-lightbox-nav-btn.prev {
+    left: 10px;
+  }
+
+  .tm-lightbox-nav-btn.next {
+    right: 10px;
+  }
+
+  .tm-lightbox-photo {
+    max-width: 94vw;
+    max-height: 72vh;
+  }
+}
