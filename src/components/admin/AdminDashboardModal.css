@@ -1,0 +1,377 @@
+/* ==========================================================================
+   TRADEMAX — Admin Dashboard Modal & Registrations Table
+   Clean, light, institutional administrative view with Excel export
+   ========================================================================== */
+
+.tm-admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background-color: rgba(15, 23, 42, 0.8);
+  overflow-y: auto;
+}
+
+.tm-admin-modal-window {
+  width: 100%;
+  max-width: 1100px;
+  max-height: 90vh;
+  background-color: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+}
+
+.tm-admin-modal-header {
+  padding: 22px 28px;
+  border-bottom: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background-color: #F8FAFC;
+}
+
+.tm-admin-badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #DC2626;
+  background-color: #FEF2F2;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+.tm-admin-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 750;
+  color: #0F172A;
+}
+
+.tm-admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tm-btn-excel-export {
+  padding: 9px 16px;
+  background-color: #15803D;
+  color: #FFFFFF;
+  font-size: 13.5px;
+  font-weight: 650;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.tm-btn-excel-export:hover {
+  background-color: #166534;
+}
+
+.tm-admin-close-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  border-radius: 50%;
+  color: #64748B;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tm-admin-close-btn:hover {
+  background-color: #F1F5F9;
+  color: #0F172A;
+}
+
+/* Settings Card */
+.tm-admin-settings-card {
+  padding: 18px 28px;
+  background-color: #FFFFFF;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.tm-admin-section-heading {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tm-admin-alert-banner {
+  padding: 8px 14px;
+  background-color: #DCFCE7;
+  border: 1px solid #BBF7D0;
+  color: #15803D;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.tm-admin-settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tm-admin-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.tm-adm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tm-adm-field label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748B;
+}
+
+.tm-adm-field input[type="text"],
+.tm-adm-field input[type="number"] {
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  font-size: 13.5px;
+  color: #0F172A;
+}
+
+.tm-adm-checkbox-wrap {
+  justify-content: center;
+}
+
+.tm-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  margin-top: 14px;
+}
+
+.tm-btn-save-settings {
+  align-self: flex-start;
+  padding: 8px 18px;
+  background-color: #0F172A;
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.tm-btn-save-settings:hover {
+  background-color: #1E293B;
+}
+
+/* Filter Bar */
+.tm-admin-filter-bar {
+  padding: 14px 28px;
+  background-color: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tm-admin-search-input {
+  width: 260px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  font-size: 13px;
+  background-color: #FFFFFF;
+}
+
+.tm-admin-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tm-admin-filter-btn {
+  padding: 5px 12px;
+  background-color: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 550;
+  color: #475569;
+  cursor: pointer;
+}
+
+.tm-admin-filter-btn.active {
+  background-color: #DC2626;
+  color: #FFFFFF;
+  border-color: #DC2626;
+}
+
+.tm-admin-count-badge {
+  font-size: 13px;
+  color: #64748B;
+}
+
+/* Table */
+.tm-admin-table-container {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 480px;
+}
+
+.tm-admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.tm-admin-table th {
+  padding: 12px 18px;
+  background-color: #F1F5F9;
+  color: #475569;
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #CBD5E1;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.tm-admin-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid #E2E8F0;
+  color: #334155;
+}
+
+.tm-admin-table tr:hover {
+  background-color: #F8FAFC;
+}
+
+.tm-td-id {
+  font-weight: 600;
+  color: #64748B;
+}
+
+.tm-td-contact {
+  font-size: 12.5px;
+}
+
+.tm-td-email {
+  color: #64748B;
+  font-size: 12px;
+}
+
+.tm-td-pill {
+  padding: 3px 8px;
+  background-color: #F1F5F9;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.tm-td-pill-interest {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.tm-td-pill-interest.both {
+  background-color: #FEF3C7;
+  color: #92400E;
+}
+
+.tm-td-pill-interest.forex {
+  background-color: #E0E7FF;
+  color: #3730A3;
+}
+
+.tm-td-pill-interest.crypto {
+  background-color: #FCE7F3;
+  color: #9D174D;
+}
+
+.tm-status-select {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 650;
+  border: 1px solid #CBD5E1;
+  cursor: pointer;
+}
+
+.tm-status-select.pending {
+  background-color: #FFFBEB;
+  color: #B45309;
+  border-color: #FDE68A;
+}
+
+.tm-status-select.contacted {
+  background-color: #EFF6FF;
+  color: #1D4ED8;
+  border-color: #BFDBFE;
+}
+
+.tm-status-select.enrolled {
+  background-color: #ECFDF5;
+  color: #047857;
+  border-color: #A7F3D0;
+}
+
+.tm-status-select.rejected {
+  background-color: #FEF2F2;
+  color: #DC2626;
+  border-color: #FECACA;
+}
+
+.tm-admin-loading,
+.tm-admin-empty {
+  padding: 40px;
+  text-align: center;
+  color: #64748B;
+  font-size: 14px;
+}
+
+@media (max-width: 960px) {
+  .tm-admin-settings-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .tm-admin-settings-grid {
+    grid-template-columns: 1fr;
+  }
+}

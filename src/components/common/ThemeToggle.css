@@ -1,0 +1,109 @@
+/* ==========================================================================
+   TRADEMAX — Premium Day/Night Switch Component
+   Precision engineered with SVG icons, subtle border, smooth feedback
+   ========================================================================== */
+
+.tm-theme-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  outline: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: transform 0.15s ease;
+}
+
+.tm-theme-switch:active {
+  transform: scale(0.96);
+}
+
+.tm-switch-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 3px 12px 3px 4px;
+  border-radius: 9999px;
+  border: 1px solid #1E2430;
+  background-color: #11141A;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.tm-theme-switch.theme-light .tm-switch-track {
+  background-color: #F8FAFC;
+  border-color: #CBD5E1;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.tm-theme-switch.is-compact .tm-switch-track {
+  padding: 3px;
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+}
+
+/* Switch Thumb with Icon */
+.tm-switch-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #161B24;
+  border: 1px solid #232B3B;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.tm-theme-switch.theme-light .tm-switch-thumb {
+  background-color: #FFFFFF;
+  border-color: #E2E8F0;
+  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.1);
+}
+
+.tm-switch-icon {
+  display: block;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
+}
+
+.tm-switch-icon.moon {
+  color: #F8FAFC;
+}
+
+.tm-switch-icon.sun {
+  color: #D97706; /* Warm amber gold */
+}
+
+.tm-theme-switch:hover .tm-switch-icon {
+  transform: rotate(15deg);
+}
+
+/* Switch Label */
+.tm-switch-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #E2E8F0;
+  transition: color 0.2s ease;
+}
+
+.tm-theme-switch.theme-light .tm-switch-label {
+  color: #0F172A;
+}
+
+/* Hover States */
+.tm-theme-switch:hover .tm-switch-track {
+  border-color: #3B4861;
+}
+
+.tm-theme-switch.theme-light:hover .tm-switch-track {
+  border-color: #94A3B8;
+}

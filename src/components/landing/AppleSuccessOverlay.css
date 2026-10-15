@@ -1,0 +1,198 @@
+/* ==========================================================================
+   TRADEMAX — Student First-Time Welcome Screen
+   Cream Card Design (No side-colored border, TRADE in black, MAX in red)
+   ========================================================================== */
+
+.tm-welcome-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background-color: #000000;
+  animation: tmBackdropFade 0.25s ease-out forwards;
+}
+
+.tm-welcome-backdrop.tm-welcome-blackout {
+  background-color: #000000 !important;
+  background: #000000 !important;
+}
+
+@keyframes tmBackdropFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ==========================================================================
+   Phase 1: Welcome.json Lottie Animation Stage (Mobile & Desktop Responsive)
+   ========================================================================== */
+.welcome-lottie-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  animation: tmStageFadeIn 0.35s ease-out forwards;
+}
+
+@keyframes tmStageFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.welcome-lottie-wrap {
+  width: 440px;
+  max-width: 90vw;
+  aspect-ratio: 428 / 123;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.welcome-lottie-wrap svg {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* ==========================================================================
+   Phase 2: Minimalist Cream Welcome Card
+   - Pure Cream Background (#FDFBF7)
+   - Clean Uniform Border (No side-colored border)
+   - Generous spacing (padding: 44px 40px)
+   - TRADE in black (#0F172A) & MAX in red (#DC2626)
+   - ⚠️ Seats are limited alert & follow-up text
+   ========================================================================== */
+.tm-welcome-card {
+  width: 100%;
+  max-width: 500px;
+  background-color: #FDFBF7; /* Pure Luxury Cream */
+  border: 1px solid #EAE2D5; /* Subtle uniform cream border, no side accent */
+  border-radius: 18px;
+  padding: 44px 38px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.08);
+  animation: tmCardFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes tmCardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tm-welcome-title {
+  margin: 0 0 20px 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0F172A;
+  line-height: 1.3;
+}
+
+.tm-brand-trade-black {
+  color: #0F172A;
+  font-weight: 800;
+}
+
+.tm-brand-max-red {
+  color: #DC2626;
+  font-weight: 800;
+}
+
+.tm-welcome-body {
+  width: 100%;
+  margin-bottom: 30px;
+}
+
+.tm-welcome-alert {
+  margin: 0 0 14px 0;
+  padding: 13px 15px;
+  background-color: #FFF7ED;
+  border: 1px solid #FED7AA;
+  border-radius: 10px;
+  color: #9A3412;
+  font-size: 14.5px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.tm-welcome-sub {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: #475569;
+  font-weight: 450;
+}
+
+.tm-welcome-btn {
+  align-self: flex-start;
+  padding: 12px 30px;
+  background-color: #0F172A;
+  color: #FFFFFF;
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.18);
+}
+
+.tm-welcome-btn:hover {
+  background-color: #1E293B;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.25);
+}
+
+.tm-welcome-btn:active {
+  transform: scale(0.98);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 640px) {
+  .tm-welcome-card {
+    padding: 34px 26px 32px;
+    border-radius: 14px;
+  }
+
+  .tm-welcome-title {
+    font-size: 21px;
+    margin-bottom: 16px;
+  }
+
+  .tm-welcome-alert {
+    font-size: 13.5px;
+    padding: 11px 13px;
+  }
+
+  .tm-welcome-sub {
+    font-size: 13.5px;
+  }
+
+  .tm-welcome-btn {
+    width: 100%;
+    text-align: center;
+    padding: 13px 20px;
+  }
+}

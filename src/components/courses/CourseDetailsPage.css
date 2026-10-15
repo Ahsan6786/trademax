@@ -1,0 +1,725 @@
+/* ==========================================================================
+   TRADEMAX — Course Details Page (Night/Day Mode + Equal Height Cards)
+   Balanced layout with dual theme tokens (Night Mode / Day Mode).
+   Strictly zero glassmorphism, zero floating particles, zero neon clutter.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   THEME VARIABLES
+   -------------------------------------------------------------------------- */
+/* Night Mode (Default) */
+.tm-cdp-root.tm-theme-dark {
+  --cdp-bg: #0B0E14;
+  --cdp-card-bg: #11141A;
+  --cdp-inner-card-bg: #0E1219;
+  --cdp-border: #1E2430;
+  --cdp-border-subtle: #161B22;
+  --cdp-text-primary: #FFFFFF;
+  --cdp-text-secondary: #CBD5E1;
+  --cdp-text-muted: #94A3B8;
+  --cdp-text-dim: #64748B;
+  --cdp-toggle-bg: #161B24;
+  --cdp-toggle-border: #232B3B;
+  --cdp-toggle-text: #E2E8F0;
+  --cdp-save-bg: rgba(34, 197, 94, 0.12);
+  --cdp-save-border: rgba(34, 197, 94, 0.28);
+  --cdp-save-text: #22C55E;
+}
+
+/* Day Mode (Light) */
+.tm-cdp-root.tm-theme-light {
+  --cdp-bg: #F8FAFC;
+  --cdp-card-bg: #FFFFFF;
+  --cdp-inner-card-bg: #F1F5F9;
+  --cdp-border: #E2E8F0;
+  --cdp-border-subtle: #E2E8F0;
+  --cdp-text-primary: #0F172A;
+  --cdp-text-secondary: #334155;
+  --cdp-text-muted: #475569;
+  --cdp-text-dim: #64748B;
+  --cdp-toggle-bg: #FFFFFF;
+  --cdp-toggle-border: #CBD5E1;
+  --cdp-toggle-text: #0F172A;
+  --cdp-save-bg: #DCFCE7;
+  --cdp-save-border: #BBF7D0;
+  --cdp-save-text: #15803D;
+}
+
+.tm-cdp-root {
+  min-height: 100vh;
+  background-color: var(--cdp-bg);
+  color: var(--cdp-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 54px;
+  overflow-x: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Usable container width: 92–94% on desktop, max 1280px */
+.tm-cdp-container {
+  width: 92%;
+  max-width: 1280px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* --------------------------------------------------------------------------
+   1. BREADCRUMB & BACK NAVIGATION WITH THEME TOGGLE
+   -------------------------------------------------------------------------- */
+.tm-cdp-breadcrumb-bar {
+  background-color: var(--cdp-bg);
+  border-bottom: 1px solid var(--cdp-border);
+  padding: 12px 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tm-cdp-breadcrumb-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.tm-cdp-breadcrumb-inner {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+}
+
+.tm-cdp-breadcrumb-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+
+.tm-cdp-back-btn {
+  background-color: var(--cdp-card-bg);
+  border: 1px solid var(--cdp-border);
+  color: var(--cdp-text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 7px 14px;
+  border-radius: 8px;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  touch-action: manipulation;
+}
+
+.tm-cdp-back-btn:hover {
+  background-color: var(--cdp-inner-card-bg);
+  border-color: #DC2626;
+  transform: translateX(-2px);
+}
+
+.tm-cdp-back-btn:active {
+  transform: scale(0.96);
+}
+
+.tm-cdp-back-arrow {
+  font-size: 15px;
+  line-height: 1;
+  color: #DC2626;
+}
+
+.tm-cdp-breadcrumbs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background-color: var(--cdp-card-bg);
+  border: 1px solid var(--cdp-border);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  white-space: nowrap;
+}
+
+.tm-cdp-crumb-link {
+  background: transparent;
+  border: none;
+  color: var(--cdp-text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+}
+
+.tm-cdp-crumb-link:hover {
+  color: var(--cdp-text-primary);
+  background-color: var(--cdp-inner-card-bg);
+}
+
+.tm-cdp-crumb-sep {
+  color: var(--cdp-text-dim);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tm-cdp-crumb-current {
+  color: var(--cdp-text-primary);
+  font-size: 12.5px;
+  font-weight: 750;
+  padding: 2px 6px;
+  background-color: var(--cdp-inner-card-bg);
+  border-radius: 4px;
+}
+
+/* Night / Day Toggle Button */
+.tm-cdp-theme-toggle-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.tm-cdp-theme-toggle-btn {
+  background-color: var(--cdp-toggle-bg);
+  border: 1px solid var(--cdp-toggle-border);
+  color: var(--cdp-toggle-text);
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  padding: 5px 12px 5px 8px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.tm-cdp-theme-toggle-btn:hover {
+  border-color: var(--cdp-text-muted);
+  transform: translateY(-1px);
+}
+
+.tm-cdp-toggle-pill {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: var(--cdp-inner-card-bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--cdp-border);
+}
+
+.tm-cdp-toggle-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.tm-cdp-toggle-text {
+  letter-spacing: 0.01em;
+}
+
+/* --------------------------------------------------------------------------
+   2. MAIN COURSE SECTION (EQUAL HEIGHT TWO-COLUMN LAYOUT)
+   -------------------------------------------------------------------------- */
+.tm-cdp-hero-section {
+  padding: 24px 0 20px 0;
+}
+
+.tm-cdp-hero-grid.tm-equal-height-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 1fr);
+  gap: 28px;
+  align-items: stretch; /* Forces left poster card and right pricing card to have EXACT SAME HEIGHT */
+}
+
+/* Left Column: Course Poster */
+.tm-cdp-poster-column {
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+.tm-cdp-poster-frame {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--cdp-border);
+  background-color: var(--cdp-card-bg);
+  display: flex;
+  box-sizing: border-box;
+}
+
+.tm-cdp-poster-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Right Column: Pricing & Enrollment Panel */
+.tm-cdp-pricing-column {
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+.tm-cdp-pricing-panel {
+  width: 100%;
+  height: 100%;
+  background-color: var(--cdp-card-bg);
+  border: 1px solid var(--cdp-border);
+  border-radius: 8px;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Evenly distributes content across matching height */
+  box-sizing: border-box;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.tm-cdp-panel-top {
+  display: flex;
+  flex-direction: column;
+}
+
+.tm-cdp-panel-header {
+  margin-bottom: 14px;
+}
+
+.tm-cdp-course-title {
+  margin: 0 0 4px 0;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--cdp-text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.tm-cdp-course-author {
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  color: var(--cdp-text-muted);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.tm-cdp-course-category {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #FFFFFF !important;
+  background-color: #0F172A;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 4px 12px;
+  border-radius: 6px;
+  line-height: 1.35;
+  width: fit-content;
+}
+
+html[data-theme="dark"] .tm-cdp-course-category {
+  background-color: #161B24;
+  border-color: #232B3B;
+  color: #FFFFFF !important;
+}
+
+/* Pricing Block */
+.tm-cdp-panel-pricing {
+  padding: 12px 0 14px 0;
+  border-top: 1px solid var(--cdp-border);
+  border-bottom: 1px solid var(--cdp-border);
+  margin-bottom: 14px;
+}
+
+.tm-cdp-price-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tm-cdp-price-bold {
+  font-size: 26px;
+  font-weight: 850;
+  color: var(--cdp-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.tm-cdp-price-strike {
+  font-size: 14.5px;
+  color: var(--cdp-text-dim);
+  text-decoration: line-through;
+}
+
+.tm-cdp-savings-badge {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--cdp-save-text);
+  background: var(--cdp-save-bg);
+  border: 1px solid var(--cdp-save-border);
+  padding: 2.5px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.01em;
+}
+
+/* Specs Middle */
+.tm-cdp-panel-middle {
+  margin-bottom: 16px;
+}
+
+.tm-cdp-panel-specs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tm-cdp-spec-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13.5px;
+}
+
+.tm-cdp-spec-label {
+  color: var(--cdp-text-dim);
+  font-weight: 500;
+}
+
+.tm-cdp-spec-val {
+  color: var(--cdp-text-primary);
+  font-weight: 650;
+}
+
+/* Actions Bottom */
+.tm-cdp-panel-bottom {
+  display: flex;
+  flex-direction: column;
+}
+
+.tm-cdp-panel-actions {
+  display: flex;
+  flex-direction: column;
+}
+
+.tm-cdp-btn-register {
+  width: 100%;
+  height: 44px;
+  background-color: #DC2626;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tm-cdp-btn-register:hover {
+  background-color: #B91C1C;
+}
+
+.tm-cdp-panel-warning {
+  margin: 10px 0 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--cdp-text-dim);
+  text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   3. COURSE DESCRIPTION (BALANCED LEFT & RIGHT FORMATTING)
+   -------------------------------------------------------------------------- */
+.tm-cdp-description-section {
+  padding: 0 0 40px 0;
+}
+
+.tm-cdp-description-card {
+  background-color: var(--cdp-card-bg);
+  border: 1px solid var(--cdp-border);
+  border-radius: 8px;
+  padding: 24px 28px;
+  box-sizing: border-box;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.tm-cdp-desc-heading {
+  margin: 0 0 16px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--cdp-border);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--cdp-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.tm-cdp-intro-block {
+  margin-bottom: 24px;
+}
+
+.tm-cdp-intro-title {
+  margin: 0 0 6px 0;
+  font-size: 16px;
+  font-weight: 750;
+  color: var(--cdp-text-primary);
+}
+
+.tm-cdp-intro-text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--cdp-text-muted);
+}
+
+/* Balanced Two-Column Body: Left & Right Columns formatted symmetrically */
+.tm-cdp-desc-balanced-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-bottom: 24px;
+}
+
+.tm-cdp-desc-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tm-cdp-sub-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.tm-cdp-sub-title {
+  margin: 0 0 12px 0;
+  font-size: 14.5px;
+  font-weight: 750;
+  color: var(--cdp-text-primary);
+  letter-spacing: 0.01em;
+}
+
+/* Bullet list formatting */
+.tm-cdp-list-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.tm-cdp-bullet-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--cdp-text-secondary);
+}
+
+.tm-cdp-bullet {
+  color: #DC2626;
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.tm-cdp-bullet-text {
+  flex: 1;
+}
+
+/* Inner Sub-Cards (Mentor & Details) */
+.tm-cdp-sub-card {
+  background-color: var(--cdp-inner-card-bg);
+  border: 1px solid var(--cdp-border);
+  border-radius: 6px;
+  padding: 16px 20px;
+  box-sizing: border-box;
+}
+
+.tm-cdp-mentor-name {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+  font-weight: 750;
+  color: var(--cdp-text-primary);
+}
+
+.tm-cdp-mentor-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--cdp-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Program Details Compact Table */
+.tm-cdp-details-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--cdp-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.tm-cdp-table-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--cdp-border-subtle);
+  font-size: 13px;
+  background-color: var(--cdp-card-bg);
+}
+
+.tm-cdp-table-row:last-child {
+  border-bottom: none;
+}
+
+.tm-cdp-table-label {
+  color: var(--cdp-text-dim);
+  font-weight: 500;
+}
+
+.tm-cdp-table-val {
+  color: var(--cdp-text-primary);
+  font-weight: 650;
+  text-align: right;
+}
+
+/* Full-Width Bottom Risk Disclaimer */
+.tm-cdp-disclaimer-full-block {
+  background-color: var(--cdp-inner-card-bg);
+  border: 1px solid var(--cdp-border);
+  border-radius: 6px;
+  padding: 18px 22px;
+  box-sizing: border-box;
+}
+
+.tm-cdp-disclaimer-body {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--cdp-text-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tm-cdp-disclaimer-body p {
+  margin: 0;
+}
+
+.tm-cdp-disclaimer-body strong {
+  color: var(--cdp-text-muted);
+  font-weight: 650;
+}
+
+/* --------------------------------------------------------------------------
+   4. RESPONSIVE DESIGN (TABLET & MOBILE)
+   -------------------------------------------------------------------------- */
+@media (max-width: 960px) {
+  .tm-cdp-hero-grid.tm-equal-height-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .tm-cdp-poster-frame {
+    aspect-ratio: 1600 / 908;
+    height: auto;
+  }
+
+  .tm-cdp-desc-balanced-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Remove duplicate bottom back button on mobile view (Navbar provides the top back button) */
+  .tm-cdp-breadcrumb-bar {
+    display: none !important;
+  }
+
+  .tm-cdp-breadcrumb-inner {
+    padding: 0 4px;
+    gap: 10px;
+  }
+
+  .tm-cdp-breadcrumb-left {
+    gap: 8px;
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tm-cdp-theme-toggle-wrap {
+    display: none; /* Mobile header already has the theme toggle */
+  }
+
+  .tm-cdp-root {
+    padding-bottom: max(74px, calc(60px + env(safe-area-inset-bottom, 16px)));
+  }
+}
+
+@media (max-width: 640px) {
+  .tm-cdp-container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 16px;
+    box-sizing: border-box;
+  }
+
+  .tm-cdp-hero-section {
+    padding: 16px 0 14px 0;
+  }
+
+  .tm-cdp-pricing-panel {
+    padding: 18px 16px;
+  }
+
+  .tm-cdp-course-title {
+    font-size: clamp(20px, 5.5vw, 22px);
+  }
+
+  .tm-cdp-price-bold {
+    font-size: 23px;
+  }
+
+  .tm-cdp-description-card {
+    padding: 18px 16px;
+  }
+
+  .tm-cdp-desc-heading {
+    font-size: 17px;
+  }
+
+  .tm-cdp-intro-title {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 360px) {
+  .tm-cdp-container {
+    padding: 0 12px;
+  }
+
+  .tm-cdp-pricing-panel {
+    padding: 14px 12px;
+  }
+
+  .tm-cdp-description-card {
+    padding: 14px 12px;
+  }
+
+  .tm-cdp-price-bold {
+    font-size: 21px;
+  }
+}
+

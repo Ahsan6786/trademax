@@ -1,0 +1,126 @@
+/* ==========================================================================
+   TRADEMAX — Mobile Sticky Bottom Navigation Bar
+   4 Sticky Buttons: Home · Courses · Stocks · Setting
+   Ultra-clean financial app ergonomics with safe-area support
+   ========================================================================== */
+
+.tm-mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .tm-mobile-bottom-nav {
+    display: block !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    background-color: #0B0E14;
+    border-top: none;
+    padding-top: 6px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
+    padding-left: 12px;
+    padding-right: 12px;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  html[data-theme="light"] .tm-mobile-bottom-nav {
+    background-color: #FFFFFF;
+    border-top: none;
+    box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.08);
+  }
+
+  .tm-bottom-nav-inner {
+    max-width: 480px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    align-items: center;
+    gap: 4px;
+  }
+
+  .tm-bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    color: #94A3B8;
+    padding: 6px 4px 4px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  html[data-theme="light"] .tm-bottom-nav-item {
+    color: #64748B;
+  }
+
+  .tm-bottom-nav-item:active {
+    transform: scale(0.92);
+  }
+
+  .tm-bottom-nav-icon-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 24px;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s ease;
+  }
+
+  .tm-bottom-nav-svg {
+    display: block;
+    transition: stroke 0.15s ease, transform 0.15s ease;
+  }
+
+  .tm-bottom-nav-label {
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    transition: color 0.15s ease;
+  }
+
+  /* Active State (TRADEMAX Red) */
+  .tm-bottom-nav-item.active {
+    color: #DC2626 !important;
+  }
+
+  .tm-bottom-nav-item.active .tm-bottom-nav-svg {
+    stroke: #DC2626 !important;
+    transform: translateY(-1px);
+  }
+
+  .tm-bottom-nav-item.active .tm-bottom-nav-label {
+    color: #DC2626 !important;
+    font-weight: 750;
+  }
+
+  /* Settings / Theme Item subtle highlight */
+  .tm-bottom-nav-theme-item:active .tm-bottom-nav-svg {
+    transform: rotate(45deg);
+  }
+}
+
+/* Ensure body & containers have enough bottom clearance when mobile nav is active */
+@media (max-width: 768px) {
+  .tm-app-root {
+    padding-bottom: max(68px, calc(56px + env(safe-area-inset-bottom, 16px)));
+  }
+
+  .tm-dashboard-root {
+    padding-bottom: max(74px, calc(60px + env(safe-area-inset-bottom, 16px))) !important;
+  }
+
+  .tm-cdp-root {
+    padding-bottom: max(74px, calc(60px + env(safe-area-inset-bottom, 16px))) !important;
+  }
+}

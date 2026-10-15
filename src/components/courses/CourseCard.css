@@ -1,0 +1,566 @@
+/* ==========================================================================
+   TRADEMAX — Solid, Crisp & Premium Institutional Course Card
+   Zero black overlay, 100% solid surfaces (no glassmorphism), spacious layout
+   ========================================================================== */
+
+.tm-course-card {
+  width: 100%;
+  max-width: 460px;
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px -8px rgba(15, 23, 42, 0.08), 0 2px 8px -2px rgba(15, 23, 42, 0.04);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.22s ease;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto;
+  position: relative;
+}
+
+.tm-course-card:hover {
+  transform: translateY(-4px);
+  border-color: #CBD5E1;
+  box-shadow: 0 18px 40px -10px rgba(15, 23, 42, 0.14), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+}
+
+/* --------------------------------------------------------------------------
+   1. CRISP MEDIA FRAME (NO BLACK OVERLAYS)
+   -------------------------------------------------------------------------- */
+.tm-card-poster-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-color: #F1F5F9;
+  overflow: hidden;
+}
+
+.tm-card-poster-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tm-course-card:hover .tm-card-poster-img {
+  transform: scale(1.025);
+}
+
+/* Corner Solid Badges (No dark gradients, zero glassmorphism) */
+.tm-card-media-badges {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tm-card-discount-badge {
+  font-size: 11px;
+  font-weight: 750;
+  color: #FFFFFF;
+  background-color: #15803D;
+  border: 1px solid #166534;
+  padding: 4px 10px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.02em;
+}
+
+/* --------------------------------------------------------------------------
+   2. SPACIOUS SOLID CARD BODY
+   -------------------------------------------------------------------------- */
+.tm-card-body {
+  padding: 22px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.tm-card-subtitle {
+  font-size: 13px;
+  color: #64748B;
+  font-weight: 500;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* SOLID Announcement Status Row (Zero Glassmorphism) */
+.tm-card-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+  flex-wrap: wrap;
+}
+
+.tm-card-badge-batch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  background-color: #FEF2F2; /* 100% solid, crisp background */
+  border: 1px solid #FECACA;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #DC2626;
+  max-width: 100%;
+}
+
+.tm-card-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #DC2626;
+  box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+  animation: tmPulseRing 2s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+  flex-shrink: 0;
+}
+
+@keyframes tmPulseRing {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 5px rgba(220, 38, 38, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+  }
+}
+
+.tm-card-batch-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tm-card-seats-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #B45309;
+  background-color: #FEF3C7;
+  border: 1px solid #FDE68A;
+  padding: 3px 7px;
+  border-radius: 5px;
+}
+
+.tm-seats-icon {
+  color: #D97706;
+}
+
+/* Titles Header */
+.tm-card-title-group {
+  margin-bottom: 7px;
+}
+
+.tm-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tm-card-eyebrow {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #B45309;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.tm-card-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 750;
+  color: #0F172A;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.tm-card-curriculum-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 650;
+  color: #0F172A;
+  background-color: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  padding: 2px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Short Description */
+.tm-card-desc {
+  margin: 0 0 10px 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #475569;
+}
+
+/* --------------------------------------------------------------------------
+   3. COMPACT SPECS GRID (LUCIDE ICONS)
+   -------------------------------------------------------------------------- */
+.tm-card-specs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tm-spec-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  padding: 7px 10px;
+  border-radius: 8px;
+}
+
+.tm-spec-icon {
+  color: #DC2626;
+  flex-shrink: 0;
+}
+
+.tm-spec-value {
+  font-size: 12px;
+  font-weight: 650;
+  color: #1E293B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --------------------------------------------------------------------------
+   4. COMPACT PRICING BAR
+   -------------------------------------------------------------------------- */
+.tm-card-pricing-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.tm-card-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.tm-card-price-offer {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.tm-card-price-regular {
+  font-size: 13px;
+  font-weight: 500;
+  color: #94A3B8;
+  text-decoration: line-through;
+}
+
+.tm-card-saving-pill {
+  font-size: 11.5px;
+  font-weight: 750;
+  color: #15803D;
+  background-color: #DCFCE7;
+  border: 1px solid #BBF7D0;
+  padding: 3px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   5. SIDE-BY-SIDE ACTION BUTTONS (REDUCES HEIGHT)
+   -------------------------------------------------------------------------- */
+.tm-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+}
+
+/* Primary Register Button */
+.tm-card-btn-register {
+  flex: 1.35;
+  min-height: 44px;
+  padding: 10px 14px;
+  background-color: #DC2626;
+  color: #FFFFFF;
+  font-size: 12.5px;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  touch-action: manipulation;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.28);
+}
+
+.tm-card-btn-register:hover {
+  background-color: #B91C1C;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+}
+
+.tm-card-btn-register:active {
+  transform: translateY(0);
+}
+
+/* Secondary "View Details" Button */
+.tm-card-btn-details {
+  flex: 1;
+  min-height: 44px;
+  padding: 10px 14px;
+  background-color: #F8FAFC;
+  color: #0F172A;
+  border: 1px solid #CBD5E1;
+  font-size: 12.5px;
+  font-weight: 650;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+
+.tm-card-btn-details .tm-arrow-icon {
+  transition: transform 0.16s ease;
+  color: #DC2626;
+}
+
+.tm-card-btn-details:hover {
+  background-color: #EDF2F7;
+  border-color: #94A3B8;
+  color: #0F172A;
+}
+
+.tm-card-btn-details:hover .tm-arrow-icon {
+  transform: translateX(3px);
+}
+
+/* --------------------------------------------------------------------------
+   DARK MODE OVERRIDES
+   -------------------------------------------------------------------------- */
+html[data-theme="dark"] .tm-course-card,
+.tm-card-dark.tm-course-card {
+  background-color: #11141A;
+  border-color: #1E2430;
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+html[data-theme="dark"] .tm-course-card:hover,
+.tm-card-dark.tm-course-card:hover {
+  border-color: #2D3748;
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(220, 38, 38, 0.2);
+}
+
+/* Solid Badge in Dark Mode */
+html[data-theme="dark"] .tm-card-badge-batch,
+.tm-card-dark .tm-card-badge-batch {
+  background-color: #1E1214; /* Solid, high-contrast */
+  border-color: #451A1D;
+  color: #F87171;
+}
+
+html[data-theme="dark"] .tm-card-title,
+.tm-card-dark .tm-card-title {
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .tm-card-curriculum-tag,
+.tm-card-dark .tm-card-curriculum-tag {
+  color: #E2E8F0;
+  background-color: #161B24;
+  border-color: #232B3B;
+}
+
+html[data-theme="dark"] .tm-card-desc,
+.tm-card-dark .tm-card-desc {
+  color: #94A3B8;
+}
+
+html[data-theme="dark"] .tm-spec-item,
+.tm-card-dark .tm-spec-item {
+  background-color: #161B24;
+  border-color: #1E2430;
+}
+
+html[data-theme="dark"] .tm-spec-value,
+.tm-card-dark .tm-spec-value {
+  color: #F1F5F9;
+}
+
+html[data-theme="dark"] .tm-card-pricing-block,
+.tm-card-dark .tm-card-pricing-block {
+  background-color: #161B24;
+  border-color: #1E2430;
+}
+
+html[data-theme="dark"] .tm-card-price-offer,
+.tm-card-dark .tm-card-price-offer {
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .tm-card-price-regular,
+.tm-card-dark .tm-card-price-regular {
+  color: #64748B;
+}
+
+html[data-theme="dark"] .tm-card-saving-pill,
+.tm-card-dark .tm-card-saving-pill {
+  color: #4ADE80;
+  background-color: #0E2919;
+  border-color: #14532D;
+}
+
+html[data-theme="dark"] .tm-card-btn-details,
+.tm-card-dark .tm-card-btn-details {
+  background-color: #161B24;
+  border-color: #2A3447;
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .tm-card-btn-details:hover,
+.tm-card-dark .tm-card-btn-details:hover {
+  background-color: #1E2430;
+  border-color: #3B4861;
+  color: #FFFFFF;
+}
+
+/* --------------------------------------------------------------------------
+   RESPONSIVENESS
+   -------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  .tm-course-card {
+    max-width: 100%;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  }
+
+  .tm-card-body {
+    padding: 16px 16px 18px;
+  }
+
+  .tm-card-status-bar {
+    margin-bottom: 10px;
+    gap: 6px;
+  }
+
+  .tm-card-batch-text {
+    font-size: 10.5px;
+  }
+
+  .tm-card-title {
+    font-size: clamp(17px, 5vw, 19px);
+    line-height: 1.25;
+  }
+
+  .tm-card-subtitle {
+    font-size: 12.5px;
+    margin-top: 3px;
+    margin-bottom: 8px;
+  }
+
+  .tm-card-desc {
+    font-size: 12.5px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+
+  .tm-card-specs-grid {
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .tm-spec-item {
+    padding: 6px 8px;
+    font-size: 11.5px;
+  }
+
+  .tm-card-pricing-block {
+    padding: 9px 12px;
+    margin-bottom: 12px;
+  }
+
+  .tm-card-price-offer {
+    font-size: 19px;
+  }
+
+  .tm-card-price-regular {
+    font-size: 12px;
+  }
+
+  .tm-card-saving-pill {
+    font-size: 10.5px;
+    padding: 2px 7px;
+  }
+
+  .tm-card-actions {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .tm-card-btn-register {
+    flex: 1.35;
+    min-height: 44px;
+    font-size: 11.5px;
+    font-weight: 800;
+    padding: 0 8px;
+  }
+
+  .tm-card-btn-details {
+    flex: 1;
+    min-height: 44px;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 0 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .tm-card-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .tm-card-btn-register,
+  .tm-card-btn-details {
+    width: 100%;
+    min-height: 42px;
+  }
+}

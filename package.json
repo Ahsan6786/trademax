@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -n \"backend,client\" -c \"magenta,cyan\" \"node backend/src/server.js\" \"vite\"",
+    "dev:client": "vite",
+    "server": "node backend/src/server.js",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview"
@@ -18,6 +20,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^10.0.6",
     "oxlint": "^1.81.0",
     "vite": "^8.3.0"
   }
