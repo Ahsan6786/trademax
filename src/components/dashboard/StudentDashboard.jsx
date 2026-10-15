@@ -258,7 +258,10 @@ export const StudentDashboard = ({
   const stats = dashboardData?.stats || {
     totalEnrolled: enrolledCourses.length,
     upcomingSessionsCount: upcomingClasses.length,
-    averageProgress: enrolledCourses.length > 0 ? 35 : 0,
+    averageProgress:
+      enrolledCourses.length > 0
+        ? Math.round(enrolledCourses.reduce((acc, c) => acc + (c.progress_percentage || 0), 0) / enrolledCourses.length)
+        : 0,
   };
 
   const navItems = [
@@ -640,7 +643,7 @@ export const StudentDashboard = ({
                                   className="tm-btn-solid-primary"
                                   onClick={() => setActiveTab('live-classes')}
                                 >
-                                  {t.dashboard.nextClass}
+                                  {t.dashboard.liveClassesBtn || 'Live Classes'}
                                 </button>
                               </div>
                             </div>

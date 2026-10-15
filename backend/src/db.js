@@ -125,10 +125,17 @@ export const initDb = async () => {
         enrollment_status VARCHAR(50) NOT NULL DEFAULT 'enrolled',
         payment_status VARCHAR(50) NOT NULL DEFAULT 'completed',
         amount_paid NUMERIC(10, 2) DEFAULT 19999.00,
+        progress_percentage INTEGER DEFAULT 0,
+        completed_lessons INTEGER DEFAULT 0,
+        total_lessons INTEGER DEFAULT 16,
         notes TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS progress_percentage INTEGER DEFAULT 0;
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS completed_lessons INTEGER DEFAULT 0;
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS total_lessons INTEGER DEFAULT 16;
 
       CREATE INDEX IF NOT EXISTS idx_enrollments_user_id ON enrollments(user_id);
       CREATE INDEX IF NOT EXISTS idx_enrollments_course_id ON enrollments(course_id);
@@ -210,9 +217,13 @@ export const initDb = async () => {
         platform VARCHAR(100) DEFAULT 'Live Online',
         instructor VARCHAR(100) DEFAULT 'Patil Trader',
         status VARCHAR(50) DEFAULT 'upcoming',
+        description TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS description TEXT;
+      ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS meeting_link VARCHAR(500);
 
       CREATE INDEX IF NOT EXISTS idx_live_classes_scheduled ON live_classes(scheduled_at ASC);
     `);

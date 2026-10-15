@@ -30,6 +30,8 @@ import {
   Download,
   Upload,
   Image as ImageIcon,
+  Copy,
+  Check,
 } from 'lucide-react';
 import './AdminPanel.css';
 
@@ -78,6 +80,14 @@ export const AdminPanel = ({
   const [enrollmentStatusFilter, setEnrollmentStatusFilter] = useState('all');
   const [enrollmentPage, setEnrollmentPage] = useState(1);
   const [enrollmentPagination, setEnrollmentPagination] = useState({ total: 0, totalPages: 1 });
+
+  // Live Classes State
+  const [liveClasses, setLiveClasses] = useState([]);
+  const [liveClassesLoading, setLiveClassesLoading] = useState(false);
+  const [isLiveClassModalOpen, setIsLiveClassModalOpen] = useState(false);
+  const [editingLiveClass, setEditingLiveClass] = useState(null);
+  const [savingLiveClass, setSavingLiveClass] = useState(false);
+  const [copiedMeetId, setCopiedMeetId] = useState(null);
 
   // Settings State
   const [settingsForm, setSettingsForm] = useState({
@@ -229,6 +239,9 @@ export const AdminPanel = ({
     } else if (activeTab === 'users') {
       fetchUsers();
     } else if (activeTab === 'courses') {
+      fetchCourses();
+    } else if (activeTab === 'live-classes') {
+      fetchLiveClasses();
       fetchCourses();
     } else if (activeTab === 'enrollments') {
       fetchEnrollments();
@@ -569,6 +582,152 @@ export const AdminPanel = ({
     }
   };
 
+  // 6. Fetch Live Classes (Google Meet Sessions)
+  const fetchLiveClasses = async () => {
+    setLiveClassesLoading(true);
+    try {
+      const res = await fetch('/api/admin/live-classes', {
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setLiveClasses(data.liveClasses || []);
+      } else {
+        showNotification(data.error || 'Failed to fetch live classes.', 'error');
+      }
+    } catch (err) {
+      console.error('Error fetching live classes:', err);
+      showNotification('Network error loading live classes.', 'error');
+    } finally {
+      setLiveClassesLoading(false);
+    }
+  };
+
+  // Open modal for new Live Class
+  const handleOpenCreateLiveClass = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(20, 0, 0, 0);
+    const tzOffset = tomorrow.getTimezoneOffset() * 60000;
+    const localISOTime = new Date(tomorrow.getTime() - tzOffset).toISOString().slice(0, 16);
+
+    setEditingLiveClass({
+      title: '',
+      course_id: courses.length > 0 ? courses[0].id : '',
+      batch_name: 'November',
+      scheduled_at: localISOTime,
+      duration_minutes: 75,
+      meeting_link: '',
+      platform: 'Google Meet',
+      instructor: 'Patil Trader',
+      status: 'upcoming',
+      description: '',
+    });
+    setIsLiveClassModalOpen(true);
+  };
+
+  // Open modal for editing existing Live Class
+  const handleOpenEditLiveClass = (session) => {
+    let formattedDate = '';
+    if (session.scheduled_at) {
+      const d = new Date(session.scheduled_at);
+      const tzOffset = d.getTimezoneOffset() * 60000;
+      formattedDate = new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+    }
+
+    setEditingLiveClass({
+      id: session.id,
+      title: session.title || '',
+      course_id: session.course_id || (courses.length > 0 ? courses[0].id : ''),
+      batch_name: session.batch_name || 'November',
+      scheduled_at: formattedDate,
+      duration_minutes: session.duration_minutes || 75,
+      meeting_link: session.meeting_link || '',
+      platform: session.platform || 'Google Meet',
+      instructor: session.instructor || 'Patil Trader',
+      status: session.status || 'upcoming',
+      description: session.description || '',
+    });
+    setIsLiveClassModalOpen(true);
+  };
+
+  // Save (Create or Update) Live Class
+  const handleSaveLiveClass = async (e) => {
+    e.preventDefault();
+    if (!editingLiveClass.title.trim()) {
+      showNotification('Please enter a meeting title.', 'error');
+      return;
+    }
+    if (!editingLiveClass.scheduled_at) {
+      showNotification('Please select a scheduled date and time.', 'error');
+      return;
+    }
+
+    setSavingLiveClass(true);
+    try {
+      const url = editingLiveClass.id
+        ? `/api/admin/live-classes/${editingLiveClass.id}`
+        : '/api/admin/live-classes';
+      const method = editingLiveClass.id ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify(editingLiveClass),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        showNotification(
+          editingLiveClass.id ? 'Live class updated successfully!' : 'Live class scheduled successfully!'
+        );
+        setIsLiveClassModalOpen(false);
+        setEditingLiveClass(null);
+        fetchLiveClasses();
+      } else {
+        showNotification(data.error || 'Failed to save live class.', 'error');
+      }
+    } catch (err) {
+      console.error('Error saving live class:', err);
+      showNotification('Network error while saving live class.', 'error');
+    } finally {
+      setSavingLiveClass(false);
+    }
+  };
+
+  // Delete Live Class
+  const handleDeleteLiveClass = async (id, title) => {
+    if (!window.confirm(`Are you sure you want to delete the scheduled class "${title}"?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/live-classes/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotification('Live class deleted.');
+        fetchLiveClasses();
+      } else {
+        showNotification(data.error || 'Failed to delete live class.', 'error');
+      }
+    } catch (err) {
+      console.error('Error deleting live class:', err);
+      showNotification('Network error while deleting live class.', 'error');
+    }
+  };
+
+  // Copy Meeting Link to clipboard
+  const handleCopyMeetLink = (link, id) => {
+    if (!link) return;
+    navigator.clipboard.writeText(link);
+    setCopiedMeetId(id);
+    showNotification('Google Meet link copied to clipboard!');
+    setTimeout(() => setCopiedMeetId(null), 2500);
+  };
+
   return (
     <div className={`tm-admin-root tm-theme-${theme || 'dark'}`}>
       {/* Toast Notification */}
@@ -646,6 +805,18 @@ export const AdminPanel = ({
           >
             <GraduationCap size={18} />
             <span>Courses Management</span>
+          </button>
+
+          <button
+            type="button"
+            className={`tm-admin-nav-item ${activeTab === 'live-classes' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('live-classes');
+              setMobileSidebarOpen(false);
+            }}
+          >
+            <Video size={18} />
+            <span>Live Classes</span>
           </button>
 
           <button
@@ -1236,6 +1407,161 @@ export const AdminPanel = ({
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ==============================================================
+              PAGE: LIVE CLASSES & MEETINGS MANAGEMENT
+              ============================================================== */}
+          {activeTab === 'live-classes' && (
+            <div className="tm-admin-live-page">
+              <div className="tm-admin-page-actions-header">
+                <div>
+                  <h2 className="tm-section-heading">Scheduled Live Classes & Google Meet</h2>
+                  <p className="tm-section-sub">
+                    Schedule live trading sessions, add Google Meet links, and sync them directly to student dashboards.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="tm-btn-primary"
+                  onClick={handleOpenCreateLiveClass}
+                >
+                  <Plus size={16} />
+                  <span>Schedule Live Class</span>
+                </button>
+              </div>
+
+              {liveClassesLoading ? (
+                <div className="tm-admin-loading-state">
+                  <RefreshCw size={22} className="spin" />
+                  <span>Loading scheduled sessions...</span>
+                </div>
+              ) : liveClasses.length === 0 ? (
+                <div className="tm-admin-empty-card">
+                  <Video size={40} className="tm-empty-icon" />
+                  <h3>No Scheduled Live Classes Yet</h3>
+                  <p>Create a live session and add your Google Meet link so enrolled students can join from their portals.</p>
+                  <button
+                    type="button"
+                    className="tm-btn-primary"
+                    style={{ marginTop: '14px' }}
+                    onClick={handleOpenCreateLiveClass}
+                  >
+                    <Plus size={16} />
+                    <span>Schedule First Live Class</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="tm-admin-table-container">
+                  <table className="tm-admin-table">
+                    <thead>
+                      <tr>
+                        <th>Class Details</th>
+                        <th>Cohort / Course</th>
+                        <th>Scheduled Date & Time</th>
+                        <th>Duration</th>
+                        <th>Meeting Link (Google Meet)</th>
+                        <th>Status</th>
+                        <th style={{ textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {liveClasses.map((item) => (
+                        <tr key={item.id}>
+                          <td>
+                            <div className="tm-user-info-cell">
+                              <span className="font-semibold">{item.title}</span>
+                              <span className="text-muted text-xs">Instructor: {item.instructor || 'Patil Trader'}</span>
+                              {item.description && (
+                                <span className="text-muted text-xs tm-class-desc-snippet">{item.description}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <span className="tm-status-pill enrolled" style={{ whiteSpace: 'nowrap' }}>
+                              {item.course_name || 'All Programs'} ({item.batch_name || 'November'})
+                            </span>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span className="font-semibold">
+                                {new Date(item.scheduled_at).toLocaleDateString(undefined, {
+                                  weekday: 'short',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                })}
+                              </span>
+                              <span className="text-muted text-xs">
+                                {new Date(item.scheduled_at).toLocaleTimeString(undefined, {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            </div>
+                          </td>
+                          <td>
+                            <span>{item.duration_minutes || 75} mins</span>
+                          </td>
+                          <td>
+                            {item.meeting_link ? (
+                              <div className="tm-meet-link-group">
+                                <a
+                                  href={item.meeting_link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="tm-meet-link-badge"
+                                  title="Open Google Meet in new tab"
+                                >
+                                  <Video size={13} />
+                                  <span className="tm-meet-link-text">{item.meeting_link.replace(/^https?:\/\//, '')}</span>
+                                  <ExternalLink size={12} />
+                                </a>
+                                <button
+                                  type="button"
+                                  className="tm-btn-icon-subtle"
+                                  title="Copy meeting link"
+                                  onClick={() => handleCopyMeetLink(item.meeting_link, item.id)}
+                                >
+                                  {copiedMeetId === item.id ? <Check size={14} color="#10B981" /> : <Copy size={14} />}
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="tm-status-pill pending text-xs">No Link Added</span>
+                            )}
+                          </td>
+                          <td>
+                            <span className={`tm-status-pill ${item.status || 'upcoming'}`}>
+                              {item.status || 'upcoming'}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="tm-table-actions" style={{ justifyContent: 'flex-end' }}>
+                              <button
+                                type="button"
+                                className="tm-btn-icon"
+                                title="Edit Live Class & Link"
+                                onClick={() => handleOpenEditLiveClass(item)}
+                              >
+                                <Edit size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                className="tm-btn-icon danger"
+                                title="Delete Scheduled Class"
+                                onClick={() => handleDeleteLiveClass(item.id, item.title)}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -1954,6 +2280,174 @@ export const AdminPanel = ({
                     'Save Changes'
                   ) : (
                     'Create Course'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------
+          MODAL: SCHEDULE / EDIT LIVE CLASS & GOOGLE MEET
+          ------------------------------------------------------------------ */}
+      {isLiveClassModalOpen && editingLiveClass && (
+        <div className="tm-admin-modal-overlay" onClick={() => setIsLiveClassModalOpen(false)}>
+          <div className="tm-admin-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="tm-admin-modal-header">
+              <h3>{editingLiveClass.id ? 'Edit Scheduled Live Class' : 'Schedule New Live Class'}</h3>
+              <button
+                type="button"
+                className="tm-admin-modal-close"
+                onClick={() => setIsLiveClassModalOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveLiveClass} className="tm-admin-modal-body">
+              <div className="tm-form-group">
+                <label>Meeting Title *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Forex & Crypto Masterclass — Live Session"
+                  value={editingLiveClass.title}
+                  onChange={(e) => setEditingLiveClass({ ...editingLiveClass, title: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="tm-form-group">
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>Google Meet / Meeting Link</span>
+                  <span className="text-muted text-xs">e.g. https://meet.google.com/xxx-yyyy-zzz</span>
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://meet.google.com/..."
+                  value={editingLiveClass.meeting_link}
+                  onChange={(e) => setEditingLiveClass({ ...editingLiveClass, meeting_link: e.target.value })}
+                />
+                <small className="tm-form-hint">
+                  This Google Meet link will appear immediately on enrolled students&apos; dashboards with a one-click &quot;Join Meeting&quot; button.
+                </small>
+              </div>
+
+              <div className="tm-form-row">
+                <div className="tm-form-group">
+                  <label>Associated Course</label>
+                  <select
+                    value={editingLiveClass.course_id || ''}
+                    onChange={(e) => setEditingLiveClass({ ...editingLiveClass, course_id: e.target.value || null })}
+                  >
+                    <option value="">All Programs / General Cohort</option>
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="tm-form-group">
+                  <label>Cohort Batch Name</label>
+                  <input
+                    type="text"
+                    placeholder="November"
+                    value={editingLiveClass.batch_name}
+                    onChange={(e) => setEditingLiveClass({ ...editingLiveClass, batch_name: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="tm-form-row">
+                <div className="tm-form-group">
+                  <label>Scheduled Date & Time *</label>
+                  <input
+                    type="datetime-local"
+                    value={editingLiveClass.scheduled_at}
+                    onChange={(e) => setEditingLiveClass({ ...editingLiveClass, scheduled_at: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="tm-form-group">
+                  <label>Duration (Minutes)</label>
+                  <input
+                    type="number"
+                    min="15"
+                    step="5"
+                    value={editingLiveClass.duration_minutes}
+                    onChange={(e) => setEditingLiveClass({ ...editingLiveClass, duration_minutes: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="tm-form-row">
+                <div className="tm-form-group">
+                  <label>Platform</label>
+                  <select
+                    value={editingLiveClass.platform}
+                    onChange={(e) => setEditingLiveClass({ ...editingLiveClass, platform: e.target.value })}
+                  >
+                    <option value="Google Meet">Google Meet</option>
+                    <option value="Zoom">Zoom</option>
+                    <option value="YouTube Live">YouTube Live</option>
+                    <option value="Live Stream">Live Stream</option>
+                  </select>
+                </div>
+
+                <div className="tm-form-group">
+                  <label>Instructor</label>
+                  <input
+                    type="text"
+                    value={editingLiveClass.instructor}
+                    onChange={(e) => setEditingLiveClass({ ...editingLiveClass, instructor: e.target.value })}
+                  />
+                </div>
+
+                <div className="tm-form-group">
+                  <label>Status</label>
+                  <select
+                    value={editingLiveClass.status}
+                    onChange={(e) => setEditingLiveClass({ ...editingLiveClass, status: e.target.value })}
+                  >
+                    <option value="upcoming">Upcoming</option>
+                    <option value="live">Live Now</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="tm-form-group">
+                <label>Session Agenda / Description (Optional)</label>
+                <textarea
+                  rows="3"
+                  placeholder="Key topics covered: Risk management, institutional liquidity zones, live charting..."
+                  value={editingLiveClass.description}
+                  onChange={(e) => setEditingLiveClass({ ...editingLiveClass, description: e.target.value })}
+                />
+              </div>
+
+              <div className="tm-modal-actions-footer">
+                <button
+                  type="button"
+                  className="tm-btn-outline"
+                  onClick={() => setIsLiveClassModalOpen(false)}
+                  disabled={savingLiveClass}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="tm-btn-primary" disabled={savingLiveClass}>
+                  {savingLiveClass ? (
+                    <>
+                      <RefreshCw size={14} className="spin" />
+                      <span>Saving Class...</span>
+                    </>
+                  ) : editingLiveClass.id ? (
+                    'Save Changes'
+                  ) : (
+                    'Schedule Class & Post Link'
                   )}
                 </button>
               </div>

@@ -927,20 +927,108 @@ adminRouter.get('/live-classes', async (req, res) => {
 
 adminRouter.post('/live-classes', async (req, res) => {
   try {
-    const { course_id, title, batch_name = 'November', scheduled_at, duration_minutes = 75, meeting_link, platform = 'Live Online', instructor = 'Patil Trader' } = req.body;
+    const {
+      course_id,
+      title,
+      batch_name = 'November',
+      scheduled_at,
+      duration_minutes = 75,
+      meeting_link,
+      platform = 'Google Meet',
+      instructor = 'Patil Trader',
+      status = 'upcoming',
+      description,
+    } = req.body;
+
     if (!title || !scheduled_at) {
-      return res.status(400).json({ success: false, error: 'Title and scheduled time are required.' });
+      return res.status(400).json({ success: false, error: 'Meeting title and scheduled time are required.' });
     }
+
     const result = await pool.query(
-      `INSERT INTO live_classes (course_id, title, batch_name, scheduled_at, duration_minutes, meeting_link, platform, instructor)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING *`,
-      [course_id || null, title.trim(), batch_name.trim(), scheduled_at, parseInt(duration_minutes, 10) || 75, meeting_link || null, platform, instructor]
+      `INSERT INTO live_classes (
+        course_id, title, batch_name, scheduled_at, duration_minutes,
+        meeting_link, platform, instructor, status, description
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *`,
+      [
+        course_id || null,
+        title.trim(),
+        batch_name.trim(),
+        scheduled_at,
+        parseInt(duration_minutes, 10) || 75,
+        meeting_link ? meeting_link.trim() : null,
+        platform.trim() || 'Google Meet',
+        instructor.trim() || 'Patil Trader',
+        status.trim() || 'upcoming',
+        description ? description.trim() : null,
+      ]
     );
+
     return res.status(201).json({ success: true, liveClass: result.rows[0] });
   } catch (err) {
     console.error('[Admin Live Class Create Error]:', err);
     return res.status(500).json({ success: false, error: 'Failed to create live class.' });
+  }
+});
+
+adminRouter.put('/live-classes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      course_id,
+      title,
+      batch_name,
+      scheduled_at,
+      duration_minutes,
+      meeting_link,
+      platform,
+      instructor,
+      status,
+      description,
+    } = req.body;
+
+    if (!title || !scheduled_at) {
+      return res.status(400).json({ success: false, error: 'Title and scheduled time are required.' });
+    }
+
+    const result = await pool.query(
+      `UPDATE live_classes
+       SET course_id = $1,
+           title = $2,
+           batch_name = $3,
+           scheduled_at = $4,
+           duration_minutes = $5,
+           meeting_link = $6,
+           platform = $7,
+           instructor = $8,
+           status = $9,
+           description = $10,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $11
+       RETURNING *`,
+      [
+        course_id || null,
+        title.trim(),
+        batch_name ? batch_name.trim() : 'November',
+        scheduled_at,
+        parseInt(duration_minutes, 10) || 75,
+        meeting_link ? meeting_link.trim() : null,
+        platform ? platform.trim() : 'Google Meet',
+        instructor ? instructor.trim() : 'Patil Trader',
+        status ? status.trim() : 'upcoming',
+        description ? description.trim() : null,
+        id,
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Live class not found.' });
+    }
+
+    return res.status(200).json({ success: true, liveClass: result.rows[0] });
+  } catch (err) {
+    console.error('[Admin Live Class Update Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to update live class.' });
   }
 });
 

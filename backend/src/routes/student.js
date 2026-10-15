@@ -43,6 +43,9 @@ studentRouter.get('/dashboard', async (req, res) => {
               e.enrollment_status,
               e.payment_status,
               e.amount_paid,
+              COALESCE(e.progress_percentage, 0) as progress_percentage,
+              COALESCE(e.completed_lessons, 0) as completed_lessons,
+              COALESCE(e.total_lessons, 16) as total_lessons,
               e.created_at as enrolled_at
        FROM enrollments e
        LEFT JOIN courses c ON e.course_id = c.id
@@ -51,23 +54,23 @@ studentRouter.get('/dashboard', async (req, res) => {
       [userId, userEmail]
     );
 
-    // Provide structured progress data
-    const enrolledCourses = enrollmentsRes.rows.map((item, idx) => ({
+    // Provide authentic progress data from PostgreSQL (no hardcoded fake values)
+    const enrolledCourses = enrollmentsRes.rows.map((item) => ({
       ...item,
-      // Progress calculation based on standard course milestones
-      progress_percentage: idx === 0 ? 35 : 15,
-      completed_lessons: idx === 0 ? 4 : 2,
-      total_lessons: 16,
+      progress_percentage: parseInt(item.progress_percentage, 10) || 0,
+      completed_lessons: parseInt(item.completed_lessons, 10) || 0,
+      total_lessons: parseInt(item.total_lessons, 10) || 16,
     }));
 
     // 3. Fetch Upcoming Live Classes
     const liveClassesRes = await pool.query(
       `SELECT lc.id, lc.course_id, lc.title, lc.batch_name, lc.scheduled_at,
               lc.duration_minutes, lc.meeting_link, lc.platform, lc.instructor, lc.status,
+              lc.description,
               c.title as course_name
        FROM live_classes lc
        LEFT JOIN courses c ON lc.course_id = c.id
-       WHERE lc.scheduled_at >= CURRENT_TIMESTAMP - INTERVAL '2 hours'
+       WHERE lc.status != 'cancelled'
        ORDER BY lc.scheduled_at ASC
        LIMIT 6`
     );
