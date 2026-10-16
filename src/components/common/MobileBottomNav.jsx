@@ -12,12 +12,12 @@ export const MobileBottomNav = ({
   return (
     <nav className="tm-mobile-bottom-nav" aria-label="Mobile Bottom Navigation">
       <div className="tm-bottom-nav-inner">
-        {/* 1. HOME BUTTON */}
+        {/* 1. HOME BUTTON (Directs to Student Dashboard) */}
         <button
           type="button"
-          className={`tm-bottom-nav-item ${currentView === 'landing' ? 'active' : ''}`}
-          onClick={() => onNavigate && onNavigate('landing')}
-          aria-label="Go to Home"
+          className={`tm-bottom-nav-item ${currentView === 'dashboard' ? 'active' : ''}`}
+          onClick={() => onNavigate && onNavigate('dashboard')}
+          aria-label="Go to Student Dashboard"
         >
           <span className="tm-bottom-nav-icon-wrap">
             <svg
@@ -69,8 +69,8 @@ export const MobileBottomNav = ({
         {/* 3. STOCKS BUTTON */}
         <button
           type="button"
-          className={`tm-bottom-nav-item ${currentView === 'dashboard' ? 'active' : ''}`}
-          onClick={() => onNavigate && onNavigate('dashboard')}
+          className={`tm-bottom-nav-item ${currentView === 'stocks' || currentView === 'charts' ? 'active' : ''}`}
+          onClick={() => onNavigate && onNavigate('stocks')}
           aria-label="Trading Stocks Terminal"
         >
           <span className="tm-bottom-nav-icon-wrap">
@@ -92,46 +92,29 @@ export const MobileBottomNav = ({
           <span className="tm-bottom-nav-label">Stocks</span>
         </button>
 
-        {/* 4. SETTING (DAY/NIGHT & PREFERENCES) */}
+        {/* 4. SETTING (CREATE NEW PASSWORD & SETTINGS) */}
         <button
           type="button"
-          className="tm-bottom-nav-item tm-bottom-nav-theme-item"
-          onClick={onToggleTheme}
-          aria-label={`Toggle Theme Setting: Current is ${isDark ? 'Night' : 'Day'} Mode`}
-          title={`Switch to ${isDark ? 'Day' : 'Night'} Mode`}
+          className={`tm-bottom-nav-item ${currentView === 'settings' ? 'active' : ''}`}
+          onClick={() => onNavigate && onNavigate('settings')}
+          aria-label="Account Settings & Password"
+          title="Settings & Create New Password"
         >
           <span className="tm-bottom-nav-icon-wrap">
-            {isDark ? (
-              <svg
-                className="tm-bottom-nav-svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-              </svg>
-            ) : (
-              <svg
-                className="tm-bottom-nav-svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-              </svg>
-            )}
+            <svg
+              className="tm-bottom-nav-svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
           </span>
           <span className="tm-bottom-nav-label">Setting</span>
         </button>

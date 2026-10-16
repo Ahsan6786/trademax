@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SUPPORTED_LANGUAGES, getTranslation } from '../../i18n/translations';
+import { loadRazorpay } from '../../utils/loadRazorpay';
 import './StudentDashboard.css';
 
 export const StudentDashboard = ({
@@ -15,6 +16,24 @@ export const StudentDashboard = ({
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const langDropdownRef = useRef(null);
+
+  // Close mobile language dropdown when clicking or touching outside
+  useEffect(() => {
+    if (!isLangDropdownOpen) return;
+    const handleClickOutside = (e) => {
+      if (langDropdownRef.current && !langDropdownRef.current.contains(e.target)) {
+        setIsLangDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isLangDropdownOpen]);
 
   // Language management
   const [currentLang, setCurrentLang] = useState(() => {
@@ -107,6 +126,14 @@ export const StudentDashboard = ({
 
   useEffect(() => {
     fetchPortalData();
+
+    const handleCustomEnroll = () => {
+      fetchPortalData();
+    };
+    window.addEventListener('tm:enrollment_updated', handleCustomEnroll);
+    return () => {
+      window.removeEventListener('tm:enrollment_updated', handleCustomEnroll);
+    };
   }, [fetchPortalData]);
 
   // Toast Notification Helper
@@ -117,7 +144,7 @@ export const StudentDashboard = ({
     }, 4500);
   };
 
-  // Instant Enrollment Handler
+  // Instant Enrollment with Razorpay Test Mode
   const handleEnrollCourse = async (courseToEnroll) => {
     try {
       setEnrollingCourseId(courseToEnroll.id);
@@ -126,7 +153,16 @@ export const StudentDashboard = ({
       const studentMobile = profileForm.mobile || user?.mobile || '8799026206';
       const studentExperience = profileForm.trading_experience || user?.trading_experience || 'Intermediate';
 
-      const res = await fetch('/api/courses/enroll', {
+      // 1. Ensure Razorpay SDK is ready
+      const isSdkLoaded = await loadRazorpay();
+      if (!isSdkLoaded) {
+        showToast('Payment gateway SDK could not be loaded. Check internet.', 'error');
+        setEnrollingCourseId(null);
+        return;
+      }
+
+      // 2. Request backend to create Razorpay Order
+      const res = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -146,20 +182,128 @@ export const StudentDashboard = ({
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
-      if (data.success) {
+      if (!res.ok || !data.success) {
+        if (data.isDuplicate) {
+          showToast(data.error || 'Already enrolled in this course.', 'error');
+          return;
+        }
+        showToast(data.error || 'Could not initiate payment order.', 'error');
+        return;
+      }
+
+      // If free course or zero price
+      if (data.requires_payment === false) {
         showToast(`${t.courses.enrollSuccess} (${courseToEnroll.title})`, 'success');
         await fetchPortalData();
-      } else if (data.isDuplicate) {
-        showToast(data.error || 'Already enrolled in this course.', 'error');
-      } else {
-        showToast(data.error || 'Enrollment could not be processed.', 'error');
+        return;
       }
+
+      const { order, key_id, currency } = data;
+
+      // 3. Open Razorpay Checkout Modal
+      const options = {
+        key: key_id || 'rzp_test_Toeh6O3nccqAo0',
+        amount: order.amount,
+        currency: currency || 'INR',
+        name: 'TRADEMAX',
+        description: `Enrollment: ${courseToEnroll.title}`,
+        image: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+        order_id: order.id,
+        prefill: {
+          name: studentName,
+          email: studentEmail,
+          contact: studentMobile,
+        },
+        notes: {
+          course_id: String(courseToEnroll.id),
+          course_slug: courseToEnroll.slug || 'trading-masterclass',
+          environment: 'test_mode',
+        },
+        theme: {
+          color: '#DC2626',
+        },
+        handler: async function (response) {
+          try {
+            showToast('Verifying payment signature...', 'info');
+
+            const verifyRes = await fetch('/api/payments/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                course_id: courseToEnroll.id,
+                course_slug: courseToEnroll.slug || 'trading-masterclass',
+                course_name: courseToEnroll.title,
+                name: studentName,
+                email: studentEmail,
+                mobile: studentMobile,
+                trading_experience: studentExperience,
+                batch_name: courseToEnroll.batch_name || 'November',
+              }),
+            });
+
+            const verifyData = await verifyRes.json().catch(() => ({}));
+
+            if (verifyRes.ok && verifyData.success) {
+              showToast(`Payment Confirmed! Enrolled in ${courseToEnroll.title} (Ref: ${response.razorpay_payment_id})`, 'success');
+              await fetchPortalData();
+            } else {
+              showToast(verifyData.error || 'Payment signature verification failed.', 'error');
+            }
+          } catch (verifyErr) {
+            console.error('Verify error:', verifyErr);
+            showToast('Payment verification error. Contact support.', 'error');
+          } finally {
+            setEnrollingCourseId(null);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setEnrollingCourseId(null);
+            showToast('Payment was cancelled.', 'info');
+            fetch('/api/payments/failed', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                order_id: order.id,
+                reason: 'USER_CANCELLED',
+                description: 'User dismissed checkout window.',
+              }),
+            }).catch(() => {});
+          },
+        },
+      };
+
+      const rzpInstance = new window.Razorpay(options);
+
+      rzpInstance.on('payment.failed', function (failedResponse) {
+        setEnrollingCourseId(null);
+        const reason = failedResponse.error?.description || 'Payment was declined.';
+        showToast(`Payment Failed: ${reason}`, 'error');
+        fetch('/api/payments/failed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            order_id: order.id,
+            payment_id: failedResponse.error?.metadata?.payment_id,
+            code: failedResponse.error?.code,
+            reason: failedResponse.error?.reason,
+            description: failedResponse.error?.description,
+          }),
+        }).catch(() => {});
+      });
+
+      rzpInstance.open();
     } catch (err) {
       console.error('Enrollment error:', err);
       showToast('Connection error. Please try again.', 'error');
-    } finally {
       setEnrollingCourseId(null);
     }
   };
@@ -281,21 +425,33 @@ export const StudentDashboard = ({
           ------------------------------------------------------------------ */}
       <header className="tm-portal-header">
         <div className="tm-portal-header-left">
-          {/* Mobile Drawer Trigger */}
+          {/* Mobile Drawer Trigger (Single clean menu button, no duplicate text or brackets) */}
           <button
             type="button"
             className="tm-portal-mobile-menu-btn"
             onClick={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
-            aria-label="Toggle Portal Navigation"
+            aria-label={isMobileDrawerOpen ? 'Close Navigation' : 'Open Navigation'}
+            title={isMobileDrawerOpen ? 'Close' : 'Menu'}
           >
-            {isMobileDrawerOpen ? 'CLOSE' : 'MENU'}
+            {isMobileDrawerOpen ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            )}
           </button>
 
-          {/* Desktop Sidebar Open Button (Shown when sidebar is closed) */}
+          {/* Desktop Sidebar Open Button (Shown on desktop only when sidebar is closed) */}
           {!isSidebarOpen && (
             <button
               type="button"
-              className="tm-portal-sidebar-open-btn"
+              className="tm-portal-sidebar-open-btn tm-desktop-sidebar-open"
               onClick={() => setIsSidebarOpen(true)}
               title="Open Sidebar"
               aria-label="Open Sidebar"
@@ -304,15 +460,15 @@ export const StudentDashboard = ({
             </button>
           )}
 
-          {/* Current Page Title (Like reference screenshot) */}
+          {/* Current Page Title */}
           <div className="tm-portal-header-page-title">
             <span className="tm-header-title-text">{currentTabLabel}</span>
           </div>
         </div>
 
         <div className="tm-portal-header-right">
-          {/* Working 4-Language Selector */}
-          <div className="tm-portal-lang-selector">
+          {/* Desktop 4-Language Selector (Shown on desktop only) */}
+          <div className="tm-portal-lang-selector tm-desktop-lang-selector">
             <div className="tm-portal-lang-pills">
               {SUPPORTED_LANGUAGES.map((lang) => (
                 <button
@@ -328,6 +484,74 @@ export const StudentDashboard = ({
             </div>
           </div>
 
+          {/* Mobile Compact Language Dropdown (Shown on mobile only) */}
+          <div className="tm-portal-mobile-lang-dropdown" ref={langDropdownRef}>
+            <button
+              type="button"
+              className={`tm-mobile-lang-trigger ${isLangDropdownOpen ? 'is-open' : ''}`}
+              onClick={() => setIsLangDropdownOpen((prev) => !prev)}
+              aria-expanded={isLangDropdownOpen}
+              aria-label="Select Language"
+            >
+              <span className="tm-mobile-lang-current">
+                {currentLang === 'en' ? 'EN' : currentLang === 'hi' ? 'हिंदी' : currentLang === 'mr' ? 'मराठी' : 'ગુજરાતી'}
+              </span>
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`tm-mobile-lang-caret ${isLangDropdownOpen ? 'is-rotated' : ''}`}
+                aria-hidden="true"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+
+            {isLangDropdownOpen && (
+              <div className="tm-mobile-lang-menu" role="menu">
+                {SUPPORTED_LANGUAGES.map((lang) => {
+                  const isSelected = currentLang === lang.code;
+                  return (
+                    <button
+                      key={lang.code}
+                      type="button"
+                      className={`tm-mobile-lang-item ${isSelected ? 'is-selected' : ''}`}
+                      onClick={() => {
+                        handleLanguageChange(lang.code);
+                        setIsLangDropdownOpen(false);
+                      }}
+                      role="menuitem"
+                    >
+                      <span className="tm-mobile-lang-item-short">{lang.short}</span>
+                      <span className="tm-mobile-lang-item-label">{lang.label}</span>
+                      {isSelected && (
+                        <svg
+                          width="13"
+                          height="13"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="tm-mobile-lang-check"
+                          aria-hidden="true"
+                        >
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Functional Day/Night Theme Toggle */}
           {onToggleTheme && (
             <button
@@ -335,8 +559,30 @@ export const StudentDashboard = ({
               className="tm-portal-theme-btn"
               onClick={() => onToggleTheme()}
               title={theme === 'dark' ? 'Switch to Day Mode' : 'Switch to Night Mode'}
+              aria-label={theme === 'dark' ? 'Switch to Day Mode' : 'Switch to Night Mode'}
             >
-              {theme === 'dark' ? t.common.themeLight : t.common.themeDark}
+              <span className="tm-theme-btn-text-desktop">
+                {theme === 'dark' ? t.common.themeLight : t.common.themeDark}
+              </span>
+              <span className="tm-theme-btn-icon-mobile" aria-hidden="true">
+                {theme === 'dark' ? (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                  </svg>
+                ) : (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                  </svg>
+                )}
+              </span>
             </button>
           )}
         </div>
@@ -880,12 +1126,6 @@ export const StudentDashboard = ({
                   ============================================================== */}
               {activeTab === 'live-classes' && (
                 <div className="tm-tab-pane tm-live-view">
-                  <div className="tm-pane-header">
-                    <span className="tm-pane-eyebrow">INSTITUTIONAL MENTORSHIP & SESSIONS</span>
-                    <h1 className="tm-pane-title">{t.liveClasses.pageTitle}</h1>
-                    <p className="tm-pane-desc">{t.liveClasses.pageDesc}</p>
-                  </div>
-
                   {liveClassesList.length === 0 ? (
                     <div className="tm-empty-state-card">
                       <span className="tm-empty-state-tag">[ SCHEDULE EMPTY ]</span>

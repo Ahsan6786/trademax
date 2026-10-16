@@ -80,6 +80,7 @@ export const AdminPanel = ({
   const [enrollmentStatusFilter, setEnrollmentStatusFilter] = useState('all');
   const [enrollmentPage, setEnrollmentPage] = useState(1);
   const [enrollmentPagination, setEnrollmentPagination] = useState({ total: 0, totalPages: 1 });
+  const [exportingEnrollments, setExportingEnrollments] = useState(false);
 
   // Live Classes State
   const [liveClasses, setLiveClasses] = useState([]);
@@ -365,6 +366,34 @@ export const AdminPanel = ({
       showNotification('Failed to download user spreadsheet.', 'error');
     } finally {
       setExportingUsers(false);
+    }
+  };
+
+  // Export Course Enrollments as formatted CSV/Excel
+  const handleExportEnrollments = async () => {
+    try {
+      setExportingEnrollments(true);
+      const res = await fetch('/api/admin/enrollments/export', {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        throw new Error('Failed to download enrollments report');
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `TradeMax_Enrollments_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      showNotification('Enrollments spreadsheet downloaded successfully.', 'success');
+    } catch (err) {
+      console.error('Export enrollments error:', err);
+      showNotification('Failed to download enrollments spreadsheet.', 'error');
+    } finally {
+      setExportingEnrollments(false);
     }
   };
 
@@ -905,6 +934,31 @@ export const AdminPanel = ({
               <span className="bar"></span>
               <span className="bar"></span>
             </button>
+            <span className="tm-admin-topbar-brand">TRADEMAX ADMIN</span>
+          </div>
+
+          <div className="tm-admin-topbar-right">
+            {onToggleTheme && (
+              <button
+                type="button"
+                className="tm-admin-theme-btn"
+                onClick={onToggleTheme}
+                title={`Switch to ${theme === 'dark' ? 'Day' : 'Night'} Mode`}
+                aria-label="Toggle Theme"
+              >
+                {theme === 'dark' ? (
+                  <>
+                    <Sun size={15} className="tm-admin-theme-icon" />
+                    <span className="tm-admin-theme-label">Day Mode</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon size={15} className="tm-admin-theme-icon" />
+                    <span className="tm-admin-theme-label">Night Mode</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </header>
 
@@ -1285,7 +1339,6 @@ export const AdminPanel = ({
               <div className="tm-admin-page-actions-header">
                 <div>
                   <h2 className="tm-section-heading">All Educational Programs</h2>
-                  <p className="tm-section-sub">Create, edit, publish, and manage admissions</p>
                 </div>
                 <button
                   type="button"
@@ -1420,9 +1473,6 @@ export const AdminPanel = ({
               <div className="tm-admin-page-actions-header">
                 <div>
                   <h2 className="tm-section-heading">Scheduled Live Classes & Google Meet</h2>
-                  <p className="tm-section-sub">
-                    Schedule live trading sessions, add Google Meet links, and sync them directly to student dashboards.
-                  </p>
                 </div>
                 <button
                   type="button"
@@ -1631,6 +1681,17 @@ export const AdminPanel = ({
                     <option value="cancelled">Cancelled</option>
                   </select>
                 </div>
+
+                <button
+                  type="button"
+                  className="tm-admin-btn-export"
+                  onClick={handleExportEnrollments}
+                  disabled={exportingEnrollments}
+                  title="Download formatted Excel spreadsheet of student enrollments"
+                >
+                  {exportingEnrollments ? <RefreshCw size={14} className="spin" /> : <Download size={14} />}
+                  <span>{exportingEnrollments ? 'Exporting...' : 'Download Excel Sheet'}</span>
+                </button>
               </div>
 
               {/* Enrollments Table */}
@@ -2054,7 +2115,7 @@ export const AdminPanel = ({
           ------------------------------------------------------------------ */}
       {isCourseModalOpen && editingCourse && (
         <div className="tm-admin-modal-overlay" onClick={() => setIsCourseModalOpen(false)}>
-          <div className="tm-admin-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="tm-admin-modal tm-admin-modal-course" onClick={(e) => e.stopPropagation()}>
             <div className="tm-admin-modal-header">
               <h3>{editingCourse.id ? 'Edit Course' : 'Create New Course'}</h3>
               <button

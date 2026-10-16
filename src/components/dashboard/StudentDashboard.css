@@ -175,6 +175,10 @@
   color: var(--tm-nav-text-white);
 }
 
+.tm-portal-mobile-lang-dropdown {
+  display: none;
+}
+
 /* Day/Night Theme Toggle */
 .tm-portal-theme-btn {
   background: var(--tm-nav-surface);
@@ -187,6 +191,14 @@
   border-radius: 6px;
   cursor: pointer;
   transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.tm-theme-btn-text-desktop {
+  display: inline;
+}
+
+.tm-theme-btn-icon-mobile {
+  display: none;
 }
 
 .tm-portal-theme-btn:hover {
@@ -258,9 +270,14 @@
   flex: 1;
   display: flex;
   position: relative;
+  align-items: flex-start;
 }
 
 .tm-portal-sidebar {
+  position: sticky;
+  top: calc(var(--tm-portal-header-h) + env(safe-area-inset-top, 0px));
+  height: calc(100vh - (var(--tm-portal-header-h) + env(safe-area-inset-top, 0px)));
+  max-height: calc(100vh - (var(--tm-portal-header-h) + env(safe-area-inset-top, 0px)));
   width: var(--tm-portal-sidebar-w);
   background-color: var(--tm-nav-black);
   border-right: 1px solid var(--tm-nav-border);
@@ -268,7 +285,7 @@
   flex-direction: column;
   justify-content: space-between;
   flex-shrink: 0;
-  min-height: calc(100vh - var(--tm-portal-header-h));
+  overflow: hidden;
   transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease;
 }
 
@@ -290,6 +307,7 @@
   padding: 1.35rem 1.25rem;
   border-bottom: 1px solid var(--tm-nav-border);
   user-select: none;
+  flex-shrink: 0;
 }
 
 .tm-sidebar-brand-main {
@@ -360,6 +378,7 @@
 /* Sidebar Navigation Groups & Subtle Separators */
 .tm-sidebar-menu-scroll {
   flex: 1;
+  min-height: 0;
   padding: 1.25rem 0.85rem;
   display: flex;
   flex-direction: column;
@@ -433,6 +452,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+  flex-shrink: 0;
+  background-color: var(--tm-nav-black);
 }
 
 .tm-sidebar-user-card {
@@ -513,6 +534,7 @@
    -------------------------------------------------------------------------- */
 .tm-portal-main {
   flex: 1;
+  min-width: 0;
   padding: 2.25rem;
   max-width: 1200px;
   margin: 0 auto;
@@ -1679,20 +1701,235 @@
 }
 
 @media (max-width: 768px) {
+  /* 1. Header & Navigation Controls: Black in Night Mode, White in Day Mode */
   .tm-portal-header {
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    min-height: 52px;
+    height: auto;
+    gap: 0.5rem;
+    overflow: visible !important;
+    background-color: #000000 !important;
+    border-bottom: 1px solid #1E232F !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4) !important;
   }
 
+  .tm-portal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+    flex: 1;
+  }
+
+  /* Single functional menu button on mobile */
   .tm-portal-mobile-menu-btn {
-    display: inline-block;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0;
+    margin: 0;
+    background: #15171D !important;
+    border: 1px solid #232733 !important;
+    color: #FFFFFF !important;
+    border-radius: 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.15s ease;
   }
 
-  .tm-header-title-text {
-    font-size: 1rem;
+  .tm-portal-mobile-menu-btn:active {
+    background: var(--tm-accent-red);
+    border-color: var(--tm-accent-red);
+    transform: scale(0.95);
   }
 
-  /* Slide-Out Mobile Drawer (Smooth Black Background) */
+  /* Hide duplicate menu buttons and desktop open button completely on mobile */
+  .tm-portal-sidebar-open-btn,
+  .tm-desktop-sidebar-open {
+    display: none !important;
+  }
+
+  /* Hide page title text (Dashboard) on mobile view */
+  .tm-portal-header-page-title {
+    display: none !important;
+  }
+
+  .tm-portal-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-shrink: 0;
+  }
+
+  /* Hide desktop language pills on mobile */
+  .tm-desktop-lang-selector {
+    display: none !important;
+  }
+
+  /* Compact Mobile Language Dropdown */
+  .tm-portal-mobile-lang-dropdown {
+    display: block !important;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .tm-mobile-lang-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 34px;
+    padding: 0 0.55rem;
+    background: #15171D !important;
+    border: 1px solid #232733 !important;
+    color: #FFFFFF !important;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 750;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    white-space: nowrap;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.15s ease;
+  }
+
+  .tm-mobile-lang-trigger:active,
+  .tm-mobile-lang-trigger.is-open {
+    border-color: var(--tm-accent-red);
+    background: rgba(220, 38, 38, 0.12);
+  }
+
+  .tm-mobile-lang-caret {
+    transition: transform 0.2s ease;
+    opacity: 0.85;
+  }
+
+  .tm-mobile-lang-caret.is-rotated {
+    transform: rotate(180deg);
+  }
+
+  .tm-mobile-lang-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: #11141A;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+    min-width: 145px;
+    z-index: 105;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 4px;
+    animation: tmPortalLangFadeIn 0.15s ease-out;
+  }
+
+  @keyframes tmPortalLangFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .tm-mobile-lang-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    background: transparent;
+    border: none;
+    border-radius: 5px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+  }
+
+  .tm-mobile-lang-item:active,
+  .tm-mobile-lang-item.is-selected {
+    background: rgba(220, 38, 38, 0.16);
+    color: #FFFFFF;
+  }
+
+  .tm-mobile-lang-item-short {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--tm-accent-red);
+    width: 24px;
+  }
+
+  .tm-mobile-lang-item-label {
+    flex: 1;
+  }
+
+  .tm-mobile-lang-check {
+    color: var(--tm-accent-red);
+    flex-shrink: 0;
+  }
+
+  /* Compact Theme Toggle Button (Small icon button on mobile) */
+  .tm-theme-btn-text-desktop {
+    display: none !important;
+  }
+
+  .tm-theme-btn-icon-mobile {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .tm-portal-theme-btn {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #15171D !important;
+    border: 1px solid #232733 !important;
+    color: #FFFFFF !important;
+    border-radius: 6px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Day Mode (Light Theme) Overrides for Mobile Portal Header */
+  .tm-portal-layout.tm-theme-light .tm-portal-header,
+  [data-theme='light'] .tm-portal-header {
+    background-color: #FFFFFF !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  .tm-portal-layout.tm-theme-light .tm-portal-mobile-menu-btn,
+  [data-theme='light'] .tm-portal-mobile-menu-btn,
+  .tm-portal-layout.tm-theme-light .tm-mobile-lang-trigger,
+  [data-theme='light'] .tm-mobile-lang-trigger,
+  .tm-portal-layout.tm-theme-light .tm-portal-theme-btn,
+  [data-theme='light'] .tm-portal-theme-btn {
+    background: #F8FAFC !important;
+    border: 1px solid #E2E8F0 !important;
+    color: #0F172A !important;
+  }
+
+  /* 2. Slide-Out Mobile Drawer (Smooth Black Background) */
   .tm-portal-drawer-backdrop {
     position: fixed;
     top: 0;
@@ -1727,10 +1964,34 @@
     padding: 1.25rem 1rem;
   }
 
+  /* 3. Welcome Card Intro Label Removal & Balanced Spacing */
+  .tm-welcome-eyebrow {
+    display: none !important;
+  }
+
+  /* Remove administrative bulletins, live classes, and portal preferences header texts on mobile */
+  .tm-announcements-view .tm-pane-header,
+  .tm-live-view .tm-pane-header,
+  .tm-settings-view .tm-pane-header {
+    display: none !important;
+  }
+
   .tm-welcome-banner {
     flex-direction: column;
     align-items: flex-start;
-    padding: 1.5rem 1.25rem;
+    padding: 1.25rem 1rem;
+    gap: 0.85rem;
+  }
+
+  .tm-welcome-title {
+    font-size: 1.35rem;
+    margin-bottom: 0.35rem;
+    line-height: 1.25;
+  }
+
+  .tm-welcome-desc {
+    font-size: 0.85rem;
+    line-height: 1.5;
   }
 
   .tm-enrolled-grid {
@@ -1748,5 +2009,51 @@
 
   .tm-theme-switch-row {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Light Mode Overrides for Mobile Language Dropdown */
+.tm-theme-light .tm-mobile-lang-menu {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.15);
+}
+
+.tm-theme-light .tm-mobile-lang-item {
+  color: #1E293B;
+}
+
+.tm-theme-light .tm-mobile-lang-item:active,
+.tm-theme-light .tm-mobile-lang-item.is-selected {
+  background: #FEF2F2;
+  color: #DC2626;
+}
+
+/* Narrow mobile screens (<= 360px down to 320px) */
+@media (max-width: 360px) {
+  .tm-portal-header {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    gap: 0.35rem;
+  }
+  .tm-portal-header-left {
+    gap: 0.45rem;
+  }
+  .tm-header-title-text {
+    font-size: 0.88rem;
+  }
+  .tm-portal-header-right {
+    gap: 0.35rem;
+  }
+  .tm-mobile-lang-trigger {
+    padding: 0 0.45rem;
+    font-size: 0.72rem;
+  }
+  .tm-portal-theme-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
   }
 }

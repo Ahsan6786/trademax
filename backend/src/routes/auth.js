@@ -387,6 +387,56 @@ authRouter.put('/password', authMiddleware, async (req, res) => {
 });
 
 // ============================================================================
+// RESET / CREATE NEW PASSWORD (POST /api/auth/reset-password)
+// ============================================================================
+authRouter.post('/reset-password', async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+
+    if (!email || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email and new password are required.',
+      });
+    }
+
+    if (typeof newPassword !== 'string' || newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'New password must be at least 6 characters long.',
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const userRes = await pool.query('SELECT id FROM users WHERE LOWER(email) = $1 LIMIT 1', [normalizedEmail]);
+
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No account found with this email address.',
+      });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await pool.query(
+      'UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [hashed, userRes.rows[0].id]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'New password created successfully! You can now log in.',
+    });
+  } catch (err) {
+    console.error('[Reset Password Error]:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'An unexpected error occurred while setting new password.',
+    });
+  }
+});
+
+// ============================================================================
 // LOGOUT (POST /api/auth/logout)
 // ============================================================================
 authRouter.post('/logout', (req, res) => {

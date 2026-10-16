@@ -6,19 +6,19 @@
 .tm-gallery-card-section {
   position: relative;
   width: 100%;
-  padding: 80px 24px 100px;
+  padding: 50px 0 80px;
   overflow: hidden;
   background-color: transparent;
   outline: none;
 }
 
-/* Ambient glow effect behind the card */
+/* Ambient glow effect behind the gallery */
 .tm-gallery-ambient-glow {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 800px;
+  width: 1000px;
   height: 500px;
   background: radial-gradient(
     circle,
@@ -34,31 +34,25 @@
 .tm-gallery-card-container {
   position: relative;
   z-index: 1;
-  max-width: 1140px;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 32px;
+  box-sizing: border-box;
   margin: 0 auto;
 }
 
-/* Main Floating White/Dark Card UI */
-.tm-gallery-main-card {
-  position: relative;
-  border-radius: 32px;
-  padding: 56px 40px 48px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-/* DARK THEME (Pure Black & Neutral Charcoal) */
-.tm-gal-theme-dark .tm-gallery-main-card {
-  background: linear-gradient(180deg, #141414 0%, #0D0D0D 100%);
-  border: 1px solid #222222;
-  box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.03);
-}
-
-/* LIGHT THEME */
+/* Full-width clean gallery presentation without outer card container */
+.tm-gallery-main-card,
+.tm-gal-theme-dark .tm-gallery-main-card,
 .tm-gal-theme-light .tm-gallery-main-card {
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
-  box-shadow: 0 30px 80px -15px rgba(15, 23, 42, 0.12), 0 4px 16px rgba(15, 23, 42, 0.04);
+  position: relative;
+  border-radius: 0;
+  padding: 0;
+  overflow: visible;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  transition: all 0.3s ease;
 }
 
 /* --------------------------------------------------------------------------

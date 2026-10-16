@@ -94,10 +94,6 @@ export const Hero = ({ onOpenAuth, onNavigate }) => {
           =================================================================== */}
       <section className="tm-hero-mobile-section" aria-label="TradeMax Mobile Hero">
         <div className="tm-hero-mobile-container">
-          {/* 1. Hero Tagline */}
-          <div className="tm-hero-mobile-eyebrow">
-            DISCIPLINE &nbsp;·&nbsp; STRATEGY &nbsp;·&nbsp; CONSISTENCY
-          </div>
 
           {/* 2. Hero Heading (Static with subtle fade-up animation) */}
           <h1 className="tm-hero-mobile-headline">
@@ -191,9 +187,6 @@ export const Hero = ({ onOpenAuth, onNavigate }) => {
             <div className="tm-reff-hero-inner">
               <div className="tm-reff-hero-main-row">
                 <div className="tm-reff-hero-left">
-                  <div className="tm-reff-eyebrow">
-                    DISCIPLINE &nbsp;·&nbsp; STRATEGY &nbsp;·&nbsp; CONSISTENCY
-                  </div>
 
                   <h1 className="tm-reff-headline">
                     <span className="tm-reff-headline-line">From</span>

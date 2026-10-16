@@ -186,17 +186,27 @@ export const Navbar = ({
           </a>
 
           {user ? (
-            <div className="tm-nav-user-badge">
-              <span className="tm-nav-user-dot" />
-              <span>{user.name || 'Student'}</span>
+            <div className="tm-nav-user-actions">
               <button
                 type="button"
-                className="tm-nav-btn-logout"
-                onClick={onLogout}
-                aria-label="Logout"
+                className="tm-nav-btn-dashboard"
+                onClick={(e) => handleNavClick(e, 'dashboard')}
+                aria-label="Go to Student Dashboard"
               >
-                Logout
+                Student Dashboard
               </button>
+              <div className="tm-nav-user-badge">
+                <span className="tm-nav-user-dot" />
+                <span>{user.name || 'Student'}</span>
+                <button
+                  type="button"
+                  className="tm-nav-btn-logout"
+                  onClick={onLogout}
+                  aria-label="Logout"
+                >
+                  Logout
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -259,7 +269,7 @@ export const Navbar = ({
                 onClick={() => setMobileMenuOpen((prev) => !prev)}
                 aria-label={mobileMenuOpen ? 'Close Menu' : 'Open Menu'}
               >
-                {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+                {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
               </button>
             </div>
           </div>
@@ -286,7 +296,7 @@ export const Navbar = ({
                 onClick={() => setMobileMenuOpen((prev) => !prev)}
                 aria-label={mobileMenuOpen ? 'Close Menu' : 'Open Menu'}
               >
-                {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+                {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
               </button>
             </div>
           </div>
@@ -394,6 +404,53 @@ export const Navbar = ({
                   <span className="tm-fs-label">CONTACT</span>
                 </a>
               </nav>
+
+              {/* Mobile Sidebar Auth / Login Action */}
+              <div className="tm-fs-auth-section">
+                {user ? (
+                  <div className="tm-fs-user-badge">
+                    <span className="tm-fs-user-label">
+                      Logged in as <strong>{user.name || 'Student'}</strong>
+                    </span>
+                    <div className="tm-fs-auth-btns-row">
+                      <button
+                        type="button"
+                        className="tm-fs-portal-btn"
+                        onClick={(e) => handleNavClick(e, 'dashboard')}
+                      >
+                        Student Portal
+                      </button>
+                      <button
+                        type="button"
+                        className="tm-fs-logout-btn"
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          if (onLogout) onLogout();
+                        }}
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="tm-fs-auth-btns-row">
+                    <button
+                      type="button"
+                      className="tm-fs-login-btn"
+                      onClick={(e) => handleAuthClick(e, 'login')}
+                    >
+                      Login
+                    </button>
+                    <button
+                      type="button"
+                      className="tm-fs-register-btn"
+                      onClick={(e) => handleAuthClick(e, 'register')}
+                    >
+                      Register
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {/* Prominent Full-Width Contact CTA Button */}
               <a

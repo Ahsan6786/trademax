@@ -11,6 +11,8 @@ import { AdminPanel } from './components/admin/AdminPanel';
 import { FounderPage } from './components/founder/FounderPage';
 import { GalleryPage } from './components/gallery/GalleryPage';
 import { HomeGallerySection } from './components/landing/HomeGallerySection';
+import { StocksPage } from './components/stocks/StocksPage';
+import { SettingsPage } from './components/settings/SettingsPage';
 import { MobileBottomNav } from './components/common/MobileBottomNav';
 import { Footer } from './components/common/Footer';
 import { authService } from './services/auth';
@@ -23,6 +25,7 @@ function App() {
     if (typeof window !== 'undefined') {
       const pathname = window.location.pathname;
       const hash = window.location.hash;
+      const cached = authService.getCachedUser();
 
       // Direct URL check for dedicated course details page
       if (
@@ -56,14 +59,31 @@ function App() {
         return 'gallery';
       }
 
-      const cached = authService.getCachedUser();
+      if (hash === '#stocks' || hash === '#terminal' || hash === '#charts') {
+        return 'stocks';
+      }
+
+      if (hash === '#settings') {
+        return 'settings';
+      }
+
+      // Direct URL check for dedicated Student Dashboard / Portal
+      if (
+        pathname === '/student' ||
+        pathname === '/student/' ||
+        hash === '#student' ||
+        hash === '#dashboard'
+      ) {
+        return cached ? 'dashboard' : 'landing';
+      }
+
       if (cached?.role === 'admin' && (hash === '#admin' || hash === '')) {
         return 'admin';
       }
-      if (cached) {
-        return 'dashboard';
+      if (hash === '#home' || hash === '#courses') {
+        return 'landing';
       }
-      if (hash === '#terminal' || hash === '#dashboard' || hash === '#charts') {
+      if (cached) {
         return 'dashboard';
       }
     }
@@ -175,26 +195,35 @@ function App() {
         }
 
         if (
-          pathname !== '/courses/trading-masterclass' &&
-          pathname !== '/courses/trading-masterclass/' &&
-          pathname !== '/founder' &&
-          pathname !== '/founder/' &&
-          pathname !== '/gallery' &&
-          pathname !== '/gallery/' &&
-          hash !== '#course-details' &&
-          hash !== '#courses/trading-masterclass' &&
-          hash !== '#founder' &&
-          hash !== '#gallery'
+          pathname === '/student' ||
+          pathname === '/student/' ||
+          hash === '#student' ||
+          hash === '#dashboard'
         ) {
           setCurrentView('dashboard');
           if (hash !== '#dashboard') {
             window.location.hash = '#dashboard';
           }
+          return;
+        }
+
+        // Direct authenticated student opening root / with no hash to dashboard
+        if (hash === '' && (pathname === '/' || !pathname)) {
+          setCurrentView('dashboard');
+          window.location.hash = '#dashboard';
+          return;
         }
       } else {
         setUser(null);
+        const pathname = window.location.pathname;
         const hash = window.location.hash;
-        if (hash === '#terminal' || hash === '#dashboard' || hash === '#charts' || hash === '#admin') {
+        if (
+          hash === '#dashboard' ||
+          hash === '#student' ||
+          hash === '#admin' ||
+          pathname === '/student' ||
+          pathname === '/student/'
+        ) {
           setCurrentView('landing');
           window.location.hash = '#home';
         }
@@ -263,7 +292,24 @@ function App() {
         return;
       }
 
-      if (hash === '#terminal' || hash === '#dashboard' || hash === '#charts') {
+      if (hash === '#stocks' || hash === '#terminal' || hash === '#charts') {
+        setCurrentView('stocks');
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        return;
+      }
+
+      if (hash === '#settings') {
+        setCurrentView('settings');
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        return;
+      }
+
+      if (
+        pathname === '/student' ||
+        pathname === '/student/' ||
+        hash === '#student' ||
+        hash === '#dashboard'
+      ) {
         if (!currentUser) {
           setCurrentView('landing');
           window.location.hash = '#home';
@@ -273,25 +319,35 @@ function App() {
           return;
         }
         setCurrentView('dashboard');
+        if (hash !== '#dashboard') {
+          window.location.hash = '#dashboard';
+        }
         window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-      } else if (hash === '#home' || hash === '') {
+        return;
+      }
+
+      if (hash === '#home') {
+        setCurrentView('landing');
+        return;
+      }
+
+      if (hash === '') {
         if (currentUser) {
           setCurrentView('dashboard');
           window.location.hash = '#dashboard';
-        } else {
-          setCurrentView('landing');
+          return;
         }
-      } else if (hash === '#courses') {
-        if (currentUser) {
-          setCurrentView('dashboard');
-          window.location.hash = '#dashboard';
-        } else {
-          setCurrentView('landing');
-          setTimeout(() => {
-            const el = document.getElementById('courses');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-          }, 100);
-        }
+        setCurrentView('landing');
+        return;
+      }
+
+      if (hash === '#courses') {
+        setCurrentView('landing');
+        setTimeout(() => {
+          const el = document.getElementById('courses');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        return;
       }
     };
 
@@ -328,11 +384,8 @@ function App() {
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
-    if (pendingCourseEnrollRef.current) {
-      pendingCourseEnrollRef.current = false;
-      setIsRegisterModalOpen(true);
-      return;
-    }
+    const shouldContinueEnroll = pendingCourseEnrollRef.current;
+    pendingCourseEnrollRef.current = false;
 
     if (userData?.role === 'admin') {
       setCurrentView('admin');
@@ -342,6 +395,10 @@ function App() {
       window.location.hash = '#dashboard';
     }
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+
+    if (shouldContinueEnroll) {
+      setIsRegisterModalOpen(true);
+    }
   };
 
   const handleOpenAdminPortal = () => {
@@ -359,15 +416,16 @@ function App() {
 
   const handleRegisterSuccess = (userData) => {
     setUser(userData);
-    if (pendingCourseEnrollRef.current) {
-      pendingCourseEnrollRef.current = false;
-      setIsRegisterModalOpen(true);
-      return;
-    }
+    const shouldContinueEnroll = pendingCourseEnrollRef.current;
+    pendingCourseEnrollRef.current = false;
 
     setCurrentView('dashboard');
     window.location.hash = '#dashboard';
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+
+    if (shouldContinueEnroll) {
+      setIsRegisterModalOpen(true);
+    }
   };
 
   const handleLogout = async () => {
@@ -392,6 +450,18 @@ function App() {
         window.location.hash = '#dashboard';
       }
       setCurrentView('dashboard');
+    } else if (view === 'stocks' || view === 'charts' || view === 'terminal') {
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', '/');
+        window.location.hash = '#stocks';
+      }
+      setCurrentView('stocks');
+    } else if (view === 'settings') {
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', '/');
+        window.location.hash = '#settings';
+      }
+      setCurrentView('settings');
     } else if (view === 'course-details') {
       if (typeof window !== 'undefined') {
         window.history.pushState(null, '', '/courses/trading-masterclass');
@@ -408,24 +478,15 @@ function App() {
       }
       setCurrentView('gallery');
     } else if (view === 'courses') {
-      const currentUser = authService.getCachedUser();
-      if (currentUser) {
-        if (typeof window !== 'undefined') {
-          window.history.pushState(null, '', '/');
-          window.location.hash = '#dashboard';
-        }
-        setCurrentView('dashboard');
-      } else {
-        if (typeof window !== 'undefined') {
-          window.history.pushState(null, '', '/');
-          window.location.hash = '#courses';
-        }
-        setCurrentView('landing');
-        setTimeout(() => {
-          const el = document.getElementById('courses');
-          if (el) el.scrollIntoView({ behavior: 'smooth' });
-        }, 50);
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', '/');
+        window.location.hash = '#courses';
       }
+      setCurrentView('landing');
+      setTimeout(() => {
+        const el = document.getElementById('courses');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
     } else {
       if (typeof window !== 'undefined') {
         window.history.pushState(null, '', '/');
@@ -446,8 +507,10 @@ function App() {
     }
   };
 
+  const showBottomNav = Boolean(user) && currentView !== 'admin';
+
   return (
-    <div className={`tm-app-root tm-theme-${theme}`}>
+    <div className={`tm-app-root tm-theme-${theme} ${showBottomNav ? 'has-mobile-bottom-nav' : ''}`}>
       {currentView === 'admin' ? (
         <AdminPanel
           user={user}
@@ -456,6 +519,24 @@ function App() {
           theme={theme}
           onToggleTheme={toggleTheme}
           onCourseUpdated={loadCoursesAndSettings}
+        />
+      ) : currentView === 'stocks' ? (
+        <StocksPage
+          onBack={handleNavigateBack}
+          onNavigate={handleNavigate}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
+      ) : currentView === 'settings' ? (
+        <SettingsPage
+          user={user}
+          onBack={handleNavigateBack}
+          onNavigate={handleNavigate}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onOpenAuth={(mode) => {
+            if (authRef.current) authRef.current.openFrom(null, mode);
+          }}
         />
       ) : currentView === 'dashboard' ? (
         <StudentDashboard
@@ -592,10 +673,11 @@ function App() {
         batchName={primaryCourse?.batch_name || courseSettings.batchName}
         courseId={primaryCourse?.id}
         user={user}
+        onNavigate={handleNavigate}
       />
 
-      {/* Mobile Sticky Bottom Navigation — Only displayed on public/course views when user is logged in */}
-      {currentView !== 'admin' && currentView !== 'dashboard' && Boolean(user) && (
+      {/* Mobile Sticky Bottom Navigation — Displayed ONLY when user is authenticated/logged in */}
+      {showBottomNav && (
         <MobileBottomNav
           currentView={currentView}
           onNavigate={handleNavigate}

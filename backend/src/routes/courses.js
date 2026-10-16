@@ -209,7 +209,16 @@ const handleEnrollment = async (req, res) => {
       });
     }
 
-    // 5. Insert into Enrollments
+    // 5. Enforce server-side payment requirement for paid courses
+    if (Number(resolvedPrice) > 0) {
+      return res.status(402).json({
+        success: false,
+        requires_payment: true,
+        error: 'This is a paid course. Enrollment requires payment verification through Razorpay.',
+      });
+    }
+
+    // 6. Insert into Enrollments (Free courses only)
     const enrollResult = await pool.query(
       `INSERT INTO enrollments (
         user_id, course_id, course_name, name, email, mobile,

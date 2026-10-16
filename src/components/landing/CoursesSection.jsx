@@ -6,13 +6,7 @@ export const CoursesSection = ({ onOpenDetails, onRegister, course, settings, th
   return (
     <section id="courses" className="tm-courses-section" aria-label="TRADEMAX Courses">
       <div className="tm-courses-container">
-        {/* Section Header */}
         <div className="tm-courses-header">
-          <div className="tm-courses-eyebrow">
-            <span className="tm-eyebrow-accent">STRUCTURED FINANCIAL EDUCATION</span>
-            <span className="tm-eyebrow-sep">·</span>
-            <span>BATCH ADMISSIONS</span>
-          </div>
           <h2 className="tm-courses-title">
             Featured Trading Program
           </h2>

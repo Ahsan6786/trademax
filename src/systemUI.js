@@ -8,7 +8,7 @@
 export function getTopBarColor(view, theme, authOpen = false) {
   const dark = theme === 'dark';
   if (authOpen) return '#000000'; // Auth overlay is always pure black
-  if (view === 'dashboard') return '#101114'; // Student portal header (both themes)
+  if (view === 'dashboard' || view === 'stocks' || view === 'settings') return dark ? '#000000' : '#FFFFFF';
   if (view === 'admin') return dark ? '#000000' : '#FFFFFF';
   return dark ? '#000000' : '#FFFFFF'; // Navbar on landing/course/founder/gallery
 }

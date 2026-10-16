@@ -724,10 +724,16 @@ html[data-theme="dark"] .tm-supercharts-video-frame {
     width: 100%;
     max-width: 100vw;
     background-color: #FFFFFF;
-    padding: 38px 20px 48px;
+    padding-top: 48px;
+    padding-bottom: 28px;
+    padding-left: 16px;
+    padding-right: 16px;
     overflow: hidden;
     transition: background-color 0.25s ease;
     box-sizing: border-box;
+    position: relative;
+    z-index: 2;
+    border-bottom: 1px solid #E2E8F0;
   }
 
   .tm-hero-mobile-container {
@@ -743,11 +749,11 @@ html[data-theme="dark"] .tm-supercharts-video-frame {
 
   .tm-hero-mobile-eyebrow {
     display: inline-block;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 750;
     letter-spacing: 0.16em;
     color: #DC2626;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     text-transform: uppercase;
   }
 
@@ -764,8 +770,8 @@ html[data-theme="dark"] .tm-supercharts-video-frame {
   }
 
   .tm-hero-mobile-headline {
-    margin: 0 auto 14px;
-    font-size: clamp(27px, 7.5vw, 36px);
+    margin: 0 auto 12px;
+    font-size: clamp(25px, 7.2vw, 34px);
     font-weight: 850;
     line-height: 1.2;
     letter-spacing: -0.025em;
@@ -784,18 +790,18 @@ html[data-theme="dark"] .tm-supercharts-video-frame {
   }
 
   .tm-hero-mobile-subtitle {
-    margin: 0 auto 24px;
-    font-size: 14px;
-    line-height: 1.6;
+    margin: 0 auto 20px;
+    font-size: 13.5px;
+    line-height: 1.55;
     color: #64748B;
-    max-width: 440px;
+    max-width: 420px;
     text-align: center;
   }
 
   /* 4. Visuals (Terminal video preview placed ABOVE buttons on mobile) */
   .tm-hero-mobile-visuals {
     width: 100%;
-    margin: 0 auto 24px;
+    margin: 0 auto 18px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -845,19 +851,20 @@ html[data-theme="dark"] .tm-supercharts-video-frame {
   }
 
   /* 5 & 6. Actions (Explore Courses and Register placed below video) */
+  /* Ends immediately after Register button with 0 bottom margin */
   .tm-hero-mobile-actions {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
+    gap: 10px;
     width: 100%;
     max-width: 480px;
-    margin: 0 auto 12px;
+    margin: 0 auto 0;
     box-sizing: border-box;
   }
 
   .tm-mobile-btn-courses {
-    height: 50px;
+    height: 48px;
     background-color: #DC2626;
     color: #FFFFFF;
     font-size: 14.5px;
@@ -881,7 +888,7 @@ html[data-theme="dark"] .tm-supercharts-video-frame {
   }
 
   .tm-mobile-btn-register {
-    height: 50px;
+    height: 48px;
     background-color: #000000;
     color: #FFFFFF;
     font-size: 14.5px;
@@ -925,6 +932,7 @@ html[data-theme="dark"] .tm-supercharts-video-frame {
 /* Pure Black Dark Mode for Mobile Hero */
 html[data-theme="dark"] .tm-hero-mobile-section {
   background-color: #000000;
+  border-bottom: 1px solid #1E222D;
 }
 
 html[data-theme="dark"] .tm-hero-mobile-headline {

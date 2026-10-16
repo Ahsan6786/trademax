@@ -15,7 +15,7 @@
     bottom: 0;
     left: 0;
     right: 0;
-    z-index: 999;
+    z-index: 99999 !important;
     background-color: #000000;
     border-top: 1px solid #1A1A1A;
     padding-top: 6px;
@@ -110,14 +110,18 @@
   }
 }
 
-/* Ensure containers have enough bottom clearance when mobile nav is active */
+/* Ensure containers have enough bottom clearance ONLY when mobile nav is active for logged-in users */
 @media (max-width: 768px) {
-
-  .tm-dashboard-root {
-    padding-bottom: max(74px, calc(60px + env(safe-area-inset-bottom, 16px))) !important;
-  }
-
-  .tm-cdp-root {
+  .has-mobile-bottom-nav .tm-dashboard-root,
+  .has-mobile-bottom-nav .tm-portal-layout,
+  .has-mobile-bottom-nav .tm-portal-main,
+  .has-mobile-bottom-nav .tm-cdp-root,
+  .has-mobile-bottom-nav .tm-cdp-page-wrapper,
+  .has-mobile-bottom-nav .tm-founder-page-wrapper,
+  .has-mobile-bottom-nav .tm-gallery-page-wrapper,
+  .has-mobile-bottom-nav .tm-settings-page,
+  .has-mobile-bottom-nav .tm-stocks-page {
     padding-bottom: max(74px, calc(60px + env(safe-area-inset-bottom, 16px))) !important;
   }
 }
+

@@ -588,6 +588,60 @@ adminRouter.delete('/courses/:id', async (req, res) => {
 // ============================================================================
 // 4. ENROLLMENTS MANAGEMENT
 // ============================================================================
+// 6. ENROLLMENTS MANAGEMENT (Export, List, Update Status, Delete)
+// ============================================================================
+adminRouter.get('/enrollments/export', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT e.id, e.name, e.email, e.mobile, e.course_name, e.batch_name,
+              e.enrollment_status, e.payment_status, e.amount_paid, e.created_at
+       FROM enrollments e
+       ORDER BY e.created_at DESC`
+    );
+
+    const headers = [
+      'Enrollment ID',
+      'Student Name',
+      'Email Address',
+      'Mobile Number',
+      'Course Name',
+      'Batch',
+      'Enrollment Status',
+      'Payment Status',
+      'Amount Paid (₹)',
+      'Enrolled Date',
+    ];
+
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const rows = result.rows.map((e) => [
+      escapeCsv(e.id),
+      escapeCsv(e.name),
+      escapeCsv(e.email),
+      escapeCsv(e.mobile || ''),
+      escapeCsv(e.course_name),
+      escapeCsv(e.batch_name || ''),
+      escapeCsv(e.enrollment_status || 'enrolled'),
+      escapeCsv(e.payment_status || 'pending'),
+      escapeCsv(e.amount_paid || 0),
+      escapeCsv(new Date(e.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })),
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="TradeMax_Enrollments_${new Date().toISOString().slice(0, 10)}.csv"`);
+    return res.status(200).send(csvContent);
+  } catch (err) {
+    console.error('[Admin Export Enrollments Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to export enrollments.' });
+  }
+});
+
 adminRouter.get('/enrollments', async (req, res) => {
   try {
     const {

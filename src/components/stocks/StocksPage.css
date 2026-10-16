@@ -1,0 +1,282 @@
+/* ==========================================================================
+   TRADEMAX — Stocks & TradingView Widget Page
+   Night Mode: Black Navbar & Dark Candlestick Chart
+   Day Mode: White Navbar & Light Candlestick Chart
+   Full-bleed screen ergonomics on desktop and mobile
+   ========================================================================== */
+
+.tm-stocks-page-root {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background-color: #000000;
+  color: #FFFFFF;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden;
+  padding-bottom: max(60px, calc(50px + env(safe-area-inset-bottom, 16px)));
+}
+
+.tm-stocks-page-root.tm-theme-light {
+  background-color: #F8FAFC;
+  color: #0F172A;
+}
+
+/* Header: Black in Night Mode */
+.tm-stocks-header {
+  flex-shrink: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  padding-top: env(safe-area-inset-top, 0px);
+  background-color: #000000 !important;
+  border-bottom: 1px solid #1A1A1A !important;
+  z-index: 50;
+}
+
+/* Header: White in Day Mode */
+.tm-theme-light .tm-stocks-header {
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.tm-stocks-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.tm-stocks-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #16181D;
+  border: 1px solid #232733;
+  color: #FFFFFF;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.35rem 0.7rem;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.tm-theme-light .tm-stocks-back-btn {
+  background: #F1F5F9;
+  border-color: #E2E8F0;
+  color: #0F172A;
+}
+
+.tm-stocks-back-btn:hover {
+  background: #DC2626;
+  border-color: #DC2626;
+  color: #FFFFFF;
+}
+
+.tm-stocks-branding {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tm-stocks-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #FFFFFF;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tm-theme-light .tm-stocks-title {
+  color: #0F172A;
+}
+
+.tm-stocks-subtitle {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #94A3B8;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tm-stocks-theme-btn {
+  background: #16181D;
+  border: 1px solid #232733;
+  color: #FFFFFF;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.tm-theme-light .tm-stocks-theme-btn {
+  background: #F1F5F9;
+  border-color: #E2E8F0;
+  color: #0F172A;
+}
+
+/* Symbol Ticker / Watchlist Bar */
+.tm-stocks-ticker-bar {
+  flex-shrink: 0;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0 1rem;
+  background: #08090B;
+  border-bottom: 1px solid #141720;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tm-stocks-ticker-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.tm-theme-light .tm-stocks-ticker-bar {
+  background: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.tm-stocks-ticker-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tm-stocks-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: nowrap;
+}
+
+.tm-stocks-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #13151B;
+  border: 1px solid #202430;
+  color: #94A3B8;
+  padding: 0.28rem 0.55rem;
+  border-radius: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tm-theme-light .tm-stocks-pill {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+  color: #475569;
+}
+
+.tm-stocks-pill:hover {
+  background: #1C202B;
+  color: #FFFFFF;
+}
+
+.tm-stocks-pill.is-active {
+  background: #DC2626 !important;
+  border-color: #DC2626 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.35);
+}
+
+.tm-stocks-pill-cat {
+  font-size: 0.58rem;
+  font-weight: 600;
+  opacity: 0.75;
+  text-transform: uppercase;
+}
+
+/* Full-bleed Chart Container */
+.tm-stocks-chart-container {
+  flex: 1 1 0%;
+  width: 100%;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  background: #0B0C0E;
+}
+
+.tm-theme-light .tm-stocks-chart-container {
+  background: #FFFFFF;
+}
+
+/* Mobile Specifics */
+@media (max-width: 768px) {
+  .tm-stocks-page-root {
+    padding-bottom: max(64px, calc(54px + env(safe-area-inset-bottom, 16px)));
+  }
+
+  .tm-stocks-header {
+    height: 46px;
+    padding: 0 0.65rem;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .tm-stocks-back-btn {
+    padding: 0.3rem 0.55rem;
+    font-size: 0.74rem;
+  }
+
+  .tm-stocks-title {
+    font-size: 0.86rem;
+  }
+
+  .tm-stocks-subtitle {
+    display: none;
+  }
+
+  .tm-stocks-theme-btn {
+    padding: 0.28rem 0.55rem;
+    font-size: 0.68rem;
+  }
+
+  .tm-stocks-ticker-bar {
+    height: 38px;
+    padding: 0 0.65rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tm-stocks-pill {
+    padding: 0.24rem 0.5rem;
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .tm-stocks-header {
+    height: 42px;
+    padding: 0 0.5rem;
+  }
+
+  .tm-stocks-title {
+    font-size: 0.8rem;
+  }
+
+  .tm-stocks-ticker-bar {
+    height: 36px;
+    padding: 0 0.5rem;
+  }
+}

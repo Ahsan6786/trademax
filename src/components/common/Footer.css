@@ -1,9 +1,8 @@
 /* ==========================================================================
-   TRADEMAX — Premium Unified Gradient Footer (Desktop, Tablet & Mobile)
-   Atmospheric Creative Agency Gradient:
-   Cream (#FAF8F5) -> Peach (#FFD6C8) -> Pastel Pink (#F9C5BD) ->
-   Pale Yellow (#F5F0A5) -> Mint/Cyan (#A6E7D5) -> Electric Blue (#245BFF) ->
-   Deep Royal Blue (#101B75) -> Pure Black (#000000)
+   TRADEMAX — Signature Unified Atmospheric Gradient Footer
+   Exact match to screenshot:
+   Top: Crisp White/Cream -> Soft Peach -> Golden Amber -> Pastel Mint ->
+   Electric Royal Blue -> Deep Midnight Navy
    ========================================================================== */
 
 .tm-site-footer {
@@ -13,28 +12,29 @@
   box-sizing: border-box;
   background: linear-gradient(
     180deg,
-    #FAF8F5 0%,
-    #FFD6C8 10%,
-    #F9C5BD 18%,
-    #F5F0A5 28%,
-    #A6E7D5 40%,
-    #245BFF 58%,
-    #101B75 78%,
-    #000000 100%
+    #FFFFFF 0%,
+    #FFF2EE 5%,
+    #FDE5DC 12%,
+    #FEE1B9 22%,
+    #FAF3A6 32%,
+    #C4F0DD 42%,
+    #78CBF7 54%,
+    #1754F5 66%,
+    #0E38DF 76%,
+    #07166A 88%,
+    #03092C 100%
   ) !important;
   color: #FFFFFF;
   overflow: hidden;
   margin: 0 !important;
   border: none !important;
-  /* Desktop generous padding */
-  padding: 68px 48px 36px;
-  min-height: 640px;
+  padding: 56px 32px 32px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
 }
 
-/* Subtle, low-opacity trading candlestick graphics behind the gradient */
+/* Trading Candlestick pattern watermark behind gradient */
 .tm-footer-candlesticks-bg {
   position: absolute;
   inset: 0;
@@ -57,12 +57,11 @@
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 1280px;
+  max-width: 800px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 100%;
   flex: 1;
 }
 
@@ -71,42 +70,50 @@
    -------------------------------------------------------------------------- */
 .tm-footer-upper-section {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 48px;
+  flex-direction: column;
   width: 100%;
+  margin-bottom: 24px;
 }
 
-/* Desktop Navigation Links */
 .tm-footer-nav {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 36px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  gap: 0;
 }
 
 .tm-footer-nav-link {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: 750;
-  color: #0F172A;
+  justify-content: space-between;
+  padding: 16px 2px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  font-size: 20px;
+  font-weight: 800;
+  color: #0A0E1A;
   text-decoration: none;
-  padding: 8px 0;
-  transition: transform 0.15s ease, color 0.15s ease;
+  letter-spacing: -0.02em;
+  width: 100%;
+  box-sizing: border-box;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  user-select: none;
 }
 
 .tm-footer-nav-link:hover {
-  color: #000000;
-  transform: translateY(-2px);
+  opacity: 0.85;
+  transform: translateX(4px);
+}
+
+.tm-footer-nav-link:active {
+  transform: translateX(6px);
 }
 
 .tm-footer-link-arrow {
-  font-size: 16px;
-  color: #FF252D;
-  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #FF1E27;
   transition: transform 0.2s ease;
 }
 
@@ -123,48 +130,50 @@
   align-items: center;
   text-align: center;
   width: 100%;
-  margin-top: auto;
-  padding-top: 24px;
+  margin-top: 36px;
 }
 
-/* Oversized TRADEMAX Wordmark */
+/* Oversized TRADEMAX Wordmark with trending red arrow */
 .tm-footer-oversized-wordmark {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  font-size: clamp(56px, 9vw, 114px);
+  font-size: clamp(44px, 12vw, 68px);
   font-weight: 950;
   letter-spacing: -0.04em;
   line-height: 1;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
   user-select: none;
 }
 
 .tm-oversized-trade {
   color: #FFFFFF;
+  font-weight: 950;
 }
 
 .tm-oversized-max {
-  color: #FF252D;
+  color: #FF1E27;
+  font-weight: 950;
 }
 
 .tm-oversized-arrow {
   display: inline-flex;
   align-items: center;
-  margin-left: 4px;
+  margin-left: 6px;
 }
 
 .tm-wordmark-svg {
-  width: clamp(32px, 5.5vw, 68px);
-  height: clamp(32px, 5.5vw, 68px);
-  stroke-width: 3.2;
+  width: clamp(34px, 8.5vw, 54px);
+  height: clamp(34px, 8.5vw, 54px);
+  stroke: #FF1E27;
+  stroke-width: 3.4;
 }
 
 /* Thin horizontal divider */
 .tm-footer-bottom-divider {
   width: 100%;
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
   margin-bottom: 20px;
 }
 
@@ -175,23 +184,24 @@
   justify-content: space-between;
   width: 100%;
   gap: 16px;
-  font-size: 12px;
+  font-size: 11.5px;
 }
 
 .tm-footer-copy-text {
-  color: rgba(255, 255, 255, 0.7);
+  color: #CBD5E1;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  font-size: 11px;
 }
 
 .tm-footer-back-top-btn {
   background: transparent;
   border: none;
   color: #FFFFFF;
-  font-size: 11.5px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
   cursor: pointer;
   padding: 6px 0;
   display: inline-flex;
@@ -211,85 +221,43 @@
 }
 
 /* --------------------------------------------------------------------------
-   TABLET RESPONSIVE (max-width: 992px)
-   -------------------------------------------------------------------------- */
-@media (max-width: 992px) {
-  .tm-site-footer {
-    padding: 56px 32px 30px;
-    min-height: 580px;
-  }
-
-  .tm-footer-upper-section {
-    margin-bottom: 40px;
-  }
-
-  .tm-footer-nav {
-    gap: 20px 24px;
-  }
-}
-
-/* --------------------------------------------------------------------------
-   MOBILE RESPONSIVE (max-width: 768px)
-   Vertical navigation, natural height, zero bottom white strip
+   RESPONSIVE DESIGN
    -------------------------------------------------------------------------- */
 @media (max-width: 768px) {
   .tm-site-footer {
+    padding: 38px 24px max(32px, calc(20px + env(safe-area-inset-bottom, 20px)));
     min-height: auto;
-    padding: 44px 20px max(36px, calc(20px + env(safe-area-inset-bottom, 16px)));
-    margin: 0 !important;
   }
 
   .tm-footer-upper-section {
-    margin-bottom: 36px;
-    width: 100%;
-  }
-
-  /* Vertical Navigation on Mobile */
-  .tm-footer-nav {
-    flex-direction: column;
-    align-items: stretch;
-    width: 100%;
-    gap: 0;
-  }
-
-  .tm-footer-nav-link {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 2px;
-    border-bottom: 1px solid rgba(15, 23, 42, 0.09);
-    font-size: 16px;
-    font-weight: 750;
-    color: #0F172A;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .tm-footer-nav-link:active {
-    transform: translateX(4px);
-  }
-
-  .tm-footer-link-arrow {
-    font-size: 17px;
-    color: #FF252D;
-    font-weight: 850;
-  }
-
-  /* Mobile Wordmark */
-  .tm-footer-oversized-wordmark {
-    font-size: clamp(38px, 10.5vw, 54px);
+    display: flex !important;
     margin-bottom: 24px;
   }
 
-  .tm-wordmark-svg {
-    width: 32px;
-    height: 32px;
+  .tm-footer-nav-link {
+    padding: 17px 2px;
+    font-size: 19.5px;
   }
 
-  /* Mobile Bottom Row */
+  .tm-footer-oversized-wordmark {
+    font-size: clamp(40px, 11.5vw, 56px);
+    margin-top: 48px;
+    margin-bottom: 36px;
+  }
+
+  .tm-wordmark-svg {
+    width: clamp(30px, 8vw, 44px);
+    height: clamp(30px, 8vw, 44px);
+  }
+
+  .tm-footer-bottom-divider {
+    margin-bottom: 20px;
+  }
+
   .tm-footer-bottom-row {
     font-size: 11px;
     gap: 12px;
+    padding-bottom: 4px;
   }
 
   .tm-footer-copy-text {
@@ -301,10 +269,14 @@
   }
 }
 
-/* Narrow mobile screens (<= 360px) */
 @media (max-width: 360px) {
   .tm-site-footer {
     padding-left: 16px;
     padding-right: 16px;
+  }
+
+  .tm-footer-nav-link {
+    font-size: 17.5px;
+    padding: 14px 0;
   }
 }

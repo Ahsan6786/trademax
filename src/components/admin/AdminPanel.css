@@ -257,13 +257,59 @@
 }
 
 .tm-admin-topbar {
-  display: none;
+  display: flex;
+  height: 56px;
+  background-color: var(--adm-card-bg);
+  border-bottom: 1px solid var(--adm-border);
+  padding: 0 28px;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  z-index: 80;
 }
 
 .tm-admin-topbar-left {
   display: flex;
   align-items: center;
   gap: 14px;
+}
+
+.tm-admin-topbar-brand {
+  font-size: 13.5px;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  color: var(--adm-text-primary);
+}
+
+.tm-admin-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tm-admin-theme-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px;
+  background-color: var(--adm-card-sub);
+  border: 1px solid var(--adm-border);
+  color: var(--adm-text-primary);
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tm-admin-theme-btn:hover {
+  background-color: var(--adm-border-subtle);
+  border-color: var(--adm-border);
+}
+
+.tm-admin-theme-icon {
+  flex-shrink: 0;
 }
 
 .tm-admin-menu-toggle {
@@ -1363,6 +1409,167 @@
   .tm-modal-grid-2 {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  .tm-admin-topbar-brand {
+    font-size: 11.5px;
+  }
+
+  .tm-admin-theme-label {
+    display: none;
+  }
+
+  .tm-admin-theme-btn {
+    padding: 0 8px;
+    height: 32px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   CREATE / EDIT COURSE MODAL & PAGE FORMATTING (Desktop & Mobile)
+   -------------------------------------------------------------------------- */
+.tm-admin-modal.tm-admin-modal-course {
+  max-width: 680px;
+}
+
+.tm-admin-modal-course .tm-admin-modal-header {
+  padding: 18px 24px;
+}
+
+.tm-admin-modal-course .tm-admin-modal-body {
+  padding: 24px;
+}
+
+.tm-admin-modal-course .tm-form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.tm-admin-modal-course .tm-modal-thumb-preview-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  background-color: var(--adm-card-sub);
+  border: 1px dashed var(--adm-border);
+  border-radius: 8px;
+}
+
+.tm-admin-modal-course .tm-modal-thumb-box {
+  width: 150px;
+  height: 85px;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: #000000;
+  flex-shrink: 0;
+}
+
+.tm-admin-modal-course .tm-modal-thumb-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tm-admin-modal-course .tm-modal-thumb-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tm-admin-modal-course .tm-modal-actions-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--adm-border-subtle);
+  margin-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .tm-admin-modal.tm-admin-modal-course {
+    max-width: 100%;
+    margin: 0;
+    max-height: 94vh;
+  }
+
+  .tm-admin-modal-course .tm-admin-modal-header {
+    padding: 14px 16px;
+  }
+
+  .tm-admin-modal-course .tm-admin-modal-body {
+    padding: 16px 14px;
+  }
+
+  .tm-admin-modal-course .tm-form-row-2 {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .tm-admin-modal-course .tm-modal-thumb-preview-wrap {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .tm-admin-modal-course .tm-modal-thumb-box {
+    width: 100%;
+    height: 120px;
+  }
+
+  .tm-admin-modal-course .tm-modal-thumb-actions {
+    flex-direction: row;
+    width: 100%;
+  }
+
+  .tm-admin-modal-course .tm-modal-thumb-actions .tm-btn-outline-xs {
+    flex: 1;
+    justify-content: center;
+    padding: 7px 10px;
+  }
+
+  .tm-admin-modal-course .tm-modal-actions-footer {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .tm-admin-modal-course .tm-modal-actions-footer button {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .tm-admin-page-actions-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .tm-admin-page-actions-header .tm-btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .tm-admin-courses-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .tm-admin-course-pricing-row {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .tm-admin-course-card-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .tm-admin-course-card-actions button {
+    justify-content: center;
   }
 }
 

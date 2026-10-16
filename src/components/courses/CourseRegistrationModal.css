@@ -1,23 +1,26 @@
 /* ==========================================================================
-   TRADEMAX — Course Registration Modal
-   Premium Clean Design: White card, dark navy text, red & subtle gold accents
-   No Glassmorphism, Generous Spacing
+   TRADEMAX — Course Enrollment Modal
+   Clean, Premium, Minimalist Design
+   - Thick Red & Black Branded Top Border
+   - Solid White Background, Clean Typography, Subtle Borders
+   - Fully Mobile-Responsive, No Overflow, Smooth Scrolling
    ========================================================================== */
 
 .tm-course-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1300;
+  z-index: 1500;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
-  background-color: rgba(15, 23, 42, 0.75);
+  padding: 24px 16px;
+  background-color: rgba(10, 15, 29, 0.72);
   overflow-y: auto;
-  animation: tmCourseFadeIn 0.2s ease-out forwards;
+  -webkit-overflow-scrolling: touch;
+  animation: tmModalFadeIn 0.18s ease-out forwards;
 }
 
-@keyframes tmCourseFadeIn {
+@keyframes tmModalFadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
@@ -25,323 +28,407 @@
 .tm-course-modal-card {
   position: relative;
   width: 100%;
-  max-width: 540px;
+  max-width: 500px;
+  margin: auto;
   background-color: #FFFFFF;
   border: 1px solid #E2E8F0;
-  border-radius: 16px;
-  padding: 38px 36px 36px;
-  box-shadow: 0 25px 60px rgba(15, 23, 42, 0.25), 0 4px 12px rgba(15, 23, 42, 0.08);
-  margin: auto;
+  border-radius: 12px;
+  padding: 28px 28px 26px;
+  box-shadow: 0 16px 40px -8px rgba(15, 23, 42, 0.22), 0 2px 6px rgba(15, 23, 42, 0.06);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.tm-course-modal-close {
+/* Thick Red & Black Top Branding Border */
+.tm-course-modal-card::before {
+  content: '';
   position: absolute;
-  top: 18px;
-  right: 18px;
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #E2E8F0;
-  background: #F8FAFC;
-  border-radius: 50%;
-  color: #64748B;
-  cursor: pointer;
-  transition: all 0.15s ease;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, #0A0A0A 0%, #0A0A0A 28%, #DC2626 28%, #DC2626 100%);
   z-index: 10;
 }
 
-.tm-course-modal-header {
-  position: relative;
-  padding-right: 44px;
+/* Simple Unobtrusive Close Button */
+.tm-course-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #64748B;
+  font-size: 18px;
+  line-height: 1;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  z-index: 20;
+  padding: 0;
 }
 
 .tm-course-modal-close:hover {
-  background: #F1F5F9;
+  background-color: #F1F5F9;
   color: #0F172A;
-  border-color: #CBD5E1;
+}
+
+/* Header */
+.tm-course-modal-header {
+  padding-right: 32px;
+  margin-bottom: 18px;
 }
 
 .tm-modal-eyebrow {
-  display: inline-block;
+  display: block;
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: #B45309; /* Subtle gold */
-  margin-bottom: 8px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  color: #DC2626;
+  text-transform: uppercase;
+  margin-bottom: 6px;
 }
 
 .tm-course-modal-title {
-  margin: 0 0 8px 0;
-  font-size: 22px;
-  font-weight: 700;
+  margin: 0 0 6px 0;
+  font-size: 21px;
+  font-weight: 750;
   color: #0F172A;
-  line-height: 1.3;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
 }
 
 .tm-course-modal-sub {
-  margin: 0 0 24px 0;
-  font-size: 14px;
-  color: #64748B;
-  line-height: 1.5;
-}
-
-.tm-course-modal-error {
-  padding: 12px 14px;
-  background-color: #FEF2F2;
-  border: 1px solid #FECACA;
-  border-radius: 8px;
-  color: #DC2626;
+  margin: 0;
   font-size: 13.5px;
-  margin-bottom: 18px;
+  color: #64748B;
   line-height: 1.45;
 }
 
+/* Error Alert */
+.tm-course-modal-error {
+  padding: 10px 14px;
+  background-color: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: 7px;
+  color: #DC2626;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+
+/* Form Layout */
 .tm-course-modal-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 13px;
 }
 
 .tm-cm-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 12px;
 }
 
 .tm-cm-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
+  text-align: left;
 }
 
 .tm-cm-field label {
   font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 650;
   color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .tm-cm-field input,
-.tm-cm-field select,
-.tm-cm-select-wrap select {
-  width: 100%;
-  height: 44px;
-  padding: 0 14px;
-  background-color: #F8FAFC;
+.tm-cm-field select {
+  height: 42px;
+  padding: 0 12px;
+  background-color: #FFFFFF;
   border: 1px solid #CBD5E1;
-  border-radius: 8px;
+  border-radius: 7px;
   font-size: 14px;
   color: #0F172A;
-  transition: all 0.15s ease;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
   font-family: inherit;
-}
-
-.tm-cm-field select,
-.tm-cm-select-wrap select {
-  cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+}
+
+.tm-cm-field input::placeholder {
+  color: #94A3B8;
+  font-size: 13.5px;
+}
+
+.tm-cm-field select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 14px center;
-  background-size: 16px;
-  padding-right: 38px;
+  background-position: right 12px center;
+  padding-right: 32px;
+  cursor: pointer;
 }
 
 .tm-cm-field input:focus,
-.tm-cm-field select:focus,
-.tm-cm-select-wrap select:focus {
-  outline: none;
+.tm-cm-field select:focus {
   border-color: #DC2626;
-  background-color: #FFFFFF;
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
 }
 
-.tm-cm-field input.invalid {
+.tm-cm-field input.invalid,
+.tm-cm-field select.invalid {
   border-color: #EF4444;
-  background-color: #FEF2F2;
+  background-color: #FFFDFD;
 }
 
 .tm-cm-err {
-  font-size: 12px;
+  font-size: 11.5px;
   color: #DC2626;
   font-weight: 500;
+  margin-top: 2px;
 }
 
-.tm-cm-fee-summary {
+/* Pricing Section */
+.tm-cm-fee-strip {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
+  padding: 11px 14px;
   background-color: #F8FAFC;
   border: 1px solid #E2E8F0;
-  border-radius: 10px;
-  margin-top: 4px;
+  border-radius: 8px;
+  margin-top: 2px;
 }
 
-.tm-cm-fee-left {
+.tm-cm-fee-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .tm-cm-fee-label {
-  font-size: 12px;
+  font-size: 11px;
   color: #64748B;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tm-cm-test-mode-tag {
+  font-size: 9.5px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #DC2626;
+  background: #FEE2E2;
+  border: 1px solid #FECACA;
+  padding: 1px 5px;
+  border-radius: 4px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.tm-cm-fee-prices {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tm-cm-fee-strike {
+  font-size: 12.5px;
+  color: #94A3B8;
+  text-decoration: line-through;
   font-weight: 500;
 }
 
-.tm-cm-fee-offer {
-  font-size: 16px;
-  font-weight: 750;
+.tm-cm-fee-bold {
+  font-size: 17px;
+  font-weight: 800;
   color: #0F172A;
-}
-
-.tm-cm-fee-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-}
-
-.tm-cm-fee-regular {
-  font-size: 13px;
-  color: #94A3B8;
-  text-decoration: line-through;
+  letter-spacing: -0.015em;
 }
 
 .tm-cm-fee-save {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: #15803D; /* Green save */
-  background: #DCFCE7;
-  padding: 2px 7px;
+  font-size: 10.5px;
+  font-weight: 750;
+  color: #15803D;
+  background-color: #DCFCE7;
+  border: 1px solid #BBF7D0;
+  padding: 2px 6px;
   border-radius: 4px;
 }
 
-/* Submit CTA Button (Enroll Now / Confirm & Enroll Now) */
-.tm-course-modal-submit,
-.tm-cm-submit-btn {
-  height: 52px;
+/* Red Payment Button */
+.tm-course-modal-submit {
+  height: 48px;
   width: 100%;
-  background-color: #DC2626; /* TRADEMAX Red */
+  background-color: #DC2626;
   color: #FFFFFF;
   font-size: 14.5px;
   font-weight: 750;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
+  letter-spacing: 0.02em;
+  border: none;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 16px rgba(220, 38, 38, 0.35);
+  transition: background-color 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 8px;
-  touch-action: manipulation;
+  margin-top: 4px;
   outline: none;
 }
 
-.tm-course-modal-submit:hover:not(:disabled),
-.tm-cm-submit-btn:hover:not(:disabled) {
+.tm-course-modal-submit:hover:not(:disabled) {
   background-color: #B91C1C;
-  transform: translateY(-1.5px);
-  box-shadow: 0 6px 22px rgba(220, 38, 38, 0.45);
 }
 
-.tm-course-modal-submit:active:not(:disabled),
-.tm-cm-submit-btn:active:not(:disabled) {
-  transform: translateY(0);
+.tm-course-modal-submit:active:not(:disabled) {
   background-color: #991B1B;
 }
 
-.tm-course-modal-submit:disabled,
-.tm-cm-submit-btn:disabled {
-  opacity: 0.65;
+.tm-course-modal-submit:disabled {
+  opacity: 0.72;
   cursor: not-allowed;
-  transform: none;
 }
 
 .tm-course-modal-guarantee {
-  margin-top: 10px;
-  font-size: 12px;
-  color: #64748B;
-  text-align: center;
-  line-height: 1.5;
-  font-weight: 500;
-}
-
-.tm-cm-privacy-note {
-  margin: 0;
   font-size: 11.5px;
   color: #64748B;
   text-align: center;
-  line-height: 1.5;
+  margin-top: 2px;
 }
 
-/* Success View */
+/* Success & Already Enrolled Views */
 .tm-reg-success-view {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 20px 10px;
+  padding: 10px 0 4px;
 }
 
-.tm-reg-success-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 5px 12px;
-  background-color: #DCFCE7;
-  border: 1px solid #BBF7D0;
+.tm-reg-status-pill {
+  display: inline-block;
+  padding: 3px 12px;
+  background-color: #EFF6FF;
+  border: 1px solid #BFDBFE;
   border-radius: 9999px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #166534;
-  margin-bottom: 18px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #1D4ED8;
+  margin-bottom: 12px;
 }
 
-.tm-reg-success-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: #16A34A;
+.tm-reg-status-pill.success {
+  background-color: #DCFCE7;
+  border-color: #BBF7D0;
+  color: #15803D;
 }
 
 .tm-reg-success-title {
-  margin: 0 0 12px 0;
-  font-size: 24px;
+  margin: 0 0 8px 0;
+  font-size: 21px;
   font-weight: 750;
   color: #0F172A;
 }
 
 .tm-reg-success-msg {
-  margin: 0 0 24px 0;
-  font-size: 15px;
-  line-height: 1.65;
-  color: #334155;
+  margin: 0 0 16px 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #475569;
   max-width: 420px;
 }
 
-.tm-reg-success-contact-box {
+/* Payment Receipt Box */
+.tm-payment-receipt-box {
+  width: 100%;
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.tm-receipt-header {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #475569;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #E2E8F0;
+  margin-bottom: 8px;
+}
+
+.tm-receipt-grid {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 14px 20px;
-  background-color: #F8FAFC;
-  border: 1px solid #E2E8F0;
-  border-radius: 10px;
-  margin-bottom: 24px;
-  font-size: 13.5px;
+}
+
+.tm-receipt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.tm-receipt-key {
   color: #64748B;
+  font-weight: 500;
+}
+
+.tm-receipt-val {
+  color: #0F172A;
+  font-weight: 600;
+  text-align: right;
+  word-break: break-all;
+}
+
+.tm-receipt-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  color: #0284C7;
+}
+
+.tm-receipt-price {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #16A34A;
+}
+
+.tm-receipt-verified {
+  color: #15803D;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.tm-reg-hotline-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #64748B;
+  margin-bottom: 18px;
+  justify-content: center;
 }
 
 .tm-reg-support-phone {
-  font-size: 18px;
   font-weight: 750;
   color: #DC2626;
   text-decoration: none;
@@ -351,59 +438,93 @@
   text-decoration: underline;
 }
 
-.tm-reg-btn-done {
-  padding: 12px 36px;
-  background-color: #0F172A;
-  color: #FFFFFF;
-  font-size: 14px;
-  font-weight: 600;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
+.tm-reg-actions-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
 }
 
-.tm-reg-btn-done:hover {
-  background-color: #1E293B;
+.tm-reg-btn-primary {
+  flex: 1;
+  height: 42px;
+  background-color: #DC2626;
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 13.5px;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
 }
+
+.tm-reg-btn-primary:hover {
+  background-color: #B91C1C;
+}
+
+.tm-reg-btn-secondary {
+  flex: 1;
+  height: 42px;
+  background-color: #F1F5F9;
+  color: #0F172A;
+  font-weight: 600;
+  font-size: 13.5px;
+  border: 1px solid #CBD5E1;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.tm-reg-btn-secondary:hover {
+  background-color: #E2E8F0;
+}
+
+/* ==========================================================================
+   Mobile Responsive Adjustments
+   - Proper sizing fitting mobile viewport
+   - Smooth vertical scrolling with no horizontal overflow
+   - Touch-friendly 44px inputs
+   ========================================================================== */
 
 @media (max-width: 640px) {
   .tm-course-modal-backdrop {
-    padding: max(12px, env(safe-area-inset-top, 12px)) 12px max(12px, env(safe-area-inset-bottom, 12px));
+    padding: 12px;
     align-items: center;
-    justify-content: center;
   }
 
   .tm-course-modal-card {
     padding: 22px 18px 20px;
-    max-height: 92vh;
+    max-height: calc(100dvh - 24px);
+    border-radius: 10px;
     overflow-y: auto;
-    border-radius: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tm-course-modal-close {
+    top: 12px;
+    right: 12px;
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
   }
 
   .tm-course-modal-header {
-    padding-right: 40px;
+    padding-right: 28px;
+    margin-bottom: 14px;
   }
 
   .tm-modal-eyebrow {
     font-size: 10px;
-    letter-spacing: 0.04em;
-    line-height: 1.35;
-    margin-bottom: 6px;
-    display: block;
-    word-break: break-word;
+    margin-bottom: 4px;
   }
 
   .tm-course-modal-title {
-    font-size: 19px;
-    line-height: 1.25;
-    margin-bottom: 6px;
+    font-size: 18.5px;
+    margin-bottom: 4px;
   }
 
   .tm-course-modal-sub {
     font-size: 12.5px;
-    line-height: 1.45;
-    margin-bottom: 16px;
+    line-height: 1.4;
   }
 
   .tm-cm-grid-2 {
@@ -418,283 +539,26 @@
   .tm-cm-field input,
   .tm-cm-field select {
     height: 44px;
-    font-size: 14px;
+    font-size: 15px;
   }
 
   .tm-cm-fee-strip {
     padding: 10px 12px;
+    flex-wrap: wrap;
     gap: 6px;
-  }
-
-  .tm-cm-fee-label {
-    font-size: 10.5px;
   }
 
   .tm-cm-fee-bold {
     font-size: 16px;
   }
 
-  .tm-cm-fee-strike {
-    font-size: 12px;
+  .tm-course-modal-submit {
+    height: 46px;
+    font-size: 14px;
   }
 
-  .tm-cm-fee-save {
-    font-size: 10.5px;
-    padding: 2px 6px;
-  }
-
-  .tm-course-modal-submit,
-  .tm-cm-submit-btn {
-    height: 50px;
-    font-size: 13.5px;
-    letter-spacing: 0.03em;
-  }
-
-  .tm-course-modal-guarantee {
-    font-size: 11px;
-    line-height: 1.45;
-    margin-top: 8px;
-  }
-}
-
-@media (max-width: 360px) {
-  .tm-course-modal-card {
-    padding: 18px 14px 16px;
-  }
-
-  .tm-course-modal-title {
-    font-size: 17.5px;
-  }
-
-  .tm-cm-fee-strip {
+  .tm-reg-actions-row {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
+    gap: 8px;
   }
 }
-
-/* --------------------------------------------------------------------------
-   Course Registration Modal Dark Mode
-   -------------------------------------------------------------------------- */
-html[data-theme="dark"] .tm-course-modal-card {
-  background-color: #111111;
-  border-color: #222222;
-  color: #FFFFFF;
-}
-
-html[data-theme="dark"] .tm-course-modal-close {
-  background-color: #161616;
-  border-color: #262626;
-  color: #CBD5E1;
-}
-
-html[data-theme="dark"] .tm-course-modal-close:hover {
-  background-color: #222222;
-  color: #FFFFFF;
-  border-color: #383838;
-}
-
-html[data-theme="dark"] .tm-course-modal-title {
-  color: #FFFFFF;
-}
-
-html[data-theme="dark"] .tm-course-modal-sub {
-  color: #94A3B8;
-}
-
-html[data-theme="dark"] .tm-cm-field label {
-  color: #CBD5E1;
-}
-
-html[data-theme="dark"] .tm-cm-field input,
-html[data-theme="dark"] .tm-cm-field select,
-html[data-theme="dark"] .tm-cm-select-wrap select {
-  background-color: #161616;
-  border-color: #262626;
-  color: #FFFFFF;
-}
-
-html[data-theme="dark"] .tm-cm-field select,
-html[data-theme="dark"] .tm-cm-select-wrap select {
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-}
-
-html[data-theme="dark"] .tm-cm-field select option {
-  background-color: #111111;
-  color: #FFFFFF;
-}
-
-html[data-theme="dark"] .tm-cm-field input:focus,
-html[data-theme="dark"] .tm-cm-field select:focus,
-html[data-theme="dark"] .tm-cm-select-wrap select:focus {
-  background-color: #1A1A1A;
-  border-color: #DC2626;
-}
-
-html[data-theme="dark"] .tm-cm-fee-summary {
-  background-color: #161616;
-  border-color: #222222;
-}
-
-html[data-theme="dark"] .tm-cm-fee-label {
-  color: #94A3B8;
-}
-
-html[data-theme="dark"] .tm-cm-fee-offer {
-  color: #FFFFFF;
-}
-
-html[data-theme="dark"] .tm-cm-privacy-note {
-  color: #64748B;
-}
-
-html[data-theme="dark"] .tm-reg-success-title {
-  color: #FFFFFF;
-}
-
-html[data-theme="dark"] .tm-reg-success-msg {
-  color: #CBD5E1;
-}
-
-html[data-theme="dark"] .tm-reg-success-contact-box {
-  background-color: #161616;
-  border-color: #222222;
-  color: #94A3B8;
-}
-
-html[data-theme="dark"] .tm-reg-btn-done {
-  background-color: #DC2626;
-  color: #FFFFFF;
-}
-
-html[data-theme="dark"] .tm-reg-btn-done:hover {
-  background-color: #B91C1C;
-}
-
-/* --------------------------------------------------------------------------
-   Smart User Profile Banner & Fee Strip
-   -------------------------------------------------------------------------- */
-.tm-smart-user-banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  background-color: #F0FDF4;
-  border: 1px solid #BBF7D0;
-  border-radius: 8px;
-  margin-bottom: 16px;
-}
-
-.tm-smart-user-icon {
-  color: #16A34A;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.tm-smart-user-text {
-  display: flex;
-  flex-direction: column;
-}
-
-.tm-smart-user-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #166534;
-}
-
-.tm-smart-user-desc {
-  font-size: 11.5px;
-  color: #15803D;
-}
-
-.tm-cm-fee-strip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background-color: #F8FAFC;
-  border: 1px solid #E2E8F0;
-  border-radius: 10px;
-  margin: 6px 0;
-}
-
-.tm-cm-fee-label {
-  font-size: 11.5px;
-  font-weight: 750;
-  color: #64748B;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.tm-cm-fee-prices {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.tm-cm-fee-strike {
-  font-size: 13px;
-  color: #94A3B8;
-  text-decoration: line-through;
-  font-weight: 500;
-}
-
-.tm-cm-fee-bold {
-  font-size: 18px;
-  font-weight: 800;
-  color: #0F172A;
-  letter-spacing: -0.015em;
-}
-
-.tm-cm-fee-save {
-  font-size: 11px;
-  font-weight: 750;
-  color: #15803D;
-  background-color: #DCFCE7;
-  border: 1px solid #BBF7D0;
-  padding: 3px 7px;
-  border-radius: 5px;
-}
-
-.tm-reg-success-badge.already {
-  background-color: #EFF6FF;
-  border-color: #BFDBFE;
-  color: #1D4ED8;
-}
-
-html[data-theme="dark"] .tm-smart-user-banner {
-  background-color: #062312;
-  border-color: #0E4823;
-}
-
-html[data-theme="dark"] .tm-smart-user-title {
-  color: #4ADE80;
-}
-
-html[data-theme="dark"] .tm-smart-user-desc {
-  color: #86EFAC;
-}
-
-html[data-theme="dark"] .tm-cm-fee-strip {
-  background-color: #131822;
-  border-color: #222C3D;
-}
-
-html[data-theme="dark"] .tm-cm-fee-bold {
-  color: #FFFFFF;
-}
-
-html[data-theme="dark"] .tm-cm-fee-save {
-  color: #4ADE80;
-  background-color: #062814;
-  border-color: #15803D;
-}
-
-html[data-theme="dark"] .tm-reg-success-badge.already {
-  background-color: #172554;
-  border-color: #1E40AF;
-  color: #93C5FD;
-}
-

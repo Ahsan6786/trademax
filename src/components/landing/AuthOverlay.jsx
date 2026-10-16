@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { authService } from '../../services/auth';
-import { AppleSuccessOverlay } from './AppleSuccessOverlay';
 import './AuthOverlay.css';
 
 export const AuthOverlay = forwardRef((props, ref) => {
@@ -19,8 +18,6 @@ export const AuthOverlay = forwardRef((props, ref) => {
   const [errors, setErrors] = useState({});
   const [backendError, setBackendError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [successData, setSuccessData] = useState(null); // { type: 'register' | 'login', user }
 
   const handleClose = () => {
     const btn = originBtnRef.current;
@@ -51,31 +48,8 @@ export const AuthOverlay = forwardRef((props, ref) => {
         btn.style.visibility = '';
       }
       originBtnRef.current = null;
-      setIsSuccess(false);
-      setSuccessData(null);
       setBackendError('');
     }, 450);
-  };
-
-  const handleSuccessContinue = async () => {
-    const data = successData;
-    if (data && data.user) {
-      await authService.markWelcomeSeen(data.user);
-    }
-    handleClose();
-    if (!data) return;
-
-    if (data.type === 'login') {
-      if (props.onLoginSuccess) {
-        props.onLoginSuccess(data.user);
-      }
-    } else if (data.type === 'register') {
-      if (props.onRegisterSuccess) {
-        props.onRegisterSuccess(data.user);
-      } else if (props.onLoginSuccess) {
-        props.onLoginSuccess(data.user);
-      }
-    }
   };
 
   // Expose open function to parent/Navbar
@@ -85,8 +59,6 @@ export const AuthOverlay = forwardRef((props, ref) => {
       clearTimeout(closeTimerRef.current);
       originBtnRef.current = btn;
       setMode(initialMode);
-      setIsSuccess(false);
-      setSuccessData(null);
       setErrors({});
       setBackendError('');
 
@@ -209,18 +181,15 @@ export const AuthOverlay = forwardRef((props, ref) => {
           password: formData.password,
         });
 
-        if (authService.hasSeenWelcome(data.user)) {
-          // Returning users: Skip welcome animation and show dashboard directly
-          handleClose();
-          if (props.onRegisterSuccess) {
-            props.onRegisterSuccess(data.user);
-          } else if (props.onLoginSuccess) {
-            props.onLoginSuccess(data.user);
-          }
-        } else {
-          // First-time only: play welcome animation immediately
-          setSuccessData({ type: 'register', user: data.user });
-          setIsSuccess(true);
+        if (data.user) {
+          authService.markWelcomeSeen(data.user).catch(() => {});
+        }
+
+        handleClose();
+        if (props.onRegisterSuccess) {
+          props.onRegisterSuccess(data.user);
+        } else if (props.onLoginSuccess) {
+          props.onLoginSuccess(data.user);
         }
       } else {
         const data = await authService.login({
@@ -228,22 +197,16 @@ export const AuthOverlay = forwardRef((props, ref) => {
           password: formData.password,
         });
 
-        if (authService.hasSeenWelcome(data.user)) {
-          // Returning users: Skip welcome animation and show dashboard directly
-          handleClose();
-          if (props.onLoginSuccess) {
-            props.onLoginSuccess(data.user);
-          }
-        } else {
-          // First-time login only: play welcome animation immediately
-          setSuccessData({ type: 'login', user: data.user });
-          setIsSuccess(true);
+        if (data.user) {
+          authService.markWelcomeSeen(data.user).catch(() => {});
+        }
+
+        handleClose();
+        if (props.onLoginSuccess) {
+          props.onLoginSuccess(data.user);
         }
       }
     } catch (err) {
-      // Never show success for failed requests
-      setIsSuccess(false);
-      setSuccessData(null);
       setBackendError(err.message || 'Authentication failed. Please verify your details.');
     } finally {
       setIsSubmitting(false);
@@ -544,15 +507,6 @@ export const AuthOverlay = forwardRef((props, ref) => {
           </div>
         </div>
       </div>
-
-      {/* Apple-Style Success Overlay (Rendered strictly upon verified backend response) */}
-      {isSuccess && successData && (
-        <AppleSuccessOverlay
-          type={successData.type}
-          user={successData.user}
-          onContinue={handleSuccessContinue}
-        />
-      )}
     </div>
   );
 });

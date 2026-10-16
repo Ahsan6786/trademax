@@ -233,6 +233,50 @@ export const initDb = async () => {
       CREATE INDEX IF NOT EXISTS idx_live_classes_scheduled ON live_classes(scheduled_at ASC);
     `);
 
+    // 8. Payments Table (Razorpay Orders, Transactions, Signatures & Webhooks)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS payments (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        course_id INTEGER REFERENCES courses(id) ON DELETE SET NULL,
+        enrollment_id INTEGER REFERENCES enrollments(id) ON DELETE SET NULL,
+        order_id VARCHAR(100) UNIQUE NOT NULL,
+        payment_id VARCHAR(100) UNIQUE,
+        signature VARCHAR(255),
+        amount NUMERIC(10, 2) NOT NULL,
+        currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+        status VARCHAR(50) NOT NULL DEFAULT 'created',
+        method VARCHAR(50),
+        bank VARCHAR(100),
+        wallet VARCHAR(100),
+        vpa VARCHAR(255),
+        error_code VARCHAR(100),
+        error_description TEXT,
+        receipt VARCHAR(100),
+        notes JSONB,
+        customer_name VARCHAR(255),
+        customer_email VARCHAR(255),
+        customer_mobile VARCHAR(50),
+        raw_payload JSONB,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS order_id VARCHAR(100);
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS payment_id VARCHAR(100);
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50);
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS transaction_id VARCHAR(100);
+
+      CREATE INDEX IF NOT EXISTS idx_payments_order_id ON payments(order_id);
+      CREATE INDEX IF NOT EXISTS idx_payments_payment_id ON payments(payment_id);
+      CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
+      CREATE INDEX IF NOT EXISTS idx_payments_course_id ON payments(course_id);
+      CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
+      CREATE INDEX IF NOT EXISTS idx_payments_created ON payments(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_enrollments_order_id ON enrollments(order_id);
+      CREATE INDEX IF NOT EXISTS idx_enrollments_payment_id ON enrollments(payment_id);
+    `);
+
     // 8. Secure Database Seeding for Admin Account
     const adminEmail = (process.env.ADMIN_EMAIL || 'admin@trademaxclub.in').trim().toLowerCase();
     const adminPassword = process.env.ADMIN_PASSWORD || 'TradeMax@2026';

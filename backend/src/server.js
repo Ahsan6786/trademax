@@ -9,6 +9,7 @@ import { authRouter } from './routes/auth.js';
 import { coursesRouter } from './routes/courses.js';
 import { adminRouter } from './routes/admin.js';
 import { studentRouter } from './routes/student.js';
+import { paymentsRouter } from './routes/payments.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,7 +39,14 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: '10mb' }));
+app.use(
+  express.json({
+    limit: '10mb',
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
@@ -57,6 +65,9 @@ app.use('/api/auth', authRouter);
 
 // Courses & Registrations Routes
 app.use('/api/courses', coursesRouter);
+
+// Razorpay Payment Gateway Routes
+app.use('/api/payments', paymentsRouter);
 
 // Administrator Routes (Protected with RBAC)
 app.use('/api/admin', adminRouter);
