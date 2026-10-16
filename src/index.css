@@ -23,26 +23,26 @@
   --nav-height: 64px;
 }
 
-/* Dark Mode Tokens (Default) */
+/* Dark Mode Tokens (Default: Pure Black #000000 with Neutral Charcoal Surfaces) */
 html[data-theme="dark"],
 :root[data-theme="dark"] {
-  --tm-bg-page: #0B0E14;
-  --tm-bg-card: #11141A;
-  --tm-bg-white: #11141A;
-  --tm-bg-subtle: #161B24;
-  --tm-border-light: #1E2430;
-  --tm-border-subtle: #161B22;
-  --tm-border-hover: #2B3344;
+  --tm-bg-page: #000000;
+  --tm-bg-card: #111111;
+  --tm-bg-white: #111111;
+  --tm-bg-subtle: #161616;
+  --tm-border-light: #222222;
+  --tm-border-subtle: #181818;
+  --tm-border-hover: #2E2E2E;
   
   --tm-text-primary: #FFFFFF;
   --tm-text-secondary: #CBD5E1;
   --tm-text-muted: #94A3B8;
   --tm-text-light: #64748B;
 
-  --tm-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --tm-shadow-card: 0 12px 36px -8px rgba(0, 0, 0, 0.4), 0 4px 12px -2px rgba(0, 0, 0, 0.2);
-  --tm-shadow-floating: 0 24px 54px -12px rgba(0, 0, 0, 0.5), 0 8px 24px -4px rgba(0, 0, 0, 0.3);
-  --tm-shadow-button: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --tm-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --tm-shadow-card: 0 12px 36px -8px rgba(0, 0, 0, 0.7), 0 4px 12px -2px rgba(0, 0, 0, 0.4);
+  --tm-shadow-floating: 0 24px 54px -12px rgba(0, 0, 0, 0.8), 0 8px 24px -4px rgba(0, 0, 0, 0.5);
+  --tm-shadow-button: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 /* Light Mode Tokens */
@@ -81,21 +81,52 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  /* Allow natural vertical touch panning while preventing double-tap zoom delay */
+  touch-action: manipulation;
 }
 
 body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background-color: var(--tm-bg-page);
+  /* Body clips horizontal overflow cleanly at viewport boundary without blocking vertical scroll */
   overflow-x: hidden;
+  width: 100%;
+  /* Landscape notch / rounded corners (0 on non-notched & desktop) */
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
 }
+
+.tm-app-root {
+  width: 100%;
+  max-width: 100%;
+  position: relative;
+}
+
+/* Prevent iOS auto-zoom on focus: form fields must be >= 16px on touch devices.
+   Desktop keeps its existing sizes. */
+@media (hover: none) and (pointer: coarse), (max-width: 768px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 
 /* ==========================================================================
    Utility Classes & Layout
@@ -128,7 +159,7 @@ body {
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -139,7 +170,7 @@ body {
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -185,6 +216,13 @@ body {
 
 .anim-nav {
   animation: slideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (max-width: 768px) {
+  .anim-nav {
+    animation: none !important;
+    transform: none !important;
+  }
 }
 
 .anim-eyebrow {

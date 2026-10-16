@@ -2,12 +2,13 @@
   "name": "TRADEMAX — Institutional Trading Education",
   "short_name": "TRADEMAX",
   "description": "Structured institutional trading education for forex and crypto markets by Patil Trader.",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0B0E14",
-  "theme_color": "#0B0E14",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "categories": ["education", "finance", "business"],
   "icons": [
     {

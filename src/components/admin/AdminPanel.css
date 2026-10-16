@@ -8,19 +8,19 @@
    THEME DESIGN TOKENS
    -------------------------------------------------------------------------- */
 .tm-admin-root.tm-theme-dark {
-  --adm-bg: #0B0E14;
-  --adm-sidebar-bg: #0E1219;
-  --adm-card-bg: #11141A;
-  --adm-card-sub: #161B24;
-  --adm-border: #181A20;
-  --adm-border-subtle: #161B22;
+  --adm-bg: #000000;
+  --adm-sidebar-bg: #0E0E0E;
+  --adm-card-bg: #111111;
+  --adm-card-sub: #161616;
+  --adm-border: #222222;
+  --adm-border-subtle: #181818;
   --adm-text-primary: #FFFFFF;
   --adm-text-secondary: #CBD5E1;
   --adm-text-muted: #94A3B8;
   --adm-text-dim: #64748B;
-  --adm-input-bg: #0A0D14;
-  --adm-table-head: #0E1219;
-  --adm-table-hover: #161B24;
+  --adm-input-bg: #0A0A0A;
+  --adm-table-head: #111111;
+  --adm-table-hover: #161616;
 }
 
 .tm-admin-root.tm-theme-light {
@@ -1289,6 +1289,11 @@
     bottom: 0;
     width: 270px;
     z-index: 210;
+    height: auto;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .tm-admin-sidebar.open {
@@ -1322,10 +1327,10 @@
 
   .tm-admin-topbar {
     display: flex;
-    height: 50px;
+    height: calc(50px + env(safe-area-inset-top, 0px));
     background-color: var(--adm-sidebar-bg);
     border-bottom: 1px solid var(--adm-border);
-    padding: 0 16px;
+    padding: env(safe-area-inset-top, 0px) 16px 0;
     align-items: center;
     position: sticky;
     top: 0;

@@ -16,8 +16,8 @@
     left: 0;
     right: 0;
     z-index: 999;
-    background-color: #0B0E14;
-    border-top: none;
+    background-color: #000000;
+    border-top: 1px solid #1A1A1A;
     padding-top: 6px;
     padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
     padding-left: 12px;
@@ -110,11 +110,8 @@
   }
 }
 
-/* Ensure body & containers have enough bottom clearance when mobile nav is active */
+/* Ensure containers have enough bottom clearance when mobile nav is active */
 @media (max-width: 768px) {
-  .tm-app-root {
-    padding-bottom: max(68px, calc(56px + env(safe-area-inset-bottom, 16px)));
-  }
 
   .tm-dashboard-root {
     padding-bottom: max(74px, calc(60px + env(safe-area-inset-bottom, 16px))) !important;

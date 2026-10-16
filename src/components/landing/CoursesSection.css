@@ -66,30 +66,23 @@
   width: 100%;
 }
 
-@media (max-width: 640px) {
-  .tm-courses-section {
-    padding: 44px 16px 52px;
-  }
+@media (max-width: 768px) {
   .tm-courses-header {
-    margin-bottom: 24px;
-    padding: 0 4px;
+    display: none !important;
   }
-  .tm-courses-eyebrow {
-    font-size: 10px;
-    letter-spacing: 0.06em;
-    flex-wrap: wrap;
-    line-height: 1.4;
-    gap: 5px;
+  .tm-courses-section {
+    padding: 24px 16px 44px;
+    border-top: none;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    overflow: hidden;
   }
-  .tm-courses-title {
-    font-size: clamp(23px, 6.5vw, 27px);
-    line-height: 1.25;
-    margin: 0 0 8px 0;
-  }
-  .tm-courses-subtitle {
-    font-size: 13.5px;
-    line-height: 1.55;
-    padding: 0 4px;
+  .tm-courses-container {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    box-sizing: border-box;
   }
 }
 
@@ -103,12 +96,12 @@
 }
 
 /* --------------------------------------------------------------------------
-   Courses Section Dark Mode
+   Courses Section Dark Mode (Pure Black #000000)
    -------------------------------------------------------------------------- */
 html[data-theme="dark"] .tm-courses-section {
-  background-color: #0D1117;
-  border-top-color: #1E2430;
-  border-bottom-color: #1E2430;
+  background-color: #000000;
+  border-top-color: #1A1A1A;
+  border-bottom-color: #1A1A1A;
 }
 
 html[data-theme="dark"] .tm-courses-title {

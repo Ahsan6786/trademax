@@ -195,22 +195,50 @@ authRouter.post('/login', async (req, res) => {
 });
 
 // ============================================================================
-// ME / VERIFY SESSION (GET /api/auth/me) - Protected Route
+// ME / VERIFY SESSION (GET /api/auth/me) - Session Verification Route
 // ============================================================================
-authRouter.get('/me', authMiddleware, async (req, res) => {
+authRouter.get('/me', async (req, res) => {
   try {
+    let token = null;
+
+    // Check Authorization header: Bearer <token>
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (req.cookies && req.cookies.token) {
+      token = req.cookies.token;
+    }
+
+    if (!token) {
+      return res.status(200).json({
+        success: true,
+        user: null,
+      });
+    }
+
+    const secret = process.env.JWT_SECRET || 'trademax_jwt_default_secret_key';
+    let decoded;
+    try {
+      decoded = jwt.verify(token, secret);
+    } catch {
+      return res.status(200).json({
+        success: true,
+        user: null,
+      });
+    }
+
     const userQuery = await pool.query(
       `SELECT id, name, mobile, email, reference, trading_experience, role, has_seen_welcome, created_at
        FROM users
        WHERE id = $1
        LIMIT 1`,
-      [req.user.id]
+      [decoded.id]
     );
 
     if (userQuery.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found.',
+      return res.status(200).json({
+        success: true,
+        user: null,
       });
     }
 
@@ -220,9 +248,9 @@ authRouter.get('/me', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error('[Auth Me Error]:', err);
-    return res.status(500).json({
-      success: false,
-      error: 'Could not fetch current session.',
+    return res.status(200).json({
+      success: true,
+      user: null,
     });
   }
 });

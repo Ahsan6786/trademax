@@ -1,51 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './Hero.css';
 
-const TYPEWRITER_HEADLINES = [
-  'From Knowledge to Profits.',
-  'Master Institutional Order Flow.',
-  'Precision Forex & Crypto Execution.',
-  'Disciplined Strategy. Consistent Edge.',
-];
-
 export const Hero = ({ onOpenAuth, onNavigate }) => {
   const trackRef = useRef(null);
   const videoRef = useRef(null);
   const mobileVideoRef = useRef(null);
   const [scrollProgress, setScrollProgress] = useState(0);
-
-  // Typewriter State for Mobile Hero
-  const [headlineIndex, setHeadlineIndex] = useState(0);
-  const [displayText, setDisplayText] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  useEffect(() => {
-    const currentHeadline = TYPEWRITER_HEADLINES[headlineIndex];
-    let timeout;
-
-    if (!isDeleting) {
-      if (displayText.length < currentHeadline.length) {
-        timeout = setTimeout(() => {
-          setDisplayText(currentHeadline.slice(0, displayText.length + 1));
-        }, 60);
-      } else {
-        timeout = setTimeout(() => {
-          setIsDeleting(true);
-        }, 2200);
-      }
-    } else {
-      if (displayText.length > 0) {
-        timeout = setTimeout(() => {
-          setDisplayText(currentHeadline.slice(0, displayText.length - 1));
-        }, 32);
-      } else {
-        setIsDeleting(false);
-        setHeadlineIndex((prev) => (prev + 1) % TYPEWRITER_HEADLINES.length);
-      }
-    }
-
-    return () => clearTimeout(timeout);
-  }, [displayText, isDeleting, headlineIndex]);
 
   // Smooth scroll sync via requestAnimationFrame for desktop & tablet
   useEffect(() => {
@@ -120,52 +80,54 @@ export const Hero = ({ onOpenAuth, onNavigate }) => {
   const videoScale = mapRange(videoT, 0, 1, 0.85, 1.0);
   const videoOpacity = mapRange(videoT, 0, 1, 0.55, 1.0);
 
-  // Helper to render red highlight in typewriter text
-  const renderTypewriter = (text) => {
-    const highlights = ['Profits.', 'Order Flow.', 'Execution.', 'Edge.'];
-    for (const h of highlights) {
-      if (text.includes(h)) {
-        const parts = text.split(h);
-        return (
-          <>
-            {parts[0]}
-            <span className="tm-typewriter-red">{h}</span>
-            {parts[1] || ''}
-          </>
-        );
-      }
-    }
-    return text;
-  };
-
   return (
     <>
       {/* ===================================================================
           1. MOBILE HERO SECTION (Visible only on mobile <= 768px)
-          - Centered text with smooth typewriter cycling through trading headlines
-          - Short description
-          - Two prominent stacked buttons: Explore Courses and Register
-          - All hero images, trading charts & visuals placed below the hero section
+          Strict Order:
+          1. Tagline / Eyebrow
+          2. Static Headline (with fade-in animation)
+          3. Natural Description
+          4. SUPERCHARGED SUPERCHARTS TERMINAL label & Video Preview
+          5. Explore Courses Button
+          6. Register Button
           =================================================================== */}
       <section className="tm-hero-mobile-section" aria-label="TradeMax Mobile Hero">
         <div className="tm-hero-mobile-container">
-          {/* Eyebrow */}
+          {/* 1. Hero Tagline */}
           <div className="tm-hero-mobile-eyebrow">
             DISCIPLINE &nbsp;·&nbsp; STRATEGY &nbsp;·&nbsp; CONSISTENCY
           </div>
 
-          {/* Typewriter Centered Headline */}
+          {/* 2. Hero Heading (Static with subtle fade-up animation) */}
           <h1 className="tm-hero-mobile-headline">
-            <span className="tm-typewriter-text">{renderTypewriter(displayText)}</span>
-            <span className="tm-typewriter-caret" aria-hidden="true">|</span>
+            Disciplined Strategy. Consistent <span className="tm-hero-mobile-red">Edge.</span>
           </h1>
 
-          {/* Short Description */}
+          {/* 3. Short Hero Description */}
           <p className="tm-hero-mobile-subtitle">
-            Master institutional market structure, quantitative order flow, and disciplined risk management with India's premier trading academy.
+            Build your trading skills with practical lessons in chart reading, market structure, and risk management.
           </p>
 
-          {/* Two Prominent Buttons: Stacked Vertically */}
+          {/* 4. Terminal Preview Video (ABOVE buttons on mobile, label removed) */}
+          <div className="tm-hero-mobile-visuals" aria-label="Live Market Trading Showcase">
+            <div className="tm-mobile-chart-frame">
+              <video
+                ref={mobileVideoRef}
+                src="/vid.mp4"
+                poster="/vid-poster.jpg"
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+                className="tm-mobile-chart-video"
+                aria-label="TradeMax Trading Terminal Video"
+              />
+            </div>
+          </div>
+
+          {/* 5 & 6. Two Action Buttons placed below video: Explore Courses & Register */}
           <div className="tm-hero-mobile-actions">
             <button
               type="button"
@@ -190,28 +152,6 @@ export const Hero = ({ onOpenAuth, onNavigate }) => {
             >
               Register
             </button>
-          </div>
-
-          {/* Visuals moved cleanly below the hero text & buttons */}
-          <div className="tm-hero-mobile-visuals" aria-label="Live Market Trading Showcase">
-            <div className="tm-mobile-visuals-header">
-              <span className="tm-mobile-pulse-dot" aria-hidden="true" />
-              <span className="tm-mobile-visuals-label">SUPERCHARGED SUPERCHARTS TERMINAL</span>
-            </div>
-            <div className="tm-mobile-chart-frame">
-              <video
-                ref={mobileVideoRef}
-                src="/vid.mp4"
-                poster="/vid-poster.jpg"
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="auto"
-                className="tm-mobile-chart-video"
-                aria-label="TradeMax Trading Terminal Video"
-              />
-            </div>
           </div>
         </div>
       </section>

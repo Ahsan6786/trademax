@@ -1,0 +1,75 @@
+/* ==========================================================================
+   TRADEMAX — System UI (status bar) + mobile viewport helpers
+   Single source of truth for <meta name="theme-color"> and the iOS status
+   bar style, plus keyboard / standalone-zoom handling.
+   ========================================================================== */
+
+// Colour of the very top strip of each screen (what sits under the status bar).
+export function getTopBarColor(view, theme, authOpen = false) {
+  const dark = theme === 'dark';
+  if (authOpen) return '#000000'; // Auth overlay is always pure black
+  if (view === 'dashboard') return '#101114'; // Student portal header (both themes)
+  if (view === 'admin') return dark ? '#000000' : '#FFFFFF';
+  return dark ? '#000000' : '#FFFFFF'; // Navbar on landing/course/founder/gallery
+}
+
+function isLight(hex) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substr(0, 2), 16);
+  const g = parseInt(h.substr(2, 2), 16);
+  const b = parseInt(h.substr(4, 2), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 140;
+}
+
+export function applySystemUI(color) {
+  if (typeof document === 'undefined') return;
+  const meta = document.getElementById('theme-color-meta');
+  if (meta && meta.getAttribute('content') !== color) {
+    // Replace node (not just attribute) so Chrome/Safari reliably repaint the bar
+    const next = meta.cloneNode();
+    next.setAttribute('content', color);
+    meta.replaceWith(next);
+  }
+  // Paint the root with the top colour's counterpart so overscroll / gaps never flash
+  document.documentElement.style.setProperty('--tm-system-ui-color', color);
+
+  // iOS: black-translucent = full-bleed page under a white-text bar (dark pages);
+  // default = dark text (light pages). iOS only reads this at launch on most
+  // versions, so the index.html bootstrap sets the same value before first paint.
+  const apple = document.getElementById('apple-status-bar-meta');
+  if (apple) {
+    apple.setAttribute('content', isLight(color) ? 'default' : 'black-translucent');
+  }
+}
+
+export function initMobileViewport() {
+  if (typeof window === 'undefined') return;
+  const root = document.documentElement;
+
+  const standalone =
+    window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (standalone) root.classList.add('tm-standalone');
+
+  // Keyboard-aware viewport height (iOS Safari + Android Chrome)
+  const vv = window.visualViewport;
+  const update = () => {
+    const h = vv ? vv.height : window.innerHeight;
+    root.style.setProperty('--tm-vvh', `${Math.round(h)}px`);
+    const kb = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+    root.style.setProperty('--tm-kb-inset', `${Math.round(kb)}px`);
+  };
+  update();
+  if (vv) {
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+  }
+  window.addEventListener('orientationchange', update);
+
+  // Installed app only: block iOS pinch-zoom of the whole UI (browser tabs keep zoom
+  // for accessibility). Charts handle their own gestures and are unaffected.
+  if (standalone) {
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach((evt) =>
+      document.addEventListener(evt, (e) => e.preventDefault(), { passive: false }),
+    );
+  }
+}

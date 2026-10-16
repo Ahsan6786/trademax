@@ -13,12 +13,12 @@
 
 /* Theme Tokens */
 .tm-gallery-theme-dark {
-  --gal-bg: #0B0E14;
-  --gal-surface: #10141C;
+  --gal-bg: #000000;
+  --gal-surface: #111111;
   --gal-text: #FFFFFF;
   --gal-text-secondary: #CBD5E1;
   --gal-text-muted: #8E9BAE;
-  --gal-border: #1B2230;
+  --gal-border: #222222;
   --gal-red: #DC2626;
   --gal-red-hover: #B91C1C;
 }

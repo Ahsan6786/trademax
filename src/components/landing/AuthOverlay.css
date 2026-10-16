@@ -14,6 +14,7 @@
   overflow: hidden;
   scrollbar-width: none;
   visibility: hidden;
+  display: none;
   background: #000000;
   color: #FFFFFF;
   font-family: var(--font-sans);
@@ -28,6 +29,7 @@
 }
 
 .auth-overlay.open {
+  display: block;
   visibility: visible;
 }
 
@@ -36,8 +38,12 @@
   top: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
+  height: 100dvh !important;
+  height: var(--tm-vvh, 100dvh) !important; /* shrinks with the mobile keyboard */
   border-radius: 0 !important;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
 

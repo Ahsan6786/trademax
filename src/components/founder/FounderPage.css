@@ -13,14 +13,14 @@
 
 /* Theme Tokens */
 .tm-fnd-theme-dark {
-  --fnd-bg: #0B0E14;
-  --fnd-surface: #10141C;
-  --fnd-surface-sub: #161B24;
+  --fnd-bg: #000000;
+  --fnd-surface: #111111;
+  --fnd-surface-sub: #161616;
   --fnd-text: #FFFFFF;
   --fnd-text-secondary: #CBD5E1;
   --fnd-text-muted: #8E9BAE;
-  --fnd-border: #1B2230;
-  --fnd-border-subtle: #141822;
+  --fnd-border: #222222;
+  --fnd-border-subtle: #181818;
   --fnd-red: #DC2626;
   --fnd-red-hover: #EF4444;
 }

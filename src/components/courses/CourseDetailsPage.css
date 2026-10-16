@@ -9,17 +9,17 @@
    -------------------------------------------------------------------------- */
 /* Night Mode (Default) */
 .tm-cdp-root.tm-theme-dark {
-  --cdp-bg: #0B0E14;
-  --cdp-card-bg: #11141A;
-  --cdp-inner-card-bg: #0E1219;
-  --cdp-border: #1E2430;
-  --cdp-border-subtle: #161B22;
+  --cdp-bg: #000000;
+  --cdp-card-bg: #111111;
+  --cdp-inner-card-bg: #161616;
+  --cdp-border: #222222;
+  --cdp-border-subtle: #181818;
   --cdp-text-primary: #FFFFFF;
   --cdp-text-secondary: #CBD5E1;
   --cdp-text-muted: #94A3B8;
   --cdp-text-dim: #64748B;
-  --cdp-toggle-bg: #161B24;
-  --cdp-toggle-border: #232B3B;
+  --cdp-toggle-bg: #161616;
+  --cdp-toggle-border: #262626;
   --cdp-toggle-text: #E2E8F0;
   --cdp-save-bg: rgba(34, 197, 94, 0.12);
   --cdp-save-border: rgba(34, 197, 94, 0.28);
@@ -52,7 +52,6 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   padding-bottom: 54px;
-  overflow-x: hidden;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 

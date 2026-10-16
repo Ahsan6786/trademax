@@ -4,12 +4,12 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#0B0E14" id="theme-color-meta" />
+    <meta name="theme-color" content="#000000" id="theme-color-meta" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" id="apple-status-bar-meta" />
     <meta name="apple-mobile-web-app-title" content="TRADEMAX" />
 
     <title>TRADEMAX — Trading Education, Reimagined</title>
@@ -35,10 +35,21 @@
         try {
           var saved = localStorage.getItem('tm_theme') || localStorage.getItem('tm_course_theme') || 'dark';
           document.documentElement.setAttribute('data-theme', saved);
-          var meta = document.getElementById('theme-color-meta');
-          if (meta) {
-            meta.setAttribute('content', saved === 'dark' ? '#0B0E14' : '#FFFFFF');
+          // Pre-paint colour: pure black #000000 for dark mode, #FFFFFF for light mode
+          var color = saved === 'dark' ? '#000000' : '#FFFFFF';
+          var hash = location.hash;
+          var onPublic = /^\/(founder|gallery|courses)/.test(location.pathname);
+          if (!onPublic && (localStorage.getItem('tm_student_session') || hash === '#dashboard')) {
+            var s = null;
+            try { s = JSON.parse(localStorage.getItem('tm_student_session')); } catch (e) {}
+            if (!(s && s.role === 'admin')) color = '#101114';
+            else color = saved === 'dark' ? '#000000' : '#FFFFFF';
           }
+          var meta = document.getElementById('theme-color-meta');
+          if (meta) meta.setAttribute('content', color);
+          var apple = document.getElementById('apple-status-bar-meta');
+          if (apple && color === '#FFFFFF') apple.setAttribute('content', 'default');
+          document.documentElement.style.setProperty('--tm-system-ui-color', color);
         } catch (e) {}
       })();
     </script>

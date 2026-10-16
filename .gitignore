@@ -28,3 +28,4 @@ backend/.env.*
 *.sw?
 *.pem
 *.key
+scratch/

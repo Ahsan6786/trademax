@@ -82,29 +82,38 @@ export const authService = {
    */
   async getMe() {
     const token = localStorage.getItem('tm_token');
+    // If no token in localStorage and no token in cookies, visitor is unauthenticated
+    if (!token && typeof document !== 'undefined' && !document.cookie.includes('token=')) {
+      return null;
+    }
+
     const headers = { 'Content-Type': 'application/json' };
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_BASE}/me`, {
-      method: 'GET',
-      headers,
-      credentials: 'include',
-    });
+    try {
+      const res = await fetch(`${API_BASE}/me`, {
+        method: 'GET',
+        headers,
+        credentials: 'include',
+      });
 
-    if (!res.ok) {
-      localStorage.removeItem('tm_token');
-      localStorage.removeItem('tm_student_session');
+      if (!res.ok) {
+        localStorage.removeItem('tm_token');
+        localStorage.removeItem('tm_student_session');
+        return null;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (data.success && data.user) {
+        localStorage.setItem('tm_student_session', JSON.stringify(data.user));
+        return data.user;
+      }
+      return null;
+    } catch {
       return null;
     }
-
-    const data = await res.json().catch(() => ({}));
-    if (data.success && data.user) {
-      localStorage.setItem('tm_student_session', JSON.stringify(data.user));
-      return data.user;
-    }
-    return null;
   },
 
   /**

@@ -14,6 +14,7 @@ import { HomeGallerySection } from './components/landing/HomeGallerySection';
 import { MobileBottomNav } from './components/common/MobileBottomNav';
 import { Footer } from './components/common/Footer';
 import { authService } from './services/auth';
+import { applySystemUI, getTopBarColor } from './systemUI';
 
 function App() {
   const authRef = useRef(null);
@@ -100,22 +101,28 @@ function App() {
       localStorage.setItem('tm_theme', val);
       localStorage.setItem('tm_course_theme', val);
       document.documentElement.setAttribute('data-theme', val);
-      const meta = document.getElementById('theme-color-meta');
-      if (meta) {
-        meta.setAttribute('content', val === 'dark' ? '#0B0E14' : '#FFFFFF');
-      }
     }
   };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       document.documentElement.setAttribute('data-theme', theme);
-      const meta = document.getElementById('theme-color-meta');
-      if (meta) {
-        meta.setAttribute('content', theme === 'dark' ? '#0B0E14' : '#FFFFFF');
-      }
     }
   }, [theme]);
+
+  // Keep the system status bar in sync with the active page / theme / auth overlay
+  const [authOpen, setAuthOpen] = useState(false);
+  useEffect(() => {
+    const sync = () => setAuthOpen(document.body.classList.contains('auth-open'));
+    sync();
+    const obs = new MutationObserver(sync);
+    obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    applySystemUI(getTopBarColor(currentView, theme, authOpen));
+  }, [currentView, theme, authOpen]);
 
   const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(true);

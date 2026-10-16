@@ -477,21 +477,21 @@
    Course Registration Modal Dark Mode
    -------------------------------------------------------------------------- */
 html[data-theme="dark"] .tm-course-modal-card {
-  background-color: #11141A;
-  border-color: #1E2430;
+  background-color: #111111;
+  border-color: #222222;
   color: #FFFFFF;
 }
 
 html[data-theme="dark"] .tm-course-modal-close {
-  background-color: #161B24;
-  border-color: #232B3B;
+  background-color: #161616;
+  border-color: #262626;
   color: #CBD5E1;
 }
 
 html[data-theme="dark"] .tm-course-modal-close:hover {
-  background-color: #1E2430;
+  background-color: #222222;
   color: #FFFFFF;
-  border-color: #334155;
+  border-color: #383838;
 }
 
 html[data-theme="dark"] .tm-course-modal-title {
@@ -509,8 +509,8 @@ html[data-theme="dark"] .tm-cm-field label {
 html[data-theme="dark"] .tm-cm-field input,
 html[data-theme="dark"] .tm-cm-field select,
 html[data-theme="dark"] .tm-cm-select-wrap select {
-  background-color: #0E1219;
-  border-color: #232B3B;
+  background-color: #161616;
+  border-color: #262626;
   color: #FFFFFF;
 }
 
@@ -520,20 +520,20 @@ html[data-theme="dark"] .tm-cm-select-wrap select {
 }
 
 html[data-theme="dark"] .tm-cm-field select option {
-  background-color: #11141A;
+  background-color: #111111;
   color: #FFFFFF;
 }
 
 html[data-theme="dark"] .tm-cm-field input:focus,
 html[data-theme="dark"] .tm-cm-field select:focus,
 html[data-theme="dark"] .tm-cm-select-wrap select:focus {
-  background-color: #161B24;
+  background-color: #1A1A1A;
   border-color: #DC2626;
 }
 
 html[data-theme="dark"] .tm-cm-fee-summary {
-  background-color: #0E1219;
-  border-color: #1E2430;
+  background-color: #161616;
+  border-color: #222222;
 }
 
 html[data-theme="dark"] .tm-cm-fee-label {
@@ -557,8 +557,8 @@ html[data-theme="dark"] .tm-reg-success-msg {
 }
 
 html[data-theme="dark"] .tm-reg-success-contact-box {
-  background-color: #0E1219;
-  border-color: #1E2430;
+  background-color: #161616;
+  border-color: #222222;
   color: #94A3B8;
 }
 
