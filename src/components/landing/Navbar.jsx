@@ -74,13 +74,14 @@ export const Navbar = ({
     }
   };
 
-  const handleBack = () => {
+  const handleBack = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
     if (onBack) {
-      onBack();
-    } else if (typeof window !== 'undefined' && window.history.length > 1) {
-      window.history.back();
+      onBack(e);
     } else if (onNavigate) {
       onNavigate('landing');
+    } else if (typeof window !== 'undefined' && window.history.length > 1) {
+      window.history.back();
     } else {
       window.location.href = '/';
     }
@@ -129,20 +130,6 @@ export const Navbar = ({
             onClick={(e) => handleNavClick(e, 'courses')}
           >
             Courses
-          </a>
-          <a
-            href="/founder"
-            className={`tm-nav-link ${currentView === 'founder' ? 'active' : ''}`}
-            onClick={(e) => handleNavClick(e, 'founder')}
-          >
-            Founder
-          </a>
-          <a
-            href="/gallery"
-            className={`tm-nav-link ${currentView === 'gallery' ? 'active' : ''}`}
-            onClick={(e) => handleNavClick(e, 'gallery')}
-          >
-            Gallery
           </a>
           <a
             href="#terminal"
@@ -369,29 +356,11 @@ export const Navbar = ({
                 </a>
 
                 <a
-                  href="/founder"
-                  className={`tm-fs-nav-link ${currentView === 'founder' ? 'active' : ''}`}
-                  onClick={(e) => handleNavClick(e, 'founder')}
-                >
-                  <span className="tm-fs-num">03</span>
-                  <span className="tm-fs-label">FOUNDER</span>
-                </a>
-
-                <a
-                  href="/gallery"
-                  className={`tm-fs-nav-link ${currentView === 'gallery' ? 'active' : ''}`}
-                  onClick={(e) => handleNavClick(e, 'gallery')}
-                >
-                  <span className="tm-fs-num">04</span>
-                  <span className="tm-fs-label">GALLERY</span>
-                </a>
-
-                <a
                   href="#terminal"
                   className="tm-fs-nav-link"
                   onClick={(e) => handleNavClick(e, 'dashboard')}
                 >
-                  <span className="tm-fs-num">05</span>
+                  <span className="tm-fs-num">03</span>
                   <span className="tm-fs-label">TRADING TERMINAL</span>
                 </a>
 
@@ -400,7 +369,7 @@ export const Navbar = ({
                   className="tm-fs-nav-link"
                   onClick={(e) => handleNavClick(e, 'contact')}
                 >
-                  <span className="tm-fs-num">06</span>
+                  <span className="tm-fs-num">04</span>
                   <span className="tm-fs-label">CONTACT</span>
                 </a>
               </nav>

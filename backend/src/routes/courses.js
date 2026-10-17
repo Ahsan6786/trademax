@@ -293,7 +293,7 @@ coursesRouter.post('/register', handleEnrollment);
 coursesRouter.get('/check-enrollment', async (req, res) => {
   try {
     const decodedUser = getOptionalUser(req);
-    const { course_slug = 'trading-masterclass', email } = req.query;
+    const { course_slug = 'trading-masterclass', course_id, email } = req.query;
 
     const checkEmail = (decodedUser && decodedUser.email) || email;
     const userId = decodedUser ? decodedUser.id : null;
@@ -306,13 +306,18 @@ coursesRouter.get('/check-enrollment', async (req, res) => {
       `SELECT e.id, e.course_name, e.batch_name, e.created_at
        FROM enrollments e
        LEFT JOIN courses c ON e.course_id = c.id
-       WHERE (c.slug = $1 OR e.course_name ILIKE '%Trading Masterclass%')
+       WHERE (
+            c.slug = $1
+            OR ($2::int IS NOT NULL AND c.id = $2::int)
+            OR ($2::int IS NOT NULL AND e.course_id = $2::int)
+            OR LOWER(e.course_name) = LOWER($1)
+         )
          AND (
-           (e.user_id IS NOT NULL AND e.user_id = $2)
-           OR LOWER(e.email) = LOWER($3)
+           (e.user_id IS NOT NULL AND e.user_id = $3)
+           OR LOWER(e.email) = LOWER($4)
          )
        LIMIT 1`,
-      [course_slug, userId, checkEmail || '']
+      [course_slug, course_id ? parseInt(course_id, 10) : null, userId, checkEmail || '']
     );
 
     if (result.rows.length > 0) {
@@ -329,3 +334,131 @@ coursesRouter.get('/check-enrollment', async (req, res) => {
     return res.status(500).json({ success: false, error: 'Could not check enrollment status.' });
   }
 });
+
+/**
+ * POST /api/courses/enquire
+ * Handle enquiries for Villa Trading Experience and bespoke programs
+ */
+coursesRouter.post('/enquire', async (req, res) => {
+  try {
+    const decodedUser = getOptionalUser(req);
+    const userId = decodedUser ? decodedUser.id : null;
+
+    let {
+      name,
+      email,
+      mobile,
+      trading_experience = 'Intermediate',
+      message = '',
+      course_slug = 'villa-trading-experience',
+      course_name = 'Villa Trading Experience',
+    } = req.body;
+
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ success: false, error: 'Full name is required.' });
+    }
+
+    if (!email || typeof email !== 'string' || !/\S+@\S+\.\S+/.test(email.trim())) {
+      return res.status(400).json({ success: false, error: 'A valid email address is required.' });
+    }
+
+    if (!mobile || typeof mobile !== 'string' || !mobile.trim()) {
+      return res.status(400).json({ success: false, error: 'Mobile number is required.' });
+    }
+
+    const cleanName = name.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanMobile = mobile.trim();
+    const cleanMessage = (message || '').trim();
+    const cleanExperience = trading_experience || 'Intermediate';
+
+    const insertRes = await pool.query(
+      `INSERT INTO enquiries (
+        user_id, course_slug, course_name, name, email, mobile, trading_experience, message
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id, course_name, created_at`,
+      [userId, course_slug, course_name, cleanName, cleanEmail, cleanMobile, cleanExperience, cleanMessage]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: 'Your enquiry for the Villa Trading Experience has been successfully submitted. Our team will contact you shortly.',
+      enquiry: insertRes.rows[0],
+    });
+  } catch (err) {
+    console.error('[Course Enquiry Error]:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'An unexpected error occurred while submitting your enquiry. Please try again.',
+    });
+  }
+});
+
+/**
+ * GET /api/courses/:idOrSlug
+ * Retrieve individual course record from database with verified enrollment status
+ */
+coursesRouter.get('/:idOrSlug', async (req, res) => {
+  try {
+    const { idOrSlug } = req.params;
+    if (!idOrSlug || idOrSlug === 'undefined' || idOrSlug === 'null') {
+      return res.status(400).json({ success: false, error: 'Invalid course identifier.' });
+    }
+
+    const isNumeric = /^\d+$/.test(idOrSlug);
+    let query, params;
+    if (isNumeric) {
+      query = 'SELECT * FROM courses WHERE id = $1 LIMIT 1';
+      params = [parseInt(idOrSlug, 10)];
+    } else {
+      query = 'SELECT * FROM courses WHERE slug = $1 LIMIT 1';
+      params = [idOrSlug];
+    }
+
+    const result = await pool.query(query, params);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Course not found.' });
+    }
+
+    const course = result.rows[0];
+
+    // Check optional authenticated user enrollment
+    const decodedUser = getOptionalUser(req);
+    let isEnrolled = false;
+    let enrollment = null;
+
+    if (decodedUser) {
+      const enrollCheck = await pool.query(
+        `SELECT id, course_id, course_name, batch_name, enrollment_status, payment_status, created_at
+         FROM enrollments
+         WHERE (course_id = $1 OR LOWER(course_name) = LOWER($2))
+           AND (user_id = $3 OR LOWER(email) = LOWER($4))
+           AND enrollment_status = 'enrolled'
+         LIMIT 1`,
+        [course.id, course.title, decodedUser.id, decodedUser.email || '']
+      );
+      if (enrollCheck.rows.length > 0) {
+        isEnrolled = true;
+        enrollment = enrollCheck.rows[0];
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      course: {
+        ...course,
+        is_enrolled: isEnrolled,
+      },
+      isEnrolled,
+      enrollment,
+    });
+  } catch (err) {
+    console.error('[Get Single Course Error]:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve course details.',
+    });
+  }
+});
+
+

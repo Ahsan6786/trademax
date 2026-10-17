@@ -110,6 +110,11 @@
   white-space: nowrap;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   touch-action: manipulation;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative;
+  z-index: 5;
 }
 
 .tm-cdp-back-btn:hover {
@@ -421,8 +426,43 @@ html[data-theme="dark"] .tm-cdp-course-category {
   justify-content: center;
 }
 
-.tm-cdp-btn-register:hover {
-  background-color: #B91C1C;
+.tm-cdp-enrolled-action-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.tm-cdp-enrolled-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: #059669;
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 8px 14px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.tm-cdp-badge-check {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.tm-cdp-btn-enrolled {
+  background-color: #1E293B;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #FFFFFF;
+}
+
+.tm-cdp-btn-enrolled:hover {
+  background-color: #0F172A;
+  border-color: #DC2626;
+  color: #EF4444;
 }
 
 .tm-cdp-panel-warning {

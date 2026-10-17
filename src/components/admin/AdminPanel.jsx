@@ -34,6 +34,7 @@ import {
   Check,
 } from 'lucide-react';
 import './AdminPanel.css';
+import { IndividualCourseWorkspace } from './IndividualCourseWorkspace';
 
 export const AdminPanel = ({
   user,
@@ -46,6 +47,7 @@ export const AdminPanel = ({
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [managingCourseId, setManagingCourseId] = useState(null);
 
   // Dashboard Stats State
   const [stats, setStats] = useState(null);
@@ -1335,6 +1337,16 @@ export const AdminPanel = ({
               PAGE 3: COURSES MANAGEMENT
               ============================================================== */}
           {activeTab === 'courses' && (
+            managingCourseId ? (
+              <IndividualCourseWorkspace
+                courseId={managingCourseId}
+                onBack={() => {
+                  setManagingCourseId(null);
+                  fetchCourses();
+                }}
+                theme={theme}
+              />
+            ) : (
             <div className="tm-admin-courses-page">
               <div className="tm-admin-page-actions-header">
                 <div>
@@ -1358,6 +1370,16 @@ export const AdminPanel = ({
                       batch_name: 'November',
                       seats_available: 15,
                       is_published: true,
+                      objectives: '',
+                      learning_outcomes: '',
+                      syllabus: '',
+                      topics: '',
+                      instructor_name: 'Patil Trader',
+                      instructor_bio: 'Institutional price action specialist with 5+ years of live market experience and over 700+ trained students globally.',
+                      instructor_image: '/heroo.png',
+                      methodology: '',
+                      assignments_info: '',
+                      assessment_info: '',
                     });
                     setIsCourseModalOpen(true);
                   }}
@@ -1420,42 +1442,57 @@ export const AdminPanel = ({
                           <strong>{course.enrolled_count || 0}</strong> students enrolled
                         </div>
 
-                        <div className="tm-admin-course-card-actions">
+                        <div className="tm-admin-course-card-actions" style={{ flexDirection: 'column' }}>
                           <button
                             type="button"
-                            className="tm-btn-outline-xs"
-                            onClick={() => handleOpenCourseDetails(course.id)}
-                            title="View enrolled students list"
+                            className="tm-btn-primary"
+                            style={{ width: '100%', marginBottom: '0.4rem', justifyContent: 'center' }}
+                            onClick={() => setManagingCourseId(course.id)}
+                            title="Open dedicated Course Management Workspace"
                           >
-                            <Eye size={13} /> Students
+                            <ExternalLink size={14} />
+                            <span>Open Course</span>
                           </button>
-                          <button
-                            type="button"
-                            className="tm-btn-outline-xs"
-                            onClick={() => {
-                              setEditingCourse(course);
-                              setIsCourseModalOpen(true);
-                            }}
-                            title="Edit course details"
-                          >
-                            <Edit size={13} /> Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="tm-btn-outline-xs"
-                            onClick={() => handleTogglePublishCourse(course)}
-                            title={course.is_published ? 'Unpublish course' : 'Publish course'}
-                          >
-                            {course.is_published ? 'Unpublish' : 'Publish'}
-                          </button>
-                          <button
-                            type="button"
-                            className="tm-btn-outline-xs danger"
-                            onClick={() => handleDeleteCourse(course)}
-                            title="Delete course"
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.35rem', width: '100%' }}>
+                            <button
+                              type="button"
+                              className="tm-btn-outline-xs"
+                              style={{ flex: 1, justifyContent: 'center' }}
+                              onClick={() => handleOpenCourseDetails(course.id)}
+                              title="View enrolled students list"
+                            >
+                              <Eye size={13} /> Students
+                            </button>
+                            <button
+                              type="button"
+                              className="tm-btn-outline-xs"
+                              style={{ flex: 1, justifyContent: 'center' }}
+                              onClick={() => {
+                                setEditingCourse(course);
+                                setIsCourseModalOpen(true);
+                              }}
+                              title="Edit course details"
+                            >
+                              <Edit size={13} /> Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="tm-btn-outline-xs"
+                              style={{ flex: 1, justifyContent: 'center' }}
+                              onClick={() => handleTogglePublishCourse(course)}
+                              title={course.is_published ? 'Unpublish course' : 'Publish course'}
+                            >
+                              {course.is_published ? 'Unpublish' : 'Publish'}
+                            </button>
+                            <button
+                              type="button"
+                              className="tm-btn-outline-xs danger"
+                              onClick={() => handleDeleteCourse(course)}
+                              title="Delete course"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1463,6 +1500,7 @@ export const AdminPanel = ({
                 </div>
               )}
             </div>
+            )
           )}
 
           {/* ==============================================================
@@ -2308,6 +2346,129 @@ export const AdminPanel = ({
                   onChange={(e) => setEditingCourse({ ...editingCourse, seats_available: e.target.value })}
                   className="tm-admin-input"
                   placeholder="15"
+                />
+              </div>
+
+              {/* Course Objectives */}
+              <div className="tm-form-group">
+                <label>Course Objectives</label>
+                <textarea
+                  value={editingCourse.objectives || ''}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, objectives: e.target.value })}
+                  className="tm-admin-textarea"
+                  rows={2}
+                  placeholder="Core goals and what the student will master in this course..."
+                />
+              </div>
+
+              {/* Learning Outcomes */}
+              <div className="tm-form-group">
+                <label>Learning Outcomes</label>
+                <textarea
+                  value={editingCourse.learning_outcomes || ''}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, learning_outcomes: e.target.value })}
+                  className="tm-admin-textarea"
+                  rows={2}
+                  placeholder="Key competencies, execution ability, and practical skills acquired upon completion..."
+                />
+              </div>
+
+              {/* Complete Syllabus */}
+              <div className="tm-form-group">
+                <label>Complete Syllabus</label>
+                <textarea
+                  value={editingCourse.syllabus || ''}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, syllabus: e.target.value })}
+                  className="tm-admin-textarea"
+                  rows={3}
+                  placeholder="Detailed syllabus modules and breakdown (e.g. Module 1: Market Structure, Module 2: Order Flow...)"
+                />
+              </div>
+
+              {/* Curriculum Topics Covered */}
+              <div className="tm-form-group">
+                <label>Curriculum Topics (Comma or newline separated)</label>
+                <textarea
+                  value={
+                    Array.isArray(editingCourse.topics)
+                      ? editingCourse.topics.join(', ')
+                      : (editingCourse.topics || '')
+                  }
+                  onChange={(e) => setEditingCourse({ ...editingCourse, topics: e.target.value })}
+                  className="tm-admin-textarea"
+                  rows={2}
+                  placeholder="e.g. Market Structure, Support & Resistance, Supply & Demand Zones, Liquidity"
+                />
+              </div>
+
+              {/* Instructor Information */}
+              <div className="tm-form-row-2">
+                <div className="tm-form-group">
+                  <label>Instructor Name</label>
+                  <input
+                    type="text"
+                    value={editingCourse.instructor_name || ''}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, instructor_name: e.target.value })}
+                    className="tm-admin-input"
+                    placeholder="Patil Trader"
+                  />
+                </div>
+                <div className="tm-form-group">
+                  <label>Instructor Avatar / Image URL</label>
+                  <input
+                    type="text"
+                    value={editingCourse.instructor_image || ''}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, instructor_image: e.target.value })}
+                    className="tm-admin-input"
+                    placeholder="/heroo.png"
+                  />
+                </div>
+              </div>
+
+              <div className="tm-form-group">
+                <label>Instructor Bio</label>
+                <textarea
+                  value={editingCourse.instructor_bio || ''}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, instructor_bio: e.target.value })}
+                  className="tm-admin-textarea"
+                  rows={2}
+                  placeholder="Instructor credentials, trading background, and expertise..."
+                />
+              </div>
+
+              {/* Learning Methodology */}
+              <div className="tm-form-group">
+                <label>Learning Methodology</label>
+                <textarea
+                  value={editingCourse.methodology || ''}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, methodology: e.target.value })}
+                  className="tm-admin-textarea"
+                  rows={2}
+                  placeholder="Teaching approach: Live chart breakdowns, rule testing, trade reviews..."
+                />
+              </div>
+
+              {/* Assignments & Case Studies */}
+              <div className="tm-form-group">
+                <label>Assignments & Practical Work Details</label>
+                <textarea
+                  value={editingCourse.assignments_info || ''}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, assignments_info: e.target.value })}
+                  className="tm-admin-textarea"
+                  rows={2}
+                  placeholder="Details regarding chart homework, trade logbook exercises, and case studies..."
+                />
+              </div>
+
+              {/* Assessment & Evaluation */}
+              <div className="tm-form-group">
+                <label>Assessment & Evaluation Details</label>
+                <textarea
+                  value={editingCourse.assessment_info || ''}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, assessment_info: e.target.value })}
+                  className="tm-admin-textarea"
+                  rows={2}
+                  placeholder="Final risk-management evaluation and practical rule verification criteria..."
                 />
               </div>
 

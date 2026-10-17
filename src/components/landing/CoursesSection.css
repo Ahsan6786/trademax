@@ -1,134 +1,483 @@
 /* ==========================================================================
    TRADEMAX — Public Courses Section
-   Clean, light, luxury canvas with subtle gold and red accents
+   100% Solid surfaces (No glassmorphism, No backdrop blur, No icons)
+   Minimal, professional, premium trading-education aesthetic
    ========================================================================== */
 
 .tm-courses-section {
-  padding: 72px 24px 84px;
+  padding: 84px 24px 96px;
   background-color: #F8FAFC;
   border-top: 1px solid #E2E8F0;
   border-bottom: 1px solid #E2E8F0;
   transition: background-color 0.2s ease, border-color 0.2s ease;
+  box-sizing: border-box;
 }
 
 .tm-courses-container {
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
 }
 
+/* --------------------------------------------------------------------------
+   SECTION HEADER
+   -------------------------------------------------------------------------- */
 .tm-courses-header {
   text-align: center;
-  max-width: 640px;
-  margin: 0 auto 38px;
+  max-width: 720px;
+  margin: 0 auto 48px;
 }
 
 .tm-courses-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
+  display: block;
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: #B45309;
   text-transform: uppercase;
   margin-bottom: 8px;
 }
 
-.tm-eyebrow-accent {
-  color: #DC2626;
-}
-
-.tm-eyebrow-sep {
-  opacity: 0.5;
-}
-
 .tm-courses-title {
-  margin: 0 0 10px 0;
-  font-size: 32px;
-  font-weight: 800;
+  margin: 0 0 12px 0;
+  font-size: 34px;
+  font-weight: 850;
   color: #0F172A;
   letter-spacing: -0.025em;
-  line-height: 1.22;
+  line-height: 1.2;
 }
 
 .tm-courses-subtitle {
   margin: 0;
-  font-size: 15px;
+  font-size: 15.5px;
   line-height: 1.6;
   color: #64748B;
-}
-
-.tm-courses-grid {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-}
-
-@media (max-width: 768px) {
-  .tm-courses-section {
-    padding: 44px 16px 52px;
-    border-top: none;
-    border-bottom: 1px solid #E2E8F0;
-    width: 100%;
-    max-width: 100vw;
-    box-sizing: border-box;
-    overflow: hidden;
-    position: relative;
-    z-index: 1;
-  }
-  .tm-courses-container {
-    width: 100%;
-    max-width: 480px;
-    margin: 0 auto;
-    box-sizing: border-box;
-  }
-  .tm-courses-header {
-    display: block !important;
-    text-align: center;
-    max-width: 440px;
-    margin: 0 auto 24px;
-    padding: 0 4px;
-  }
-  .tm-courses-eyebrow {
-    font-size: 10.5px;
-    letter-spacing: 0.08em;
-    margin-bottom: 6px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-  .tm-courses-title {
-    font-size: clamp(22px, 6vw, 26px);
-    line-height: 1.25;
-    margin: 0 0 6px 0;
-    font-weight: 850;
-  }
-  .tm-courses-subtitle {
-    font-size: 13px;
-    line-height: 1.55;
-    padding: 0 4px;
-    margin: 0;
-  }
-}
-
-@media (max-width: 360px) {
-  .tm-courses-section {
-    padding: 30px 12px 40px;
-  }
-  .tm-courses-title {
-    font-size: 20px;
-  }
-  .tm-courses-subtitle {
-    font-size: 12.5px;
-  }
+  font-weight: 450;
 }
 
 /* --------------------------------------------------------------------------
-   Courses Section Dark Mode (Pure Black #000000)
+   COURSES CATALOG GRID (3 COLUMNS ON DESKTOP, 2 ON TABLET, 1 ON MOBILE)
+   -------------------------------------------------------------------------- */
+.tm-courses-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 72px;
+}
+
+/* --------------------------------------------------------------------------
+/* --------------------------------------------------------------------------
+   LEARNING EXPERIENCE SECTION
+   Independent section sitting seamlessly on the page with generous spacing
+   No outer card background, no borders, no boxed panel container
+   -------------------------------------------------------------------------- */
+.tm-courses-experience-wrap {
+  margin-top: 80px;
+  margin-bottom: 72px;
+  padding: 0;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.tm-exp-header {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 44px;
+}
+
+.tm-exp-title {
+  margin: 0 0 12px 0;
+  font-size: 30px;
+  font-weight: 850;
+  color: #0F172A;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+.tm-exp-subtitle {
+  margin: 0;
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: #64748B;
+  font-weight: 450;
+}
+
+
+/* Asymmetrical Puzzle Bento Grid */
+.tm-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 20px;
+}
+
+.tm-bento-card {
+  border-radius: 20px;
+  padding: 34px 30px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  border: none !important;
+  outline: none !important;
+  box-shadow: 0 10px 28px -6px rgba(15, 23, 42, 0.25);
+}
+
+.tm-bento-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px -8px rgba(15, 23, 42, 0.4);
+}
+
+/* Subtle abstract geometric accent shape on cards */
+.tm-bento-card::before {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  z-index: 2;
+}
+
+/* Puzzle Spans */
+.tm-bento-hero {
+  grid-column: span 8;
+}
+
+.tm-bento-tall {
+  grid-column: span 4;
+  grid-row: span 2;
+}
+
+.tm-bento-compact-1 {
+  grid-column: span 4;
+}
+
+.tm-bento-compact-2 {
+  grid-column: span 4;
+}
+
+.tm-bento-wide {
+  grid-column: span 7;
+}
+
+.tm-bento-accent {
+  grid-column: span 5;
+}
+
+/* Subtle Physical Grain Texture Overlay */
+.tm-bento-grain {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  opacity: 0.55;
+  z-index: 1;
+}
+
+/* Foreground Content Wrapper */
+.tm-bento-inner {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Card Header — Supporting Tag (No Borders, Crisp Legibility) */
+.tm-bento-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 22px;
+}
+
+.tm-bento-tag {
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 999px;
+  display: inline-block;
+  border: none !important;
+  outline: none !important;
+}
+
+/* Card Content — Crisp White Headings & Soft Grey Descriptions */
+.tm-bento-card-content {
+  flex-grow: 1;
+}
+
+.tm-bento-title {
+  margin: 0 0 12px 0;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.018em;
+  color: #FFFFFF !important;
+}
+
+.tm-bento-hero .tm-bento-title {
+  font-size: 24px;
+  line-height: 1.3;
+}
+
+.tm-bento-desc {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.62;
+  font-weight: 450;
+  color: #CBD5E1 !important;
+  max-width: 90%;
+}
+
+.tm-bento-hero .tm-bento-desc {
+  font-size: 14.5px;
+  max-width: 82%;
+}
+
+/* Card Footer Badge (Refined Translucent, NO Borders, NO Outlines) */
+.tm-bento-card-footer {
+  margin-top: 24px;
+}
+
+.tm-bento-badge {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none !important;
+  outline: none !important;
+  transition: transform 0.2s ease;
+}
+
+.tm-bento-card:hover .tm-bento-badge {
+  transform: translateY(-1px);
+}
+
+/* --------------------------------------------------------------------------
+   6 LUXURIOUS DARK-GRADIENT PALETTES (PREMIUM FINTECH AESTHETIC)
+   Harmonious gradients · Subtle lighting · Refined textures · Abstract accents
+   No glassmorphism · No neon colours · No icons · No borders · No outlines
+   -------------------------------------------------------------------------- */
+
+/* 1. DEEP NAVY TO ROYAL BLUE (Structured Online Training) */
+.tm-bento-c1 {
+  background: 
+    radial-gradient(circle at 88% 18%, rgba(37, 99, 235, 0.22) 0%, transparent 52%),
+    linear-gradient(145deg, #061124 0%, #0C2044 52%, #193F7E 100%) !important;
+  border: none !important;
+  outline: none !important;
+}
+.tm-bento-c1::before {
+  top: -60px;
+  right: -50px;
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.14) 0%, transparent 70%);
+}
+.tm-bento-c1 .tm-bento-tag {
+  background-color: rgba(30, 58, 138, 0.5);
+  color: #93C5FD;
+}
+.tm-bento-c1 .tm-bento-title {
+  color: #FFFFFF !important;
+}
+.tm-bento-c1 .tm-bento-desc {
+  color: #CBD5E1 !important;
+}
+.tm-bento-c1 .tm-bento-badge {
+  background-color: rgba(30, 58, 138, 0.45);
+  color: #BFDBFE;
+}
+
+/* 2. DARK TEAL TO EMERALD (Practical Chart-Based Examples) */
+.tm-bento-c2 {
+  background: 
+    radial-gradient(circle at 90% 16%, rgba(16, 185, 129, 0.2) 0%, transparent 54%),
+    linear-gradient(155deg, #031B18 0%, #06342E 52%, #085A44 100%) !important;
+  border: none !important;
+  outline: none !important;
+}
+.tm-bento-c2::before {
+  bottom: -60px;
+  right: -40px;
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, transparent 70%);
+}
+.tm-bento-c2 .tm-bento-tag {
+  background-color: rgba(6, 78, 59, 0.55);
+  color: #6EE7B7;
+}
+.tm-bento-c2 .tm-bento-title {
+  color: #FFFFFF !important;
+}
+.tm-bento-c2 .tm-bento-desc {
+  color: #CBD5E1 !important;
+}
+.tm-bento-c2 .tm-bento-badge {
+  background-color: rgba(6, 78, 59, 0.45);
+  color: #A7F3D0;
+}
+
+/* 3. CHARCOAL TO BURGUNDY (Assignments and Case Studies) */
+.tm-bento-c3 {
+  background: 
+    radial-gradient(circle at 86% 20%, rgba(190, 24, 93, 0.2) 0%, transparent 54%),
+    linear-gradient(145deg, #151518 0%, #25161E 52%, #4C1523 100%) !important;
+  border: none !important;
+  outline: none !important;
+}
+.tm-bento-c3::before {
+  top: -40px;
+  right: -30px;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(190, 24, 93, 0.12) 0%, transparent 70%);
+}
+.tm-bento-c3 .tm-bento-tag {
+  background-color: rgba(88, 28, 40, 0.55);
+  color: #F472B6;
+}
+.tm-bento-c3 .tm-bento-title {
+  color: #FFFFFF !important;
+}
+.tm-bento-c3 .tm-bento-desc {
+  color: #CBD5E1 !important;
+}
+.tm-bento-c3 .tm-bento-badge {
+  background-color: rgba(88, 28, 40, 0.45);
+  color: #FBCFE8;
+}
+
+/* 4. MIDNIGHT PURPLE TO VIOLET (Daily Trade Logbook) */
+.tm-bento-c4 {
+  background: 
+    radial-gradient(circle at 85% 18%, rgba(139, 92, 246, 0.22) 0%, transparent 54%),
+    linear-gradient(145deg, #110920 0%, #21113B 50%, #431A78 100%) !important;
+  border: none !important;
+  outline: none !important;
+}
+.tm-bento-c4::before {
+  bottom: -40px;
+  right: -30px;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
+}
+.tm-bento-c4 .tm-bento-tag {
+  background-color: rgba(67, 26, 120, 0.55);
+  color: #C4B5FD;
+}
+.tm-bento-c4 .tm-bento-title {
+  color: #FFFFFF !important;
+}
+.tm-bento-c4 .tm-bento-desc {
+  color: #CBD5E1 !important;
+}
+.tm-bento-c4 .tm-bento-badge {
+  background-color: rgba(67, 26, 120, 0.45);
+  color: #DDD6FE;
+}
+
+/* 5. DEEP BROWN TO BRONZE (Strategy Testing and Evaluation) */
+.tm-bento-c5 {
+  background: 
+    radial-gradient(circle at 88% 24%, rgba(217, 119, 6, 0.2) 0%, transparent 55%),
+    linear-gradient(145deg, #191007 0%, #2E1C0F 50%, #563618 100%) !important;
+  border: none !important;
+  outline: none !important;
+}
+.tm-bento-c5::before {
+  top: -50px;
+  right: -30px;
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(217, 119, 6, 0.12) 0%, transparent 70%);
+}
+.tm-bento-c5 .tm-bento-tag {
+  background-color: rgba(86, 54, 24, 0.6);
+  color: #FCD34D;
+}
+.tm-bento-c5 .tm-bento-title {
+  color: #FFFFFF !important;
+}
+.tm-bento-c5 .tm-bento-desc {
+  color: #CBD5E1 !important;
+}
+.tm-bento-c5 .tm-bento-badge {
+  background-color: rgba(86, 54, 24, 0.45);
+  color: #FDE68A;
+}
+
+/* 6. BLACK TO DARK CRIMSON (Final Assessments) */
+.tm-bento-c6 {
+  background: 
+    radial-gradient(circle at 86% 22%, rgba(225, 29, 72, 0.2) 0%, transparent 54%),
+    linear-gradient(145deg, #09090B 0%, #1F080C 50%, #4E0D16 100%) !important;
+  border: none !important;
+  outline: none !important;
+}
+.tm-bento-c6::before {
+  bottom: -40px;
+  right: -20px;
+  width: 210px;
+  height: 210px;
+  background: radial-gradient(circle, rgba(225, 29, 72, 0.12) 0%, transparent 70%);
+}
+.tm-bento-c6 .tm-bento-tag {
+  background-color: rgba(78, 13, 22, 0.6);
+  color: #FDA4AF;
+}
+.tm-bento-c6 .tm-bento-title {
+  color: #FFFFFF !important;
+}
+.tm-bento-c6 .tm-bento-desc {
+  color: #CBD5E1 !important;
+}
+.tm-bento-c6 .tm-bento-badge {
+  background-color: rgba(78, 13, 22, 0.45);
+  color: #FECDD3;
+}
+
+/* --------------------------------------------------------------------------
+   FINANCIAL RISK DISCLAIMER (CLEAN, BALANCED, NO ONE-SIDED BORDER)
+   -------------------------------------------------------------------------- */
+.tm-courses-disclaimer-box {
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 24px 32px;
+  box-sizing: border-box;
+  text-align: center;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.tm-disclaimer-text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: #64748B;
+  font-weight: 500;
+}
+
+/* --------------------------------------------------------------------------
+   DARK MODE
    -------------------------------------------------------------------------- */
 html[data-theme="dark"] .tm-courses-section {
   background-color: #000000;
@@ -144,10 +493,125 @@ html[data-theme="dark"] .tm-courses-subtitle {
   color: #94A3B8;
 }
 
-html[data-theme="dark"] .tm-courses-eyebrow {
-  color: #F59E0B;
+html[data-theme="dark"] .tm-courses-experience-wrap {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
-html[data-theme="dark"] .tm-eyebrow-accent {
-  color: #EF4444;
+html[data-theme="dark"] .tm-exp-title {
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .tm-exp-subtitle {
+  color: #94A3B8;
+}
+
+html[data-theme="dark"] .tm-courses-disclaimer-box {
+  background-color: #0B0F19;
+  border-color: #1E293B;
+}
+
+html[data-theme="dark"] .tm-disclaimer-text {
+  color: #94A3B8;
+}
+
+/* --------------------------------------------------------------------------
+   RESPONSIVENESS (MOBILE & TABLET)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .tm-courses-catalog-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+  .tm-bento-grid {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+  }
+  .tm-bento-hero {
+    grid-column: span 6;
+  }
+  .tm-bento-tall {
+    grid-column: span 3;
+    grid-row: span 1;
+  }
+  .tm-bento-compact-1 {
+    grid-column: span 3;
+  }
+  .tm-bento-compact-2 {
+    grid-column: span 3;
+  }
+  .tm-bento-wide {
+    grid-column: span 3;
+  }
+  .tm-bento-accent {
+    grid-column: span 6;
+  }
+}
+
+@media (max-width: 768px) {
+  .tm-courses-section {
+    padding: 56px 16px 64px;
+  }
+  .tm-courses-header {
+    margin-bottom: 32px;
+  }
+  .tm-courses-title {
+    font-size: 26px;
+  }
+  .tm-courses-subtitle {
+    font-size: 14px;
+  }
+  .tm-courses-catalog-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    margin-bottom: 48px;
+  }
+  .tm-courses-experience-wrap {
+    padding: 0;
+    margin-top: 54px;
+    margin-bottom: 44px;
+    background: transparent !important;
+    border: none !important;
+  }
+  .tm-bento-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .tm-bento-hero,
+  .tm-bento-tall,
+  .tm-bento-compact-1,
+  .tm-bento-compact-2,
+  .tm-bento-wide,
+  .tm-bento-accent {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+  .tm-bento-card {
+    padding: 26px 22px;
+    border-radius: 16px;
+  }
+  .tm-bento-title {
+    font-size: 18px;
+  }
+  .tm-bento-hero .tm-bento-title {
+    font-size: 19px;
+  }
+  .tm-bento-desc {
+    font-size: 13.5px;
+    max-width: 100%;
+  }
+  .tm-bento-hero .tm-bento-desc {
+    font-size: 13.5px;
+    max-width: 100%;
+  }
+  .tm-exp-title {
+    font-size: 22px;
+  }
+  .tm-courses-disclaimer-box {
+    padding: 20px 18px;
+  }
+  .tm-disclaimer-text {
+    font-size: 13px;
+  }
 }

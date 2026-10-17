@@ -1,57 +1,58 @@
 import React from 'react';
-import {
-  Clock,
-  Video,
-  TrendingUp,
-  ArrowRight,
-} from 'lucide-react';
 import './CourseCard.css';
 
-export const CourseCard = ({ onOpenDetails, onRegister, course, settings, theme }) => {
-  const title = course?.title || 'Trading Masterclass';
+export const CourseCard = ({ onOpenDetails, onRegister, onEnquire, course, theme }) => {
+  const isEnquiryOnly =
+    course?.is_enquiry_only ||
+    course?.slug === 'villa-trading-experience' ||
+    parseFloat(course?.price || 0) === 0;
+
+  const title = course?.title || 'Basics to Advanced Course';
   const subtitle = course?.subtitle || 'Forex & Crypto Trading';
+  const description = course?.description || '';
   const thumbnail = course?.thumbnail || '/1-c.jpeg';
-  const price = course?.price !== undefined ? parseFloat(course.price) : 19999;
+  const price = course?.price !== undefined ? parseFloat(course.price) : 20000;
   const originalPrice =
-    course?.original_price !== undefined ? parseFloat(course.original_price) : 24999;
+    course?.original_price !== undefined ? parseFloat(course.original_price) : 0;
+  const discountLabel = course?.discount_label || '';
 
-  const savings = originalPrice > price ? originalPrice - price : 5000;
-  const percentOff = originalPrice > 0 ? Math.round((savings / originalPrice) * 100) : 20;
-  const discountBadge = `Save ₹${savings.toLocaleString('en-IN')} (${percentOff}% OFF)`;
-
-  const duration = course?.duration || '1 Month';
+  const duration = course?.duration || '30 Days';
   const learningMode = course?.learning_mode || 'Live Online';
+  const level = course?.level || 'Basic to Advanced';
   const isPublished = course?.is_published !== undefined ? Boolean(course.is_published) : true;
 
   const handleCardClick = () => {
     if (onOpenDetails) {
-      onOpenDetails();
+      onOpenDetails(course);
     }
   };
 
-  const handleRegisterClick = (e) => {
+  const handleActionClick = (e) => {
     e.stopPropagation();
     if (!isPublished) return;
-    if (onRegister) {
-      onRegister();
+    if (isEnquiryOnly) {
+      if (onEnquire) onEnquire(course);
+      else if (onOpenDetails) onOpenDetails(course);
+    } else {
+      if (onRegister) onRegister(course);
     }
   };
 
   const handleDetailsClick = (e) => {
     e.stopPropagation();
     if (onOpenDetails) {
-      onOpenDetails();
+      onOpenDetails(course);
     }
   };
 
   return (
     <div
-      className={`tm-course-card ${theme === 'dark' ? 'tm-card-dark' : ''}`}
+      className={`tm-course-card ${isEnquiryOnly ? 'tm-card-villa' : ''} ${theme === 'dark' ? 'tm-card-dark' : ''}`}
       onClick={handleCardClick}
       role="article"
       aria-label={`${title} Course Card`}
     >
-      {/* 1. Course Banner Image (Full width, crisp, natural aspect ratio) */}
+      {/* 1. Course Banner Image */}
       <div className="tm-card-poster-wrap">
         <img
           src={thumbnail}
@@ -62,66 +63,92 @@ export const CourseCard = ({ onOpenDetails, onRegister, course, settings, theme 
             e.target.src = '/1-c.jpeg';
           }}
         />
+        {isEnquiryOnly && (
+          <div className="tm-card-badge-exclusive">Exclusive Program</div>
+        )}
       </div>
 
       {/* 2. Spacious Solid Card Content Body */}
       <div className="tm-card-body">
         {/* Course Header Info */}
         <div className="tm-card-title-group">
-          <span className="tm-card-eyebrow">TRADEMAX BY PATIL TRADER</span>
           <h3 className="tm-card-title">{title}</h3>
-          <p className="tm-card-subtitle">{subtitle}</p>
+          {subtitle && <p className="tm-card-subtitle">{subtitle}</p>}
         </div>
 
-        {/* Compact Key Specifications: 1 Month · Live Online · Forex & Crypto */}
+        {/* Short Description */}
+        {description && (
+          <p className="tm-card-desc">{description}</p>
+        )}
+
+        {/* Clean Text Specifications: Pure typography, no icons */}
         <div className="tm-card-specs-row" aria-label="Course specifications">
           <div className="tm-spec-pill">
-            <Clock size={13} className="tm-spec-icon" aria-hidden="true" />
+            <span className="tm-spec-label">Duration</span>
             <span className="tm-spec-value">{duration}</span>
           </div>
 
           <div className="tm-spec-pill">
-            <Video size={13} className="tm-spec-icon" aria-hidden="true" />
+            <span className="tm-spec-label">Mode</span>
             <span className="tm-spec-value">{learningMode}</span>
           </div>
 
           <div className="tm-spec-pill">
-            <TrendingUp size={13} className="tm-spec-icon" aria-hidden="true" />
-            <span className="tm-spec-value">Forex &amp; Crypto</span>
+            <span className="tm-spec-label">Level</span>
+            <span className="tm-spec-value">{level}</span>
           </div>
         </div>
 
-        {/* Compact Pricing Bar with Single "Save ₹5,000 (20% OFF)" Badge */}
+        {/* Solid Pricing Bar */}
         <div className="tm-card-pricing-block">
-          <div className="tm-card-price-row">
-            <span className="tm-card-price-offer">₹{price.toLocaleString('en-IN')}</span>
-            {originalPrice > price && (
-              <span className="tm-card-price-regular">₹{originalPrice.toLocaleString('en-IN')}</span>
-            )}
-          </div>
-          <span className="tm-card-saving-pill">{discountBadge}</span>
+          {isEnquiryOnly ? (
+            <div className="tm-card-price-row">
+              <span className="tm-card-price-offer tm-price-enquiry">Contact for Pricing</span>
+            </div>
+          ) : (
+            <div className="tm-card-price-row">
+              <span className="tm-card-price-offer">₹{price.toLocaleString('en-IN')}</span>
+              {originalPrice > price && (
+                <span className="tm-card-price-regular">₹{originalPrice.toLocaleString('en-IN')}</span>
+              )}
+            </div>
+          )}
+          {discountLabel && (
+            <span className="tm-card-saving-pill">{discountLabel}</span>
+          )}
         </div>
 
-        {/* Side-by-Side Action Buttons: REGISTER FOR COURSE & View Details */}
+        {/* Action Buttons: Solid background, text only, no decorative icons */}
         <div className="tm-card-actions">
-          <button
-            type="button"
-            className="tm-card-btn-register"
-            onClick={handleRegisterClick}
-            disabled={!isPublished}
-            aria-label={`Register for ${title}`}
-          >
-            <span>{isPublished ? 'REGISTER FOR COURSE' : 'ADMISSIONS PAUSED'}</span>
-          </button>
+          {course?.is_enrolled ? (
+            <span className="tm-card-badge-enrolled" aria-label="Already Enrolled">
+              ENROLLED
+            </span>
+          ) : (
+            <button
+              type="button"
+              className={`tm-card-btn-register ${isEnquiryOnly ? 'tm-btn-enquire' : ''}`}
+              onClick={handleActionClick}
+              disabled={!isPublished}
+              aria-label={isEnquiryOnly ? `Enquire for ${title}` : `Enroll in ${title}`}
+            >
+              <span>
+                {!isPublished
+                  ? 'ADMISSIONS PAUSED'
+                  : isEnquiryOnly
+                  ? 'Enquire Now'
+                  : 'Enroll Now'}
+              </span>
+            </button>
+          )}
 
           <button
             type="button"
             className="tm-card-btn-details"
             onClick={handleDetailsClick}
-            aria-label="View Course Details"
+            aria-label={`View Details for ${title}`}
           >
             <span>View Details</span>
-            <ArrowRight size={14} className="tm-arrow-icon" aria-hidden="true" />
           </button>
         </div>
       </div>

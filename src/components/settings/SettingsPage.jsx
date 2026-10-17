@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './SettingsPage.css';
 
+import { authService } from '../../services/auth';
+
 export const SettingsPage = ({
   user,
   onBack,
@@ -17,15 +19,79 @@ export const SettingsPage = ({
   const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState(null); // { type: 'success' | 'error', text: '' }
 
+  // Student Profile details
+  const [profileForm, setProfileForm] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    mobile: user?.mobile || '',
+    trading_experience: user?.trading_experience || 'Intermediate',
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-  }, []);
+    if (user) {
+      setProfileForm({
+        name: user.name || '',
+        email: user.email || '',
+        mobile: user.mobile || '',
+        trading_experience: user.trading_experience || 'Intermediate',
+      });
+
+      // Synchronize latest profile data from PostgreSQL
+      fetch('/api/student/dashboard', { credentials: 'include' })
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && res.data?.profile) {
+            setProfileForm({
+              name: res.data.profile.name || '',
+              email: res.data.profile.email || user.email || '',
+              mobile: res.data.profile.mobile || '',
+              trading_experience: res.data.profile.trading_experience || 'Intermediate',
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user]);
 
   const showNotification = (text, type = 'success') => {
     setNotification({ text, type });
     setTimeout(() => {
       setNotification(null);
     }, 4500);
+  };
+
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+    if (!profileForm.name.trim()) {
+      showNotification('Full name is required.', 'error');
+      return;
+    }
+
+    setProfileSaving(true);
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(profileForm),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        showNotification(data.message || 'Profile successfully updated!', 'success');
+        if (data.user) {
+          authService.setCachedUser(data.user);
+        }
+      } else {
+        showNotification(data.error || 'Failed to update profile.', 'error');
+      }
+    } catch {
+      showNotification('Connection error while saving profile.', 'error');
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   const handlePasswordSubmit = async (e) => {
@@ -172,6 +238,93 @@ export const SettingsPage = ({
                 Sign In
               </button>
             )}
+          </div>
+        )}
+
+        {/* PROFILE INFORMATION CARD (when logged in) */}
+        {user && (
+          <div className="tm-settings-card">
+            <div className="tm-settings-card-header">
+              <span className="tm-settings-card-eyebrow">STUDENT IDENTITY</span>
+              <h2 className="tm-settings-card-title">Profile Information</h2>
+              <p className="tm-settings-card-desc">
+                Your personal and trading details linked to your official TRADEMAX account.
+              </p>
+            </div>
+
+            <form onSubmit={handleProfileSubmit} className="tm-settings-form">
+              <div className="tm-form-group">
+                <label className="tm-form-label" htmlFor="profile-name">
+                  Full Name <span className="tm-req">*</span>
+                </label>
+                <input
+                  id="profile-name"
+                  type="text"
+                  className="tm-form-control"
+                  value={profileForm.name}
+                  onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                  placeholder="e.g. Patil Trader"
+                  required
+                />
+              </div>
+
+              <div className="tm-form-group">
+                <label className="tm-form-label" htmlFor="profile-email">
+                  Registered Email Address
+                </label>
+                <input
+                  id="profile-email"
+                  type="email"
+                  className="tm-form-control is-readonly"
+                  value={user?.email || profileForm.email}
+                  disabled
+                  readOnly
+                />
+                <span className="tm-field-hint">Primary institutional email cannot be modified directly.</span>
+              </div>
+
+              <div className="tm-form-group">
+                <label className="tm-form-label" htmlFor="profile-mobile">
+                  Mobile Number <span className="tm-req">*</span>
+                </label>
+                <input
+                  id="profile-mobile"
+                  type="tel"
+                  className="tm-form-control"
+                  value={profileForm.mobile}
+                  onChange={(e) => setProfileForm({ ...profileForm, mobile: e.target.value })}
+                  placeholder="e.g. 9876543210"
+                  required
+                />
+              </div>
+
+              <div className="tm-form-group">
+                <label className="tm-form-label" htmlFor="profile-exp">
+                  Trading Experience Level
+                </label>
+                <select
+                  id="profile-exp"
+                  className="tm-form-control tm-form-select"
+                  value={profileForm.trading_experience}
+                  onChange={(e) => setProfileForm({ ...profileForm, trading_experience: e.target.value })}
+                >
+                  <option value="Beginner">Beginner (0-1 Years)</option>
+                  <option value="Intermediate">Intermediate (1-3 Years)</option>
+                  <option value="Advanced">Advanced (3-5 Years)</option>
+                  <option value="Professional">Professional (Institutional)</option>
+                </select>
+              </div>
+
+              <div className="tm-form-actions">
+                <button
+                  type="submit"
+                  className="tm-settings-submit-btn"
+                  disabled={profileSaving}
+                >
+                  {profileSaving ? 'Saving Profile...' : 'Save Profile Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         )}
 

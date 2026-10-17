@@ -8,9 +8,6 @@ import { CourseDetailsPage } from './components/courses/CourseDetailsPage';
 import { CourseRegistrationModal } from './components/courses/CourseRegistrationModal';
 import { AdminDashboardModal } from './components/admin/AdminDashboardModal';
 import { AdminPanel } from './components/admin/AdminPanel';
-import { FounderPage } from './components/founder/FounderPage';
-import { GalleryPage } from './components/gallery/GalleryPage';
-import { HomeGallerySection } from './components/landing/HomeGallerySection';
 import { StocksPage } from './components/stocks/StocksPage';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { MobileBottomNav } from './components/common/MobileBottomNav';
@@ -21,6 +18,26 @@ import { applySystemUI, getTopBarColor } from './systemUI';
 function App() {
   const authRef = useRef(null);
 
+  const [selectedCourseForDetails, setSelectedCourseForDetails] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname;
+      const hash = window.location.hash;
+      if (pathname.startsWith('/courses/')) {
+        const slug = pathname.replace(/^\/courses\/?/, '').split('/')[0];
+        if (slug) return slug;
+      }
+      if (hash.startsWith('#course-') && hash !== '#course-details') {
+        const slug = hash.replace(/^#course-/, '').split('?')[0];
+        if (slug) return slug;
+      }
+      if (hash.startsWith('#courses/')) {
+        const slug = hash.replace(/^#courses\/?/, '').split('?')[0];
+        if (slug) return slug;
+      }
+    }
+    return null;
+  });
+
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window !== 'undefined') {
       const pathname = window.location.pathname;
@@ -29,34 +46,13 @@ function App() {
 
       // Direct URL check for dedicated course details page
       if (
-        pathname === '/courses/trading-masterclass' ||
-        pathname === '/courses/trading-masterclass/' ||
-        hash === '#courses/trading-masterclass' ||
-        hash === '#/courses/trading-masterclass' ||
-        hash === '#course-trading-masterclass' ||
+        pathname.startsWith('/courses/') ||
+        hash.startsWith('#courses/') ||
+        hash.startsWith('#/courses/') ||
+        hash.startsWith('#course-') ||
         hash === '#course-details'
       ) {
         return 'course-details';
-      }
-
-      // Direct URL check for dedicated Founder page
-      if (
-        pathname === '/founder' ||
-        pathname === '/founder/' ||
-        hash === '#founder' ||
-        hash === '#/founder'
-      ) {
-        return 'founder';
-      }
-
-      // Direct URL check for dedicated Gallery page
-      if (
-        pathname === '/gallery' ||
-        pathname === '/gallery/' ||
-        hash === '#gallery' ||
-        hash === '#/gallery'
-      ) {
-        return 'gallery';
       }
 
       if (hash === '#stocks' || hash === '#terminal' || hash === '#charts') {
@@ -91,6 +87,14 @@ function App() {
   });
 
   const [user, setUser] = useState(() => authService.getCachedUser());
+  const [dashboardTab, setDashboardTab] = useState(() => {
+    if (typeof window !== 'undefined' && window.location.hash === '#my-courses') {
+      return 'my-courses';
+    }
+    return 'dashboard';
+  });
+  const previousViewRef = useRef(user ? 'dashboard' : 'landing');
+  const [selectedCourseForEnroll, setSelectedCourseForEnroll] = useState(null);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -188,8 +192,8 @@ function App() {
 
         if (verifiedUser.role === 'admin' && (hash === '#admin' || hash === '')) {
           setCurrentView('admin');
-          if (hash !== '#admin') {
-            window.location.hash = '#admin';
+          if (hash !== '#admin' && typeof window !== 'undefined') {
+            window.history.replaceState(null, '', '/#admin');
           }
           return;
         }
@@ -201,8 +205,8 @@ function App() {
           hash === '#dashboard'
         ) {
           setCurrentView('dashboard');
-          if (hash !== '#dashboard') {
-            window.location.hash = '#dashboard';
+          if (hash !== '#dashboard' && typeof window !== 'undefined') {
+            window.history.replaceState(null, '', '/#dashboard');
           }
           return;
         }
@@ -210,7 +214,9 @@ function App() {
         // Direct authenticated student opening root / with no hash to dashboard
         if (hash === '' && (pathname === '/' || !pathname)) {
           setCurrentView('dashboard');
-          window.location.hash = '#dashboard';
+          if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', '/#dashboard');
+          }
           return;
         }
       } else {
@@ -225,7 +231,9 @@ function App() {
           pathname === '/student/'
         ) {
           setCurrentView('landing');
-          window.location.hash = '#home';
+          if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', '/#home');
+          }
         }
       }
     });
@@ -249,7 +257,9 @@ function App() {
           return;
         } else {
           setCurrentView('landing');
-          window.location.hash = '#home';
+          if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', '/#home');
+          }
           if (authRef.current) {
             authRef.current.openFrom(null, 'login');
           }
@@ -258,35 +268,22 @@ function App() {
       }
 
       if (
-        pathname === '/founder' ||
-        pathname === '/founder/' ||
-        hash === '#founder' ||
-        hash === '#/founder'
-      ) {
-        setCurrentView('founder');
-        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-        return;
-      }
-
-      if (
-        pathname === '/gallery' ||
-        pathname === '/gallery/' ||
-        hash === '#gallery' ||
-        hash === '#/gallery'
-      ) {
-        setCurrentView('gallery');
-        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-        return;
-      }
-
-      if (
-        pathname === '/courses/trading-masterclass' ||
-        pathname === '/courses/trading-masterclass/' ||
-        hash === '#courses/trading-masterclass' ||
-        hash === '#/courses/trading-masterclass' ||
-        hash === '#course-trading-masterclass' ||
+        pathname.startsWith('/courses/') ||
+        hash.startsWith('#courses/') ||
+        hash.startsWith('#/courses/') ||
+        hash.startsWith('#course-') ||
         hash === '#course-details'
       ) {
+        const slug = pathname.startsWith('/courses/')
+          ? pathname.replace(/^\/courses\/?/, '').split('/')[0]
+          : hash.startsWith('#course-') && hash !== '#course-details'
+          ? hash.replace(/^#course-/, '').split('?')[0]
+          : hash.startsWith('#courses/')
+          ? hash.replace(/^#courses\/?/, '').split('?')[0]
+          : null;
+        if (slug) {
+          setSelectedCourseForDetails(slug);
+        }
         setCurrentView('course-details');
         window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         return;
@@ -304,6 +301,23 @@ function App() {
         return;
       }
 
+      if (hash === '#my-courses') {
+        if (!currentUser) {
+          setCurrentView('landing');
+          if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', '/#home');
+          }
+          if (authRef.current) {
+            authRef.current.openFrom(null, 'login');
+          }
+          return;
+        }
+        setDashboardTab('my-courses');
+        setCurrentView('dashboard');
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        return;
+      }
+
       if (
         pathname === '/student' ||
         pathname === '/student/' ||
@@ -312,15 +326,17 @@ function App() {
       ) {
         if (!currentUser) {
           setCurrentView('landing');
-          window.location.hash = '#home';
+          if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', '/#home');
+          }
           if (authRef.current) {
             authRef.current.openFrom(null, 'login');
           }
           return;
         }
         setCurrentView('dashboard');
-        if (hash !== '#dashboard') {
-          window.location.hash = '#dashboard';
+        if (hash !== '#dashboard' && typeof window !== 'undefined') {
+          window.history.replaceState(null, '', '/#dashboard');
         }
         window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         return;
@@ -331,10 +347,12 @@ function App() {
         return;
       }
 
-      if (hash === '') {
+      if (hash === '' || hash === '#') {
         if (currentUser) {
           setCurrentView('dashboard');
-          window.location.hash = '#dashboard';
+          if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', '/#dashboard');
+          }
           return;
         }
         setCurrentView('landing');
@@ -367,11 +385,14 @@ function App() {
     }
   };
 
-  const handleRegisterForCourse = () => {
+  const handleRegisterForCourse = (courseToEnroll) => {
+    const target = courseToEnroll || primaryCourse;
+    setSelectedCourseForEnroll(target);
+
     const currentUser = user || authService.getCachedUser();
     if (!currentUser) {
       // User is logged out: open Sign In modal directly
-      pendingCourseEnrollRef.current = true;
+      pendingCourseEnrollRef.current = target;
       if (authRef.current) {
         authRef.current.openFrom(null, 'login');
       }
@@ -384,19 +405,26 @@ function App() {
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
-    const shouldContinueEnroll = pendingCourseEnrollRef.current;
+    const pendingCourse = pendingCourseEnrollRef.current;
     pendingCourseEnrollRef.current = false;
 
     if (userData?.role === 'admin') {
+      previousViewRef.current = 'landing';
       setCurrentView('admin');
-      window.location.hash = '#admin';
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({ view: 'admin' }, '', '/#admin');
+      }
     } else {
+      previousViewRef.current = 'landing';
       setCurrentView('dashboard');
-      window.location.hash = '#dashboard';
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({ view: 'dashboard' }, '', '/#dashboard');
+      }
     }
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
 
-    if (shouldContinueEnroll) {
+    if (pendingCourse) {
+      setSelectedCourseForEnroll(typeof pendingCourse === 'object' ? pendingCourse : primaryCourse);
       setIsRegisterModalOpen(true);
     }
   };
@@ -404,8 +432,11 @@ function App() {
   const handleOpenAdminPortal = () => {
     const currentUser = authService.getCachedUser();
     if (currentUser?.role === 'admin') {
+      previousViewRef.current = currentView;
       setCurrentView('admin');
-      window.location.hash = '#admin';
+      if (typeof window !== 'undefined') {
+        window.history.pushState({ view: 'admin' }, '', '/#admin');
+      }
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     } else {
       if (authRef.current) {
@@ -416,14 +447,18 @@ function App() {
 
   const handleRegisterSuccess = (userData) => {
     setUser(userData);
-    const shouldContinueEnroll = pendingCourseEnrollRef.current;
+    const pendingCourse = pendingCourseEnrollRef.current;
     pendingCourseEnrollRef.current = false;
 
+    previousViewRef.current = 'landing';
     setCurrentView('dashboard');
-    window.location.hash = '#dashboard';
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({ view: 'dashboard' }, '', '/#dashboard');
+    }
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
 
-    if (shouldContinueEnroll) {
+    if (pendingCourse) {
+      setSelectedCourseForEnroll(typeof pendingCourse === 'object' ? pendingCourse : primaryCourse);
       setIsRegisterModalOpen(true);
     }
   };
@@ -431,12 +466,40 @@ function App() {
   const handleLogout = async () => {
     await authService.logout();
     setUser(null);
+    previousViewRef.current = 'landing';
     setCurrentView('landing');
-    window.location.hash = '#home';
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({ view: 'landing' }, '', '/#home');
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  };
+
+  const handleOpenCourseDetails = (courseOrSlugOrId) => {
+    const target = courseOrSlugOrId || primaryCourse;
+    setSelectedCourseForDetails(target);
+    const slug =
+      typeof target === 'string'
+        ? target
+        : target?.slug || target?.id || 'trading-masterclass';
+
+    // Track the originating view so Back returns immediately in 1 click
+    if (currentView !== 'course-details') {
+      previousViewRef.current = currentView;
+    }
+
+    if (typeof window !== 'undefined') {
+      // Single clean history push without double-pushing hashes
+      window.history.pushState({ view: 'course-details', slug }, '', `/courses/${slug}`);
+    }
+    setCurrentView('course-details');
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   };
 
   const handleNavigate = (view) => {
+    if (view !== currentView && currentView !== 'course-details') {
+      previousViewRef.current = currentView;
+    }
+
     if (view === 'dashboard') {
       const currentUser = authService.getCachedUser();
       if (!currentUser) {
@@ -445,42 +508,46 @@ function App() {
         }
         return;
       }
+      setDashboardTab('dashboard');
       if (typeof window !== 'undefined') {
-        window.history.pushState(null, '', '/');
-        window.location.hash = '#dashboard';
+        window.history.pushState({ view: 'dashboard' }, '', '/#dashboard');
+      }
+      setCurrentView('dashboard');
+    } else if (view === 'my-courses') {
+      const currentUser = authService.getCachedUser();
+      if (!currentUser) {
+        if (authRef.current) {
+          authRef.current.openFrom(null, 'login');
+        }
+        return;
+      }
+      setDashboardTab('my-courses');
+      if (typeof window !== 'undefined') {
+        window.history.pushState({ view: 'my-courses' }, '', '/#my-courses');
       }
       setCurrentView('dashboard');
     } else if (view === 'stocks' || view === 'charts' || view === 'terminal') {
       if (typeof window !== 'undefined') {
-        window.history.pushState(null, '', '/');
-        window.location.hash = '#stocks';
+        window.history.pushState({ view: 'stocks' }, '', '/#stocks');
       }
       setCurrentView('stocks');
     } else if (view === 'settings') {
       if (typeof window !== 'undefined') {
-        window.history.pushState(null, '', '/');
-        window.location.hash = '#settings';
+        window.history.pushState({ view: 'settings' }, '', '/#settings');
       }
       setCurrentView('settings');
     } else if (view === 'course-details') {
+      const slug =
+        typeof selectedCourseForDetails === 'string'
+          ? selectedCourseForDetails
+          : selectedCourseForDetails?.slug || selectedCourseForDetails?.id || primaryCourse?.slug || 'trading-masterclass';
       if (typeof window !== 'undefined') {
-        window.history.pushState(null, '', '/courses/trading-masterclass');
+        window.history.pushState({ view: 'course-details', slug }, '', `/courses/${slug}`);
       }
       setCurrentView('course-details');
-    } else if (view === 'founder') {
-      if (typeof window !== 'undefined') {
-        window.history.pushState(null, '', '/founder');
-      }
-      setCurrentView('founder');
-    } else if (view === 'gallery') {
-      if (typeof window !== 'undefined') {
-        window.history.pushState(null, '', '/gallery');
-      }
-      setCurrentView('gallery');
     } else if (view === 'courses') {
       if (typeof window !== 'undefined') {
-        window.history.pushState(null, '', '/');
-        window.location.hash = '#courses';
+        window.history.pushState({ view: 'landing' }, '', '/#courses');
       }
       setCurrentView('landing');
       setTimeout(() => {
@@ -489,22 +556,28 @@ function App() {
       }, 50);
     } else {
       if (typeof window !== 'undefined') {
-        window.history.pushState(null, '', '/');
-        window.location.hash = '#home';
+        window.history.pushState({ view: 'landing' }, '', '/#home');
       }
       setCurrentView('landing');
     }
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   };
 
-  const handleNavigateBack = () => {
-    if (typeof window !== 'undefined') {
-      if (window.history.length > 1) {
-        window.history.back();
-      } else {
-        handleNavigate('landing');
-      }
+  const handleNavigateBack = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+
+    // Determine target view cleanly: return to dashboard if student was in portal, or landing
+    let target = previousViewRef.current;
+    if (!target || target === currentView) {
+      target = user ? 'dashboard' : 'landing';
     }
+
+    // Reset previous view to prevent loops
+    previousViewRef.current = user ? 'dashboard' : 'landing';
+
+    // Synchronously transition view on THIS click without delay
+    handleNavigate(target);
   };
 
   const showBottomNav = Boolean(user) && currentView !== 'admin';
@@ -542,10 +615,13 @@ function App() {
         <StudentDashboard
           user={user}
           course={primaryCourse}
-          onOpenCourseDetails={() => handleNavigate('course-details')}
+          initialTab={dashboardTab}
+          onTabChange={setDashboardTab}
+          onOpenCourseDetails={handleOpenCourseDetails}
           onRegisterCourse={handleRegisterForCourse}
           onExit={() => handleNavigate('landing')}
           onLogout={handleLogout}
+          onNavigate={handleNavigate}
           theme={theme}
           onToggleTheme={toggleTheme}
         />
@@ -564,61 +640,13 @@ function App() {
           />
           <CourseDetailsPage
             onBack={handleNavigateBack}
-            onRegister={handleRegisterForCourse}
-            course={primaryCourse}
+            onRegister={(courseToEnroll) => handleRegisterForCourse(courseToEnroll || selectedCourseForDetails || primaryCourse)}
+            onNavigate={handleNavigate}
+            course={selectedCourseForDetails || primaryCourse}
             settings={courseSettings}
-            theme={theme}
-            onToggleTheme={toggleTheme}
-          />
-          <Footer onNavigate={handleNavigate} theme={theme} />
-          <AuthOverlay
-            ref={authRef}
-            onLoginSuccess={handleLoginSuccess}
-            onRegisterSuccess={handleRegisterSuccess}
-          />
-        </div>
-      ) : currentView === 'founder' ? (
-        <div className={`tm-founder-page-wrapper tm-theme-${theme}`}>
-          <Navbar
-            onOpenAuth={handleOpenAuth}
-            onNavigate={handleNavigate}
             user={user}
-            onLogout={handleLogout}
             theme={theme}
             onToggleTheme={toggleTheme}
-            isHome={false}
-            currentView="founder"
-            onBack={handleNavigateBack}
-          />
-          <FounderPage
-            onBack={handleNavigateBack}
-            onNavigate={handleNavigate}
-            theme={theme}
-          />
-          <Footer onNavigate={handleNavigate} theme={theme} />
-          <AuthOverlay
-            ref={authRef}
-            onLoginSuccess={handleLoginSuccess}
-            onRegisterSuccess={handleRegisterSuccess}
-          />
-        </div>
-      ) : currentView === 'gallery' ? (
-        <div className={`tm-gallery-page-wrapper tm-theme-${theme}`}>
-          <Navbar
-            onOpenAuth={handleOpenAuth}
-            onNavigate={handleNavigate}
-            user={user}
-            onLogout={handleLogout}
-            theme={theme}
-            onToggleTheme={toggleTheme}
-            isHome={false}
-            currentView="gallery"
-            onBack={handleNavigateBack}
-          />
-          <GalleryPage
-            onBack={handleNavigateBack}
-            onNavigate={handleNavigate}
-            theme={theme}
           />
           <Footer onNavigate={handleNavigate} theme={theme} />
           <AuthOverlay
@@ -645,15 +673,11 @@ function App() {
             theme={theme}
           />
           <CoursesSection
-            onOpenDetails={() => handleNavigate('course-details')}
+            onOpenDetails={handleOpenCourseDetails}
             onRegister={handleRegisterForCourse}
-            course={primaryCourse}
+            courses={courses}
             settings={courseSettings}
-            theme={theme}
-          />
-          {/* Life Behind TRADEMAX — Homepage Gallery Section */}
-          <HomeGallerySection
-            onNavigate={handleNavigate}
+            user={user}
             theme={theme}
           />
           <AuthOverlay
@@ -670,8 +694,8 @@ function App() {
       <CourseRegistrationModal
         isOpen={isRegisterModalOpen}
         onClose={() => setIsRegisterModalOpen(false)}
-        batchName={primaryCourse?.batch_name || courseSettings.batchName}
-        courseId={primaryCourse?.id}
+        course={selectedCourseForEnroll || primaryCourse}
+        batchName={(selectedCourseForEnroll || primaryCourse)?.batch_name || courseSettings.batchName}
         user={user}
         onNavigate={handleNavigate}
       />
@@ -680,6 +704,7 @@ function App() {
       {showBottomNav && (
         <MobileBottomNav
           currentView={currentView}
+          activeTab={dashboardTab}
           onNavigate={handleNavigate}
           theme={theme}
           onToggleTheme={toggleTheme}

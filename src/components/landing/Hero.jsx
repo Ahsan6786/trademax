@@ -149,6 +149,35 @@ export const Hero = ({ onOpenAuth, onNavigate }) => {
               Register
             </button>
           </div>
+
+          {/* Client-Provided Key Highlights & Track Record Claims (Mobile) */}
+          <div className="tm-hero-stats-panel" aria-label="TradeMax Key Highlights">
+            <div className="tm-hero-stats-grid">
+              <div className="tm-hero-stat-card">
+                <span className="tm-hero-stat-val">5+ Years</span>
+                <span className="tm-hero-stat-lbl">Trading Experience</span>
+              </div>
+              <div className="tm-hero-stat-card">
+                <span className="tm-hero-stat-val">84%</span>
+                <span className="tm-hero-stat-lbl">Win Ratio*</span>
+              </div>
+              <div className="tm-hero-stat-card">
+                <span className="tm-hero-stat-val">700+ Students</span>
+                <span className="tm-hero-stat-lbl">FINXPO 2025</span>
+              </div>
+              <div className="tm-hero-stat-card">
+                <span className="tm-hero-stat-val">60+ Participants</span>
+                <span className="tm-hero-stat-lbl">Resort Trading Experience</span>
+              </div>
+              <div className="tm-hero-stat-card tm-hero-stat-card-wide">
+                <span className="tm-hero-stat-val">Institutional</span>
+                <span className="tm-hero-stat-lbl">Liquidity-Based Trading Strategy</span>
+              </div>
+            </div>
+            <p className="tm-hero-stats-disclaimer">
+              *Client-provided claims and event participation. Trading involves financial risk; past performance does not guarantee future results.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -175,7 +204,7 @@ export const Hero = ({ onOpenAuth, onNavigate }) => {
             <div className="tm-reff-art-backdrop" aria-hidden="true">
               <img
                 src="/heroo.png"
-                alt="TradeMax Sculptural Bull & Archway Artwork"
+                alt="Patil Trader — Founder of TRADEMAX"
                 className="tm-reff-art-img"
                 loading="eager"
               />
@@ -224,6 +253,35 @@ export const Hero = ({ onOpenAuth, onNavigate }) => {
                     >
                       Register
                     </button>
+                  </div>
+
+                  {/* Client-Provided Key Highlights & Track Record Claims (Desktop) */}
+                  <div className="tm-hero-stats-panel" aria-label="TradeMax Key Highlights">
+                    <div className="tm-hero-stats-grid">
+                      <div className="tm-hero-stat-card">
+                        <span className="tm-hero-stat-val">5+ Years</span>
+                        <span className="tm-hero-stat-lbl">Trading Experience</span>
+                      </div>
+                      <div className="tm-hero-stat-card">
+                        <span className="tm-hero-stat-val">84%</span>
+                        <span className="tm-hero-stat-lbl">Win Ratio*</span>
+                      </div>
+                      <div className="tm-hero-stat-card">
+                        <span className="tm-hero-stat-val">Institutional</span>
+                        <span className="tm-hero-stat-lbl">Liquidity Strategy</span>
+                      </div>
+                      <div className="tm-hero-stat-card tm-hero-stat-card-half">
+                        <span className="tm-hero-stat-val">700+ Students</span>
+                        <span className="tm-hero-stat-lbl">FINXPO 2025</span>
+                      </div>
+                      <div className="tm-hero-stat-card tm-hero-stat-card-half">
+                        <span className="tm-hero-stat-val">60+ Participants</span>
+                        <span className="tm-hero-stat-lbl">Resort Trading Experience</span>
+                      </div>
+                    </div>
+                    <p className="tm-hero-stats-disclaimer">
+                      *Client-provided claims and event participation. Trading involves financial risk; past performance does not guarantee future results.
+                    </p>
                   </div>
                 </div>
               </div>

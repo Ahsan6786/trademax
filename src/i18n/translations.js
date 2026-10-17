@@ -20,7 +20,8 @@ export const translations = {
     portalSub: 'STUDENT PORTAL',
     nav: {
       dashboard: 'Dashboard',
-      courses: 'Courses',
+      myCourses: 'My Courses',
+      courses: 'All Courses',
       liveClasses: 'Live Classes',
       announcements: 'Announcements',
       settings: 'Settings',
@@ -66,7 +67,7 @@ export const translations = {
     },
     courses: {
       pageTitle: 'Available Courses',
-      pageDesc: 'All published institutional trading programs fetched directly from TradeMax.',
+      pageDesc: '',
       duration: 'Duration',
       mode: 'Mode',
       level: 'Level',
@@ -129,7 +130,8 @@ export const translations = {
     portalSub: 'छात्र पोर्टल',
     nav: {
       dashboard: 'डैशबोर्ड',
-      courses: 'कोर्सेस',
+      myCourses: 'मेरे कोर्सेस',
+      courses: 'सभी कोर्सेस',
       liveClasses: 'लाइव क्लासेस',
       announcements: 'सूचनाएं',
       settings: 'सेटिंग्स',
@@ -238,7 +240,8 @@ export const translations = {
     portalSub: 'विद्यार्थी पोर्टल',
     nav: {
       dashboard: 'डॅशबोर्ड',
-      courses: 'कोर्सेस',
+      myCourses: 'माझे कोर्सेस',
+      courses: 'सर्व कोर्सेस',
       liveClasses: 'लाइव्ह क्लासेस',
       announcements: 'सूचना',
       settings: 'सेटिंग्ज',
@@ -347,7 +350,8 @@ export const translations = {
     portalSub: 'વિદ્યાર્થી પોર્ટલ',
     nav: {
       dashboard: 'ડેશબોર્ડ',
-      courses: 'અભ્યાસક્રમો',
+      myCourses: 'મારા અભ્યાસક્રમો',
+      courses: 'બધા અભ્યાસક્રમો',
       liveClasses: 'લાઈવ વર્ગો',
       announcements: 'જાહેરાતો',
       settings: 'સેટિંગ્સ',

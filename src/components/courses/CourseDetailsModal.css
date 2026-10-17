@@ -1,0 +1,410 @@
+/* ==========================================================================
+   TRADEMAX — Course Details Modal
+   100% Solid surfaces (No glassmorphism, No blur, No icons)
+   Minimal, readable typography, robust contrast
+   ========================================================================== */
+
+.tm-cdm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background-color: rgba(10, 15, 26, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  animation: tm-cdm-fade-in 0.18s ease-out;
+}
+
+@keyframes tm-cdm-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.tm-cdm-card {
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  background-color: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+  position: relative;
+  animation: tm-cdm-scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tm-cdm-scale-in {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* --------------------------------------------------------------------------
+   HEADER
+   -------------------------------------------------------------------------- */
+.tm-cdm-header {
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid #E2E8F0;
+  position: relative;
+  background-color: #F8FAFC;
+}
+
+.tm-cdm-eyebrow {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #B45309;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.tm-cdm-title {
+  margin: 0 0 6px 0;
+  font-size: 24px;
+  font-weight: 850;
+  color: #0F172A;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  padding-right: 32px;
+}
+
+.tm-cdm-subtitle {
+  margin: 0 0 14px 0;
+  font-size: 14px;
+  color: #64748B;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.tm-cdm-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  color: #64748B;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  line-height: 1;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.tm-cdm-close-btn:hover {
+  background-color: #E2E8F0;
+  color: #0F172A;
+}
+
+.tm-cdm-specs-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 12.5px;
+}
+
+.tm-cdm-spec-item {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tm-cdm-spec-label {
+  color: #64748B;
+  font-weight: 600;
+}
+
+.tm-cdm-spec-value {
+  color: #0F172A;
+  font-weight: 750;
+}
+
+/* --------------------------------------------------------------------------
+   BODY
+   -------------------------------------------------------------------------- */
+.tm-cdm-body {
+  padding: 24px 28px;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.tm-cdm-section {
+  margin-bottom: 24px;
+}
+
+.tm-cdm-section:last-child {
+  margin-bottom: 0;
+}
+
+.tm-cdm-section-heading {
+  margin: 0 0 10px 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.tm-cdm-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #334155;
+}
+
+.tm-cdm-topics-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.tm-cdm-topic-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+
+.tm-cdm-topic-bullet {
+  color: #DC2626;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.tm-cdm-topic-text {
+  font-size: 13.5px;
+  color: #1E293B;
+  font-weight: 550;
+  line-height: 1.45;
+}
+
+.tm-cdm-outcome-box {
+  background-color: #F1F5F9;
+  border: 1px solid #CBD5E1;
+  border-left: 4px solid #DC2626;
+  padding: 16px 18px;
+  border-radius: 8px;
+}
+
+.tm-cdm-outcome-text {
+  font-weight: 600;
+  color: #0F172A;
+}
+
+/* --------------------------------------------------------------------------
+   FOOTER
+   -------------------------------------------------------------------------- */
+.tm-cdm-footer {
+  padding: 16px 28px;
+  border-top: 1px solid #E2E8F0;
+  background-color: #F8FAFC;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.tm-cdm-footer-price {
+  display: flex;
+  flex-direction: column;
+}
+
+.tm-cdm-footer-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748B;
+  letter-spacing: 0.05em;
+}
+
+.tm-cdm-footer-amount {
+  font-size: 20px;
+  font-weight: 850;
+  color: #0F172A;
+}
+
+.tm-cdm-footer-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tm-cdm-btn-cancel,
+.tm-cdm-btn-primary {
+  padding: 11px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.tm-cdm-btn-cancel {
+  background-color: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: #334155;
+}
+
+.tm-cdm-btn-cancel:hover {
+  background-color: #E2E8F0;
+}
+
+.tm-cdm-btn-primary {
+  background-color: #DC2626;
+  border: 1px solid #DC2626;
+  color: #FFFFFF;
+}
+
+.tm-cdm-btn-primary:hover {
+  background-color: #B91C1C;
+  border-color: #B91C1C;
+}
+
+.tm-cdm-btn-primary.tm-cdm-btn-enquire {
+  background-color: #B45309;
+  border-color: #B45309;
+}
+
+.tm-cdm-btn-primary.tm-cdm-btn-enquire:hover {
+  background-color: #92400E;
+  border-color: #92400E;
+}
+
+/* --------------------------------------------------------------------------
+   DARK MODE
+   -------------------------------------------------------------------------- */
+html[data-theme="dark"] .tm-cdm-card {
+  background-color: #0B0F19;
+  border-color: #1E293B;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
+}
+
+html[data-theme="dark"] .tm-cdm-header {
+  background-color: #111827;
+  border-bottom-color: #1E293B;
+}
+
+html[data-theme="dark"] .tm-cdm-eyebrow {
+  color: #F59E0B;
+}
+
+html[data-theme="dark"] .tm-cdm-title {
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .tm-cdm-subtitle {
+  color: #94A3B8;
+}
+
+html[data-theme="dark"] .tm-cdm-close-btn {
+  color: #94A3B8;
+}
+
+html[data-theme="dark"] .tm-cdm-close-btn:hover {
+  background-color: #1E293B;
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .tm-cdm-spec-label {
+  color: #94A3B8;
+}
+
+html[data-theme="dark"] .tm-cdm-spec-value {
+  color: #F1F5F9;
+}
+
+html[data-theme="dark"] .tm-cdm-section-heading {
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .tm-cdm-text {
+  color: #CBD5E1;
+}
+
+html[data-theme="dark"] .tm-cdm-topic-item {
+  background-color: #111827;
+  border-color: #1E293B;
+}
+
+html[data-theme="dark"] .tm-cdm-topic-text {
+  color: #F1F5F9;
+}
+
+html[data-theme="dark"] .tm-cdm-outcome-box {
+  background-color: #111827;
+  border-color: #1E293B;
+  border-left-color: #DC2626;
+}
+
+html[data-theme="dark"] .tm-cdm-outcome-text {
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .tm-cdm-footer {
+  background-color: #111827;
+  border-top-color: #1E293B;
+}
+
+html[data-theme="dark"] .tm-cdm-footer-label {
+  color: #94A3B8;
+}
+
+html[data-theme="dark"] .tm-cdm-footer-amount {
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .tm-cdm-btn-cancel {
+  background-color: #1E293B;
+  border-color: #334155;
+  color: #F1F5F9;
+}
+
+html[data-theme="dark"] .tm-cdm-btn-cancel:hover {
+  background-color: #334155;
+}
+
+/* --------------------------------------------------------------------------
+   RESPONSIVENESS
+   -------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .tm-cdm-card {
+    max-height: 94vh;
+  }
+  .tm-cdm-header {
+    padding: 18px 18px 16px;
+  }
+  .tm-cdm-title {
+    font-size: 20px;
+  }
+  .tm-cdm-body {
+    padding: 18px;
+  }
+  .tm-cdm-specs-row {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .tm-cdm-footer {
+    padding: 14px 18px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .tm-cdm-footer-price {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .tm-cdm-footer-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+}

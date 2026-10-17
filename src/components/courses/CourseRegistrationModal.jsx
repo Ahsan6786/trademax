@@ -5,10 +5,18 @@ import './CourseRegistrationModal.css';
 export const CourseRegistrationModal = ({
   isOpen,
   onClose,
-  batchName = 'November',
+  course,
+  batchName: propBatchName = 'November',
   user,
   onNavigate,
 }) => {
+  const targetCourseTitle = course?.title || 'Basics to Advanced Course';
+  const targetCourseSlug = course?.slug || 'trading-masterclass';
+  const targetCourseId = course?.id || null;
+  const targetCoursePrice = course?.price !== undefined ? parseFloat(course.price) : 20000;
+  const targetOriginalPrice = course?.original_price !== undefined ? parseFloat(course.original_price) : 0;
+  const batchName = course?.batch_name || propBatchName;
+
   const [formData, setFormData] = useState({
     name: user?.name || '',
     mobile: user?.mobile || '',
@@ -27,7 +35,7 @@ export const CourseRegistrationModal = ({
   const [enrollmentDetails, setEnrollmentDetails] = useState(null);
   const [completedPayment, setCompletedPayment] = useState(null);
 
-  // Sync user profile when user prop changes or modal opens (prefill without green banner)
+  // Sync user profile when user prop changes or modal opens (prefill without requiring re-entry)
   useEffect(() => {
     if (user) {
       setFormData((prev) => ({
@@ -38,9 +46,9 @@ export const CourseRegistrationModal = ({
         trading_experience: user.trading_experience || prev.trading_experience,
       }));
     }
-  }, [user]);
+  }, [user, isOpen]);
 
-  // Check if current user/email is already enrolled
+  // Check if current user/email is already enrolled for this course
   useEffect(() => {
     if (!isOpen) return;
 
@@ -50,7 +58,9 @@ export const CourseRegistrationModal = ({
     const token = localStorage.getItem('tm_token');
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-    fetch(`/api/courses/check-enrollment?course_slug=trading-masterclass&email=${encodeURIComponent(checkEmail)}`, {
+    const querySlug = encodeURIComponent(targetCourseSlug);
+    const queryId = targetCourseId ? `&course_id=${targetCourseId}` : '';
+    fetch(`/api/courses/check-enrollment?course_slug=${querySlug}${queryId}&email=${encodeURIComponent(checkEmail)}`, {
       headers,
     })
       .then((res) => res.json())
@@ -63,7 +73,7 @@ export const CourseRegistrationModal = ({
         }
       })
       .catch((err) => console.warn('Could not verify enrollment status:', err));
-  }, [isOpen, user?.email]);
+  }, [isOpen, user?.email, targetCourseSlug, targetCourseId]);
 
   if (!isOpen) return null;
 
@@ -127,8 +137,9 @@ export const CourseRegistrationModal = ({
         headers,
         body: JSON.stringify({
           ...formData,
-          course_slug: 'trading-masterclass',
-          course_name: 'Trading Masterclass (Forex & Crypto Trading)',
+          course_id: targetCourseId,
+          course_slug: targetCourseSlug,
+          course_name: targetCourseTitle,
           batch_name: batchName,
         }),
       });
@@ -158,7 +169,7 @@ export const CourseRegistrationModal = ({
         amount: order.amount,
         currency: currency || 'INR',
         name: 'TRADEMAX',
-        description: `Admission: Trading Masterclass (${batchName} Batch)`,
+        description: `Admission: ${targetCourseTitle} (${batchName} Batch)`,
         image: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
         order_id: order.id,
         prefill: {
@@ -167,7 +178,9 @@ export const CourseRegistrationModal = ({
           contact: formData.mobile.trim(),
         },
         notes: {
-          course_slug: 'trading-masterclass',
+          course_id: targetCourseId ? String(targetCourseId) : '',
+          course_slug: targetCourseSlug,
+          course_title: targetCourseTitle,
           batch_name: batchName,
           test_mode: 'true',
         },
@@ -185,6 +198,7 @@ export const CourseRegistrationModal = ({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
+                course_id: targetCourseId,
                 name: formData.name,
                 email: formData.email,
                 mobile: formData.mobile,
@@ -192,7 +206,7 @@ export const CourseRegistrationModal = ({
                 interest: formData.interest,
                 reference: formData.reference,
                 batch_name: batchName,
-                course_slug: 'trading-masterclass',
+                course_slug: targetCourseSlug,
               }),
             });
 
@@ -318,7 +332,7 @@ export const CourseRegistrationModal = ({
             <div className="tm-reg-status-pill">Seat Reserved</div>
             <h3 className="tm-reg-success-title">Already Enrolled</h3>
             <p className="tm-reg-success-msg">
-              Your admission for <strong>Trading Masterclass ({batchName} Batch)</strong> is already confirmed.
+              Your admission for <strong>{targetCourseTitle} ({batchName} Batch)</strong> is already confirmed.
             </p>
             <div className="tm-reg-hotline-box">
               <span>Direct Admissions Hotline:</span>
@@ -347,7 +361,7 @@ export const CourseRegistrationModal = ({
             <div className="tm-reg-status-pill success">Payment Verified &middot; Access Granted</div>
             <h3 className="tm-reg-success-title">Enrollment Confirmed</h3>
             <p className="tm-reg-success-msg">
-              Your payment has been verified on our secure server. Welcome to the <strong>Trading Masterclass ({batchName} Batch)</strong>.
+              Your payment has been verified on our secure server. Welcome to <strong>{targetCourseTitle} ({batchName} Batch)</strong>.
             </p>
 
             {completedPayment && (
@@ -408,10 +422,10 @@ export const CourseRegistrationModal = ({
                 TRADEMAX &middot; {batchName.toUpperCase()} BATCH ADMISSIONS
               </div>
               <h2 id="course-modal-title" className="tm-course-modal-title">
-                Enroll in Trading Masterclass
+                Enroll in {targetCourseTitle}
               </h2>
               <p className="tm-course-modal-sub">
-                Forex &amp; Crypto Institutional Trading. Cohort seats reserved upon confirmed payment.
+                {course?.subtitle || 'Cohort seats reserved upon confirmed payment.'}
               </p>
             </div>
 
@@ -514,9 +528,13 @@ export const CourseRegistrationModal = ({
                   <span className="tm-cm-test-mode-tag">Razorpay Test Mode</span>
                 </div>
                 <div className="tm-cm-fee-prices">
-                  <span className="tm-cm-fee-strike">₹24,999</span>
-                  <span className="tm-cm-fee-bold">₹19,999</span>
-                  <span className="tm-cm-fee-save">Save ₹5,000</span>
+                  {targetOriginalPrice > targetCoursePrice && (
+                    <span className="tm-cm-fee-strike">₹{targetOriginalPrice.toLocaleString('en-IN')}</span>
+                  )}
+                  <span className="tm-cm-fee-bold">₹{targetCoursePrice.toLocaleString('en-IN')}</span>
+                  {targetOriginalPrice > targetCoursePrice && (
+                    <span className="tm-cm-fee-save">Save ₹{(targetOriginalPrice - targetCoursePrice).toLocaleString('en-IN')}</span>
+                  )}
                 </div>
               </div>
 
@@ -535,7 +553,7 @@ export const CourseRegistrationModal = ({
                 ) : isSubmitting ? (
                   'Processing Enrollment...'
                 ) : (
-                  'Proceed to Pay ₹19,999 (Test Mode)'
+                  `Proceed to Pay ₹${targetCoursePrice.toLocaleString('en-IN')} (Test Mode)`
                 )}
               </button>
 

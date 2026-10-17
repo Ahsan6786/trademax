@@ -145,6 +145,19 @@ export const authService = {
   },
 
   /**
+   * Update cached user session in localStorage
+   */
+  setCachedUser(user) {
+    if (user && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('tm_student_session', JSON.stringify(user));
+      } catch {
+        // Ignore storage errors
+      }
+    }
+  },
+
+  /**
    * Check whether user has already completed the one-time welcome experience.
    * Backed by persistent database column and device cache.
    */

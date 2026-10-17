@@ -1,7 +1,52 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { pool } from '../db.js';
 import { adminMiddleware } from '../middleware/admin.js';
+import {
+  generatePresignedPutUrl,
+  generatePresignedGetUrl,
+  verifyS3Object,
+  deleteS3Object,
+  initiateMultipart,
+  generatePresignedPartUrl,
+  completeMultipart,
+  abortMultipart,
+} from '../services/s3Service.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadDir = path.resolve(__dirname, '../../uploads');
+
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const cleanExt = path.extname(file.originalname).toLowerCase();
+    cb(null, `resource-${uniqueSuffix}${cleanExt}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  fileFilter: (req, file, cb) => {
+    const allowed = /pdf|doc|docx|xls|xlsx|ppt|pptx|txt|png|jpg|jpeg|webp|zip/;
+    const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
+    if (allowed.test(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Allowed: PDF, Word, Excel, Images, Zip, Text.'));
+    }
+  },
+});
 
 export const adminRouter = Router();
 
@@ -378,10 +423,39 @@ adminRouter.post('/courses', async (req, res) => {
       batch_name = 'November',
       seats_available = 15,
       is_published = true,
+      topics,
+      learning_outcomes,
+      objectives,
+      syllabus,
+      instructor_name = 'Patil Trader',
+      instructor_bio,
+      instructor_image = '/heroo.png',
+      methodology,
+      assignments_info,
+      assessment_info,
     } = req.body;
 
     if (!title || typeof title !== 'string' || !title.trim()) {
       return res.status(400).json({ success: false, error: 'Course title is required.' });
+    }
+
+    // Format topics as valid JSONB
+    let formattedTopics = null;
+    if (topics) {
+      if (Array.isArray(topics)) {
+        formattedTopics = JSON.stringify(topics);
+      } else if (typeof topics === 'string') {
+        const trimmed = topics.trim();
+        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+          try {
+            formattedTopics = JSON.stringify(JSON.parse(trimmed));
+          } catch {
+            formattedTopics = JSON.stringify(trimmed.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean));
+          }
+        } else {
+          formattedTopics = JSON.stringify(trimmed.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean));
+        }
+      }
     }
 
     // Generate unique slug
@@ -401,8 +475,16 @@ adminRouter.post('/courses', async (req, res) => {
       `INSERT INTO courses (
         slug, title, subtitle, description, thumbnail, price, original_price,
         discount_label, duration, level, learning_mode, batch_name,
-        seats_available, is_published
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        seats_available, is_published, topics, learning_outcomes, objectives,
+        syllabus, instructor_name, instructor_bio, instructor_image, methodology,
+        assignments_info, assessment_info
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7,
+        $8, $9, $10, $11, $12,
+        $13, $14, $15::jsonb, $16, $17,
+        $18, $19, $20, $21, $22,
+        $23, $24
+      )
       RETURNING *`,
       [
         slug,
@@ -419,6 +501,16 @@ adminRouter.post('/courses', async (req, res) => {
         batch_name || 'November',
         parseInt(seats_available, 10) || 15,
         Boolean(is_published),
+        formattedTopics,
+        learning_outcomes || null,
+        objectives || null,
+        syllabus || null,
+        instructor_name || 'Patil Trader',
+        instructor_bio || null,
+        instructor_image || '/heroo.png',
+        methodology || null,
+        assignments_info || null,
+        assessment_info || null,
       ]
     );
 
@@ -454,10 +546,39 @@ adminRouter.put('/courses/:id', async (req, res) => {
       batch_name,
       seats_available,
       is_published,
+      topics,
+      learning_outcomes,
+      objectives,
+      syllabus,
+      instructor_name,
+      instructor_bio,
+      instructor_image,
+      methodology,
+      assignments_info,
+      assessment_info,
     } = req.body;
 
     if (!title || typeof title !== 'string' || !title.trim()) {
       return res.status(400).json({ success: false, error: 'Course title is required.' });
+    }
+
+    // Format topics as valid JSONB
+    let formattedTopics = null;
+    if (topics !== undefined) {
+      if (Array.isArray(topics)) {
+        formattedTopics = JSON.stringify(topics);
+      } else if (typeof topics === 'string') {
+        const trimmed = topics.trim();
+        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+          try {
+            formattedTopics = JSON.stringify(JSON.parse(trimmed));
+          } catch {
+            formattedTopics = JSON.stringify(trimmed.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean));
+          }
+        } else {
+          formattedTopics = JSON.stringify(trimmed.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean));
+        }
+      }
     }
 
     const updateRes = await pool.query(
@@ -475,8 +596,18 @@ adminRouter.put('/courses/:id', async (req, res) => {
            batch_name = $11,
            seats_available = $12,
            is_published = $13,
+           topics = COALESCE($14::jsonb, courses.topics),
+           learning_outcomes = $15,
+           objectives = $16,
+           syllabus = $17,
+           instructor_name = $18,
+           instructor_bio = $19,
+           instructor_image = $20,
+           methodology = $21,
+           assignments_info = $22,
+           assessment_info = $23,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $14
+       WHERE id = $24
        RETURNING *`,
       [
         title.trim(),
@@ -492,6 +623,16 @@ adminRouter.put('/courses/:id', async (req, res) => {
         batch_name || 'November',
         parseInt(seats_available, 10) || 15,
         Boolean(is_published),
+        formattedTopics,
+        learning_outcomes || null,
+        objectives || null,
+        syllabus || null,
+        instructor_name || 'Patil Trader',
+        instructor_bio || null,
+        instructor_image || '/heroo.png',
+        methodology || null,
+        assignments_info || null,
+        assessment_info || null,
         id,
       ]
     );
@@ -1093,5 +1234,1049 @@ adminRouter.delete('/live-classes/:id', async (req, res) => {
   } catch (err) {
     console.error('[Admin Live Class Delete Error]:', err);
     return res.status(500).json({ success: false, error: 'Failed to delete live class.' });
+  }
+});
+
+// ============================================================================
+// INDIVIDUAL COURSE MANAGEMENT WORKSPACE APIs
+// Every action is strictly isolated by course_id
+// ============================================================================
+
+/**
+ * GET /api/admin/courses/:courseId/manage
+ * Comprehensive payload for individual course management workspace
+ */
+adminRouter.get('/courses/:courseId/manage', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    if (isNaN(courseId)) {
+      return res.status(400).json({ success: false, error: 'Invalid course ID.' });
+    }
+
+    // 1. Course Details
+    const courseRes = await pool.query('SELECT * FROM courses WHERE id = $1 LIMIT 1', [courseId]);
+    if (courseRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Course not found.' });
+    }
+    const course = courseRes.rows[0];
+
+    // 2. Video Lessons (Enhanced with S3 Storage & Batch Metadata)
+    const lessonsRes = await pool.query(
+      `SELECT id, course_id, module_name, title, description, s3_key, video_url,
+              duration_minutes, sort_order, batch_name, original_filename,
+              content_type, file_size, release_at, is_published, created_at, updated_at
+       FROM course_lessons
+       WHERE course_id = $1
+       ORDER BY sort_order ASC, id ASC`,
+      [courseId]
+    );
+
+    // 2b. Course Modules
+    const modulesRes = await pool.query(
+      `SELECT id, course_id, title, sort_order, created_at
+       FROM course_modules
+       WHERE course_id = $1
+       ORDER BY sort_order ASC, id ASC`,
+      [courseId]
+    );
+
+    // 3. Live Classes
+    const liveRes = await pool.query(
+      `SELECT id, course_id, title, batch_name, scheduled_at, duration_minutes, meeting_link, platform, instructor, instructions, status, description, created_at
+       FROM live_classes
+       WHERE course_id = $1
+       ORDER BY scheduled_at ASC`,
+      [courseId]
+    );
+
+    // 4. Course Announcements
+    const announceRes = await pool.query(
+      `SELECT id, course_id, batch_name, title, content, category, author, is_pinned, published_date, is_published, created_at
+       FROM announcements
+       WHERE course_id = $1
+       ORDER BY is_pinned DESC, created_at DESC`,
+      [courseId]
+    );
+
+    // 5. Course Posts, Notes, PDFs & Assignments
+    const resourcesRes = await pool.query(
+      `SELECT id, course_id, batch_name, title, description, resource_type, resource_url, s3_key, file_name, file_size, is_published, created_at
+       FROM course_resources
+       WHERE course_id = $1
+       ORDER BY created_at DESC`,
+      [courseId]
+    );
+
+    // 6. Enrolled Students
+    const studentsRes = await pool.query(
+      `SELECT e.id, e.user_id, e.name, e.email, e.mobile, e.trading_experience,
+              e.batch_name, e.enrollment_status, e.payment_status, e.amount_paid,
+              COALESCE(e.progress_percentage, 0) as progress_percentage,
+              COALESCE(e.completed_lessons, 0) as completed_lessons,
+              COALESCE(e.total_lessons, 16) as total_lessons,
+              e.notes, e.created_at as enrolled_at
+       FROM enrollments e
+       WHERE e.course_id = $1
+       ORDER BY e.created_at DESC`,
+      [courseId]
+    );
+
+    // 7. Course Notifications
+    const notifsRes = await pool.query(
+      `SELECT id, course_id, batch_name, title, message, type, is_read, created_at
+       FROM course_notifications
+       WHERE course_id = $1
+       ORDER BY created_at DESC
+       LIMIT 30`,
+      [courseId]
+    );
+
+    // 8. Progress and Reports Aggregates
+    const totalEnrolled = studentsRes.rows.length;
+    const completedPayments = studentsRes.rows.filter((s) => s.payment_status === 'completed');
+    const totalRevenue = completedPayments.reduce((acc, s) => acc + (parseFloat(s.amount_paid) || 0), 0);
+    const avgProgress = totalEnrolled > 0
+      ? Math.round(studentsRes.rows.reduce((acc, s) => acc + (parseInt(s.progress_percentage, 10) || 0), 0) / totalEnrolled)
+      : 0;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        course,
+        modules: modulesRes.rows,
+        lessons: lessonsRes.rows,
+        liveClasses: liveRes.rows,
+        announcements: announceRes.rows,
+        resources: resourcesRes.rows,
+        students: studentsRes.rows,
+        notifications: notifsRes.rows,
+        reports: {
+          totalEnrolled,
+          totalRevenue,
+          averageProgress: avgProgress,
+          totalLessons: lessonsRes.rows.length,
+          upcomingLiveSessions: liveRes.rows.filter((l) => l.status === 'upcoming').length,
+        },
+      },
+    });
+  } catch (err) {
+    console.error('[Admin Course Manage Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to retrieve course management data.' });
+  }
+});
+
+/**
+ * POST /api/admin/courses/:courseId/videos/initiate-upload
+ * Step 1 of Secure S3 Direct Upload:
+ * Generates presigned S3 PUT URL (for files <= 100MB) or multipart uploadId (for files > 100MB)
+ */
+adminRouter.post('/courses/:courseId/videos/initiate-upload', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const {
+      filename,
+      contentType = 'video/mp4',
+      fileSize = 0,
+      batch_name = 'November',
+      module_name = 'Core Curriculum',
+      title,
+    } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, error: 'Video title is required.' });
+    }
+    if (!filename) {
+      return res.status(400).json({ success: false, error: 'Video filename is required.' });
+    }
+
+    const courseRes = await pool.query('SELECT id, slug, batch_name FROM courses WHERE id = $1', [courseId]);
+    if (courseRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Course not found.' });
+    }
+
+    const videoId = Date.now() + '-' + Math.random().toString(36).substring(2, 8);
+    const cleanExt = path.extname(filename).toLowerCase() || '.mp4';
+    const batchSlug = (batch_name || courseRes.rows[0].batch_name || 'general')
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, '-');
+    const s3Key = `courses/${courseId}/batches/${batchSlug}/videos/${videoId}/original${cleanExt}`;
+
+    const isMultipart = Number(fileSize) > 100 * 1024 * 1024;
+
+    if (isMultipart) {
+      const { uploadId } = await initiateMultipart({ key: s3Key, contentType });
+      return res.status(200).json({
+        success: true,
+        uploadType: 'multipart',
+        uploadId,
+        s3Key,
+        videoId,
+        partSize: 10 * 1024 * 1024,
+      });
+    } else {
+      const uploadUrl = await generatePresignedPutUrl({
+        key: s3Key,
+        contentType,
+        expiresIn: 3600,
+      });
+      return res.status(200).json({
+        success: true,
+        uploadType: 'put',
+        uploadUrl,
+        s3Key,
+        videoId,
+      });
+    }
+  } catch (err) {
+    console.error('[Admin S3 Initiate Upload Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to initiate video upload to S3.' });
+  }
+});
+
+/**
+ * POST /api/admin/courses/:courseId/videos/multipart-part-url
+ * Step 2 of Multipart Upload: Returns presigned URL for a single chunk
+ */
+adminRouter.post('/courses/:courseId/videos/multipart-part-url', async (req, res) => {
+  try {
+    const { s3Key, uploadId, partNumber } = req.body;
+    if (!s3Key || !uploadId || !partNumber) {
+      return res.status(400).json({ success: false, error: 'Missing multipart parameters.' });
+    }
+    const partUrl = await generatePresignedPartUrl({
+      key: s3Key,
+      uploadId,
+      partNumber: parseInt(partNumber, 10),
+      expiresIn: 3600,
+    });
+    return res.status(200).json({ success: true, partUrl });
+  } catch (err) {
+    console.error('[Admin Multipart Part URL Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to generate part upload URL.' });
+  }
+});
+
+/**
+ * POST /api/admin/courses/:courseId/videos/complete-upload
+ * Step 3 of Secure S3 Direct Upload:
+ * Verifies S3 storage object via HeadObject and saves metadata to PostgreSQL
+ */
+adminRouter.post('/courses/:courseId/videos/complete-upload', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const {
+      uploadType = 'put',
+      s3Key,
+      uploadId,
+      parts,
+      title,
+      description = '',
+      module_name = 'Core Curriculum',
+      batch_name = 'November',
+      duration_minutes = 30,
+      sort_order = 1,
+      release_at = null,
+      is_published = true,
+      original_filename,
+      contentType = 'video/mp4',
+      fileSize,
+      lessonId = null,
+    } = req.body;
+
+    if (!s3Key) {
+      return res.status(400).json({ success: false, error: 'S3 Key is required.' });
+    }
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, error: 'Video title is required.' });
+    }
+
+    if (uploadType === 'multipart' && uploadId && parts) {
+      await completeMultipart({ key: s3Key, uploadId, parts });
+    }
+
+    // Verify object in private S3 bucket
+    const s3Meta = await verifyS3Object({ key: s3Key });
+    if (!s3Meta.exists) {
+      return res.status(400).json({
+        success: false,
+        error: 'Video could not be verified in AWS S3 storage. Upload may have failed or was interrupted.',
+      });
+    }
+
+    const actualSize = s3Meta.contentLength || fileSize || 0;
+    const actualType = s3Meta.contentType || contentType || 'video/mp4';
+
+    let savedLesson;
+
+    if (lessonId) {
+      const updateRes = await pool.query(
+        `UPDATE course_lessons
+         SET s3_key = $1,
+             original_filename = COALESCE($2, original_filename),
+             content_type = $3,
+             file_size = $4,
+             title = COALESCE($5, title),
+             description = COALESCE($6, description),
+             module_name = COALESCE($7, module_name),
+             batch_name = COALESCE($8, batch_name),
+             duration_minutes = COALESCE($9, duration_minutes),
+             sort_order = COALESCE($10, sort_order),
+             release_at = $11,
+             is_published = COALESCE($12, is_published),
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $13 AND course_id = $14
+         RETURNING *`,
+        [
+          s3Key,
+          original_filename,
+          actualType,
+          actualSize,
+          title.trim(),
+          description,
+          module_name.trim(),
+          batch_name.trim(),
+          parseInt(duration_minutes, 10) || 30,
+          parseInt(sort_order, 10) || 1,
+          release_at || null,
+          Boolean(is_published),
+          parseInt(lessonId, 10),
+          courseId,
+        ]
+      );
+      savedLesson = updateRes.rows[0];
+    } else {
+      const insertRes = await pool.query(
+        `INSERT INTO course_lessons (
+           course_id, module_name, title, description, s3_key,
+           original_filename, content_type, file_size, duration_minutes,
+           sort_order, batch_name, release_at, is_published, created_by
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+         RETURNING *`,
+        [
+          courseId,
+          module_name.trim(),
+          title.trim(),
+          description ? description.trim() : null,
+          s3Key,
+          original_filename || 'video.mp4',
+          actualType,
+          actualSize,
+          parseInt(duration_minutes, 10) || 30,
+          parseInt(sort_order, 10) || 1,
+          batch_name.trim(),
+          release_at || null,
+          Boolean(is_published),
+          req.user?.id || null,
+        ]
+      );
+      savedLesson = insertRes.rows[0];
+
+      if (savedLesson.is_published) {
+        await pool.query(
+          `INSERT INTO course_notifications (course_id, title, message, type, reference_id, batch_name)
+           VALUES ($1, $2, $3, 'lecture', $4, $5)`,
+          [
+            courseId,
+            `New Video Uploaded: ${title.trim()}`,
+            `A new recorded video lesson "${title.trim()}" has been published to S3 storage for your batch (${batch_name.trim()}).`,
+            savedLesson.id,
+            batch_name.trim(),
+          ]
+        );
+      }
+    }
+
+    return res.status(200).json({ success: true, lesson: savedLesson });
+  } catch (err) {
+    console.error('[Admin Complete Upload Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to record video lesson in database.' });
+  }
+});
+
+/**
+ * POST /api/admin/courses/:courseId/videos/abort-upload
+ */
+adminRouter.post('/courses/:courseId/videos/abort-upload', async (req, res) => {
+  try {
+    const { s3Key, uploadId } = req.body;
+    if (s3Key && uploadId) {
+      await abortMultipart({ key: s3Key, uploadId });
+    }
+    return res.status(200).json({ success: true, message: 'Multipart upload aborted.' });
+  } catch (err) {
+    console.error('[Admin Abort Upload Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to abort multipart upload.' });
+  }
+});
+
+/**
+ * GET /api/admin/courses/:courseId/videos/:lessonId/preview-url
+ * Admin secure video preview using short-lived S3 Presigned URL
+ */
+adminRouter.get('/courses/:courseId/videos/:lessonId/preview-url', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const lessonId = parseInt(req.params.lessonId, 10);
+
+    const lessonRes = await pool.query(
+      'SELECT id, title, s3_key, video_url, content_type FROM course_lessons WHERE id = $1 AND course_id = $2',
+      [lessonId, courseId]
+    );
+
+    if (lessonRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Lesson not found.' });
+    }
+
+    const lesson = lessonRes.rows[0];
+    if (lesson.s3_key) {
+      const playbackUrl = await generatePresignedGetUrl({
+        key: lesson.s3_key,
+        contentType: lesson.content_type || 'video/mp4',
+        expiresIn: 900,
+      });
+      return res.status(200).json({ success: true, playbackUrl, expiresIn: 900 });
+    } else if (lesson.video_url) {
+      return res.status(200).json({ success: true, playbackUrl: lesson.video_url, isDirect: true });
+    }
+
+    return res.status(404).json({ success: false, error: 'No video asset found for this lesson.' });
+  } catch (err) {
+    console.error('[Admin Preview URL Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to generate preview URL.' });
+  }
+});
+
+/**
+ * Course Modules Management
+ */
+adminRouter.post('/courses/:courseId/modules', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const { title, sort_order = 1 } = req.body;
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, error: 'Module title is required.' });
+    }
+    const insertRes = await pool.query(
+      'INSERT INTO course_modules (course_id, title, sort_order) VALUES ($1, $2, $3) RETURNING *',
+      [courseId, title.trim(), parseInt(sort_order, 10) || 1]
+    );
+    return res.status(201).json({ success: true, module: insertRes.rows[0] });
+  } catch (err) {
+    console.error('[Admin Add Module Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to create module.' });
+  }
+});
+
+adminRouter.delete('/courses/:courseId/modules/:moduleId', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const moduleId = parseInt(req.params.moduleId, 10);
+    await pool.query('DELETE FROM course_modules WHERE id = $1 AND course_id = $2', [moduleId, courseId]);
+    return res.status(200).json({ success: true, message: 'Module deleted.' });
+  } catch (err) {
+    console.error('[Admin Delete Module Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to delete module.' });
+  }
+});
+
+/**
+ * POST /api/admin/courses/:courseId/lessons
+ * Add recorded video lesson to course (Supports both S3 key and legacy URL)
+ */
+adminRouter.post('/courses/:courseId/lessons', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const {
+      module_name = 'Core Curriculum',
+      title,
+      description = '',
+      video_url = '',
+      s3_key = null,
+      batch_name = 'November',
+      duration_minutes = 30,
+      sort_order = 1,
+      release_at = null,
+      is_published = true,
+    } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, error: 'Lesson title is required.' });
+    }
+
+    const insertRes = await pool.query(
+      `INSERT INTO course_lessons (
+         course_id, module_name, title, description, video_url, s3_key,
+         batch_name, duration_minutes, sort_order, release_at, is_published, created_by
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       RETURNING *`,
+      [
+        courseId,
+        module_name.trim(),
+        title.trim(),
+        description ? description.trim() : null,
+        video_url ? video_url.trim() : null,
+        s3_key ? s3_key.trim() : null,
+        batch_name ? batch_name.trim() : 'November',
+        parseInt(duration_minutes, 10) || 30,
+        parseInt(sort_order, 10) || 1,
+        release_at || null,
+        Boolean(is_published),
+        req.user?.id || null,
+      ]
+    );
+
+    const newLesson = insertRes.rows[0];
+
+    // Auto-generate notification for enrolled students
+    await pool.query(
+      `INSERT INTO course_notifications (course_id, title, message, type, reference_id, batch_name)
+       VALUES ($1, $2, $3, 'lecture', $4, $5)`,
+      [
+        courseId,
+        `New Lecture Added: ${title.trim()}`,
+        `A new recorded video lesson "${title.trim()}" is now available in your curriculum for ${batch_name}.`,
+        newLesson.id,
+        batch_name,
+      ]
+    );
+
+    return res.status(201).json({ success: true, lesson: newLesson });
+  } catch (err) {
+    console.error('[Admin Add Lesson Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to add video lesson.' });
+  }
+});
+
+/**
+ * PUT /api/admin/courses/:courseId/lessons/:lessonId
+ * Update recorded video lesson
+ */
+adminRouter.put('/courses/:courseId/lessons/:lessonId', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const lessonId = parseInt(req.params.lessonId, 10);
+    const {
+      module_name,
+      title,
+      description,
+      video_url,
+      s3_key,
+      batch_name,
+      duration_minutes,
+      sort_order,
+      release_at,
+      is_published,
+    } = req.body;
+
+    const updateRes = await pool.query(
+      `UPDATE course_lessons
+       SET module_name = COALESCE($1, module_name),
+           title = COALESCE($2, title),
+           description = COALESCE($3, description),
+           video_url = COALESCE($4, video_url),
+           s3_key = COALESCE($5, s3_key),
+           batch_name = COALESCE($6, batch_name),
+           duration_minutes = COALESCE($7, duration_minutes),
+           sort_order = COALESCE($8, sort_order),
+           release_at = $9,
+           is_published = COALESCE($10, is_published),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $11 AND course_id = $12
+       RETURNING *`,
+      [
+        module_name !== undefined ? module_name.trim() : null,
+        title !== undefined ? title.trim() : null,
+        description !== undefined ? description.trim() : null,
+        video_url !== undefined ? video_url.trim() : null,
+        s3_key !== undefined ? s3_key.trim() : null,
+        batch_name !== undefined ? batch_name.trim() : null,
+        duration_minutes !== undefined ? parseInt(duration_minutes, 10) : null,
+        sort_order !== undefined ? parseInt(sort_order, 10) : null,
+        release_at !== undefined ? release_at : null,
+        is_published !== undefined ? Boolean(is_published) : null,
+        lessonId,
+        courseId,
+      ]
+    );
+
+    if (updateRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Lesson not found.' });
+    }
+
+    return res.status(200).json({ success: true, lesson: updateRes.rows[0] });
+  } catch (err) {
+    console.error('[Admin Update Lesson Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to update lesson.' });
+  }
+});
+
+/**
+ * DELETE /api/admin/courses/:courseId/lessons/:lessonId
+ * Delete recorded video lesson and clean up S3 asset if present
+ */
+adminRouter.delete('/courses/:courseId/lessons/:lessonId', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const lessonId = parseInt(req.params.lessonId, 10);
+
+    const lessonRes = await pool.query(
+      'SELECT id, s3_key FROM course_lessons WHERE id = $1 AND course_id = $2',
+      [lessonId, courseId]
+    );
+
+    if (lessonRes.rows.length > 0 && lessonRes.rows[0].s3_key) {
+      await deleteS3Object({ key: lessonRes.rows[0].s3_key });
+    }
+
+    await pool.query('DELETE FROM course_lessons WHERE id = $1 AND course_id = $2', [lessonId, courseId]);
+    return res.status(200).json({ success: true, message: 'Lesson deleted.' });
+  } catch (err) {
+    console.error('[Admin Delete Lesson Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to delete lesson.' });
+  }
+});
+
+/**
+ * POST /api/admin/courses/:courseId/live-classes
+ * Schedule Google Meet Live Class for course
+ */
+adminRouter.post('/courses/:courseId/live-classes', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const {
+      title,
+      batch_name = 'November',
+      scheduled_at,
+      duration_minutes = 75,
+      meeting_link,
+      platform = 'Google Meet',
+      instructor = 'Patil Trader',
+      description = '',
+    } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, error: 'Live class title is required.' });
+    }
+    if (!scheduled_at) {
+      return res.status(400).json({ success: false, error: 'Scheduled date and time is required.' });
+    }
+
+    const insertRes = await pool.query(
+      `INSERT INTO live_classes (course_id, title, batch_name, scheduled_at, duration_minutes, meeting_link, platform, instructor, description, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'upcoming')
+       RETURNING *`,
+      [
+        courseId,
+        title.trim(),
+        batch_name.trim(),
+        scheduled_at,
+        parseInt(duration_minutes, 10) || 75,
+        meeting_link ? meeting_link.trim() : 'https://meet.google.com/trm-trdm-live',
+        platform.trim(),
+        instructor.trim(),
+        description ? description.trim() : null,
+      ]
+    );
+
+    const newClass = insertRes.rows[0];
+
+    // Auto-generate notification for enrolled students
+    await pool.query(
+      `INSERT INTO course_notifications (course_id, title, message, type, reference_id)
+       VALUES ($1, $2, $3, 'live_class', $4)`,
+      [
+        courseId,
+        `Live Class Scheduled: ${title.trim()}`,
+        `Join Google Meet session scheduled for ${new Date(scheduled_at).toLocaleDateString()}. Meeting link is ready in Live Classes.`,
+        newClass.id,
+      ]
+    );
+
+    return res.status(201).json({ success: true, liveClass: newClass });
+  } catch (err) {
+    console.error('[Admin Add Live Class Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to schedule live class.' });
+  }
+});
+
+/**
+ * PUT /api/admin/courses/:courseId/live-classes/:sessionId
+ * Update or reschedule live class
+ */
+adminRouter.put('/courses/:courseId/live-classes/:sessionId', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const sessionId = parseInt(req.params.sessionId, 10);
+    const {
+      title,
+      scheduled_at,
+      duration_minutes,
+      meeting_link,
+      platform,
+      instructor,
+      description,
+      status,
+    } = req.body;
+
+    const updateRes = await pool.query(
+      `UPDATE live_classes
+       SET title = COALESCE($1, title),
+           scheduled_at = COALESCE($2, scheduled_at),
+           duration_minutes = COALESCE($3, duration_minutes),
+           meeting_link = COALESCE($4, meeting_link),
+           platform = COALESCE($5, platform),
+           instructor = COALESCE($6, instructor),
+           description = COALESCE($7, description),
+           status = COALESCE($8, status),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $9 AND course_id = $10
+       RETURNING *`,
+      [
+        title !== undefined ? title.trim() : null,
+        scheduled_at || null,
+        duration_minutes !== undefined ? parseInt(duration_minutes, 10) : null,
+        meeting_link !== undefined ? meeting_link.trim() : null,
+        platform !== undefined ? platform.trim() : null,
+        instructor !== undefined ? instructor.trim() : null,
+        description !== undefined ? description.trim() : null,
+        status !== undefined ? status.trim() : null,
+        sessionId,
+        courseId,
+      ]
+    );
+
+    if (updateRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Live class session not found.' });
+    }
+
+    return res.status(200).json({ success: true, liveClass: updateRes.rows[0] });
+  } catch (err) {
+    console.error('[Admin Update Live Class Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to update live class.' });
+  }
+});
+
+/**
+ * DELETE /api/admin/courses/:courseId/live-classes/:sessionId
+ * Delete live class
+ */
+adminRouter.delete('/courses/:courseId/live-classes/:sessionId', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const sessionId = parseInt(req.params.sessionId, 10);
+
+    await pool.query('DELETE FROM live_classes WHERE id = $1 AND course_id = $2', [sessionId, courseId]);
+    return res.status(200).json({ success: true, message: 'Live class deleted.' });
+  } catch (err) {
+    console.error('[Admin Delete Live Class Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to delete live class.' });
+  }
+});
+
+/**
+ * POST /api/admin/courses/:courseId/announcements
+ * Publish course-specific announcement
+ */
+adminRouter.post('/courses/:courseId/announcements', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const {
+      title,
+      content,
+      category = 'Update',
+      author = 'Patil Trader',
+    } = req.body;
+
+    if (!title || !title.trim() || !content || !content.trim()) {
+      return res.status(400).json({ success: false, error: 'Title and content are required.' });
+    }
+
+    const insertRes = await pool.query(
+      `INSERT INTO announcements (course_id, title, content, category, author, published_date, is_published)
+       VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, TRUE)
+       RETURNING *`,
+      [courseId, title.trim(), content.trim(), category.trim(), author.trim()]
+    );
+
+    const announcement = insertRes.rows[0];
+
+    // Auto-generate notification for enrolled students
+    await pool.query(
+      `INSERT INTO course_notifications (course_id, title, message, type, reference_id)
+       VALUES ($1, $2, $3, 'announcement', $4)`,
+      [
+        courseId,
+        `New Announcement: ${title.trim()}`,
+        content.trim().length > 120 ? content.trim().substring(0, 117) + '...' : content.trim(),
+        announcement.id,
+      ]
+    );
+
+    return res.status(201).json({ success: true, announcement });
+  } catch (err) {
+    console.error('[Admin Course Announcement Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to publish announcement.' });
+  }
+});
+
+/**
+ * DELETE /api/admin/courses/:courseId/announcements/:announcementId
+ * Delete course-specific announcement
+ */
+adminRouter.delete('/courses/:courseId/announcements/:announcementId', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const announcementId = parseInt(req.params.announcementId, 10);
+
+    await pool.query('DELETE FROM announcements WHERE id = $1 AND course_id = $2', [announcementId, courseId]);
+    return res.status(200).json({ success: true, message: 'Announcement deleted.' });
+  } catch (err) {
+    console.error('[Admin Delete Announcement Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to delete announcement.' });
+  }
+});
+
+/**
+ * POST /api/admin/courses/:courseId/resources
+ * Upload or attach post/note/PDF/assignment to course
+ */
+adminRouter.post('/courses/:courseId/resources', upload.single('file'), async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const {
+      title,
+      description = '',
+      resource_type = 'pdf',
+      resource_url: rawUrl,
+    } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, error: 'Resource title is required.' });
+    }
+
+    let finalUrl = rawUrl ? rawUrl.trim() : '';
+    let fileName = null;
+    let fileSize = null;
+
+    if (req.file) {
+      finalUrl = `/uploads/${req.file.filename}`;
+      fileName = req.file.originalname;
+      const sizeBytes = req.file.size;
+      fileSize = sizeBytes > 1024 * 1024
+        ? `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`
+        : `${Math.round(sizeBytes / 1024)} KB`;
+    }
+
+    if (!finalUrl && !req.file) {
+      finalUrl = '#';
+    }
+
+    const insertRes = await pool.query(
+      `INSERT INTO course_resources (course_id, title, description, resource_type, resource_url, file_name, file_size, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING *`,
+      [
+        courseId,
+        title.trim(),
+        description ? description.trim() : null,
+        resource_type.trim(),
+        finalUrl,
+        fileName,
+        fileSize,
+        req.user.id,
+      ]
+    );
+
+    const resource = insertRes.rows[0];
+
+    // Auto-generate notification for enrolled students
+    await pool.query(
+      `INSERT INTO course_notifications (course_id, title, message, type, reference_id)
+       VALUES ($1, $2, $3, 'resource', $4)`,
+      [
+        courseId,
+        `New Resource Uploaded: ${title.trim()}`,
+        `A new resource is available for download in Posts & Resources.`,
+        resource.id,
+      ]
+    );
+
+    return res.status(201).json({ success: true, resource });
+  } catch (err) {
+    console.error('[Admin Resource Upload Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to upload resource.' });
+  }
+});
+
+/**
+ * DELETE /api/admin/courses/:courseId/resources/:resourceId
+ * Delete resource from course
+ */
+adminRouter.delete('/courses/:courseId/resources/:resourceId', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const resourceId = parseInt(req.params.resourceId, 10);
+
+    // Optionally remove local file if in /uploads
+    const resRow = await pool.query('SELECT resource_url FROM course_resources WHERE id = $1 AND course_id = $2', [resourceId, courseId]);
+    if (resRow.rows.length > 0 && resRow.rows[0].resource_url && resRow.rows[0].resource_url.startsWith('/uploads/')) {
+      const filePath = path.resolve(uploadDir, path.basename(resRow.rows[0].resource_url));
+      if (fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch {}
+      }
+    }
+
+    await pool.query('DELETE FROM course_resources WHERE id = $1 AND course_id = $2', [resourceId, courseId]);
+    return res.status(200).json({ success: true, message: 'Resource deleted.' });
+  } catch (err) {
+    console.error('[Admin Delete Resource Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to delete resource.' });
+  }
+});
+
+/**
+ * POST /api/admin/courses/:courseId/enroll
+ * Authorized Admin Manual Enrollment into this Course
+ */
+adminRouter.post('/courses/:courseId/enroll', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const {
+      name,
+      email,
+      mobile = '',
+      trading_experience = 'Beginner',
+      notes = 'Admin Enrollment',
+    } = req.body;
+
+    if (!name || !name.trim() || !email || !email.trim()) {
+      return res.status(400).json({ success: false, error: 'Name and email are required.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name.trim();
+
+    // Verify course exists
+    const courseRes = await pool.query('SELECT * FROM courses WHERE id = $1 LIMIT 1', [courseId]);
+    if (courseRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Course not found.' });
+    }
+    const course = courseRes.rows[0];
+
+    // Find or create student user
+    let userRow = null;
+    const userCheck = await pool.query('SELECT id, name, email FROM users WHERE LOWER(email) = $1 LIMIT 1', [cleanEmail]);
+    if (userCheck.rows.length > 0) {
+      userRow = userCheck.rows[0];
+    } else {
+      const defaultPassword = await bcrypt.hash('TradeMax@2026', 10);
+      const newUserRes = await pool.query(
+        `INSERT INTO users (name, email, mobile, trading_experience, password, role, status)
+         VALUES ($1, $2, $3, $4, $5, 'student', 'active')
+         RETURNING id, name, email`,
+        [cleanName, cleanEmail, mobile.trim(), trading_experience, defaultPassword]
+      );
+      userRow = newUserRes.rows[0];
+    }
+
+    // Check if already enrolled in this course
+    const existingEnroll = await pool.query(
+      `SELECT id FROM enrollments WHERE course_id = $1 AND (user_id = $2 OR LOWER(email) = $3) LIMIT 1`,
+      [courseId, userRow.id, cleanEmail]
+    );
+
+    if (existingEnroll.rows.length > 0) {
+      // Re-activate if needed
+      await pool.query(
+        `UPDATE enrollments
+         SET enrollment_status = 'enrolled', payment_status = 'completed', updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [existingEnroll.rows[0].id]
+      );
+      return res.status(200).json({ success: true, message: 'Student enrollment reactivated.' });
+    }
+
+    // Insert new verified enrollment
+    const newEnrollRes = await pool.query(
+      `INSERT INTO enrollments (
+        user_id, course_id, course_name, name, email, mobile,
+        trading_experience, batch_name, enrollment_status, payment_status,
+        amount_paid, progress_percentage, completed_lessons, total_lessons, notes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'enrolled', 'completed', $9, 0, 0, 16, $10)
+      RETURNING *`,
+      [
+        userRow.id,
+        courseId,
+        course.title,
+        cleanName,
+        cleanEmail,
+        mobile.trim(),
+        trading_experience,
+        course.batch_name || 'November',
+        course.price || 0,
+        notes.trim(),
+      ]
+    );
+
+    // Welcome Notification
+    await pool.query(
+      `INSERT INTO course_notifications (course_id, user_id, title, message, type)
+       VALUES ($1, $2, $3, $4, 'general')`,
+      [
+        courseId,
+        userRow.id,
+        `Welcome to ${course.title}!`,
+        `Your enrollment has been approved. You now have full access to live classes, recorded lessons, and course notes.`,
+      ]
+    );
+
+    return res.status(201).json({ success: true, enrollment: newEnrollRes.rows[0] });
+  } catch (err) {
+    console.error('[Admin Enroll Student Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to enroll student.' });
+  }
+});
+
+/**
+ * DELETE /api/admin/courses/:courseId/students/:enrollmentId
+ * Remove or revoke student enrollment
+ */
+adminRouter.delete('/courses/:courseId/students/:enrollmentId', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const enrollmentId = parseInt(req.params.enrollmentId, 10);
+
+    await pool.query('DELETE FROM enrollments WHERE id = $1 AND course_id = $2', [enrollmentId, courseId]);
+    return res.status(200).json({ success: true, message: 'Enrollment removed.' });
+  } catch (err) {
+    console.error('[Admin Remove Enrollment Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to remove enrollment.' });
+  }
+});
+
+/**
+ * POST /api/admin/courses/:courseId/notifications
+ * Broadcast custom notification to all students enrolled in this course
+ */
+adminRouter.post('/courses/:courseId/notifications', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const { title, message, type = 'general' } = req.body;
+
+    if (!title || !title.trim() || !message || !message.trim()) {
+      return res.status(400).json({ success: false, error: 'Title and message are required.' });
+    }
+
+    const insertRes = await pool.query(
+      `INSERT INTO course_notifications (course_id, title, message, type)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [courseId, title.trim(), message.trim(), type.trim()]
+    );
+
+    return res.status(201).json({ success: true, notification: insertRes.rows[0] });
+  } catch (err) {
+    console.error('[Admin Send Notification Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to send notification.' });
   }
 });

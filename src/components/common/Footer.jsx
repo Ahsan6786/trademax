@@ -13,10 +13,6 @@ export const Footer = ({ onNavigate }) => {
         const el = document.getElementById('courses');
         if (el) el.scrollIntoView({ behavior: 'smooth' });
       }
-    } else if (target === 'founder') {
-      if (onNavigate) onNavigate('founder');
-    } else if (target === 'gallery') {
-      if (onNavigate) onNavigate('gallery');
     } else if (target === 'home') {
       if (onNavigate) onNavigate('landing');
       else window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -126,15 +122,6 @@ export const Footer = ({ onNavigate }) => {
             </a>
             <a href="#terminal" onClick={(e) => handleNav(e, 'dashboard')} className="tm-footer-nav-link">
               <span>Trading Terminal</span>
-              <span className="tm-footer-link-arrow" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF1E27" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14" />
-                  <path d="M12 5l7 7-7 7" />
-                </svg>
-              </span>
-            </a>
-            <a href="/founder" onClick={(e) => handleNav(e, 'founder')} className="tm-footer-nav-link">
-              <span>About</span>
               <span className="tm-footer-link-arrow" aria-hidden="true">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF1E27" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 12h14" />

@@ -1,0 +1,360 @@
+/* ==========================================================================
+   TRADEMAX — Villa Enquiry Modal
+   100% Solid surfaces (No glassmorphism, No blur, No icons)
+   Clean typography, balanced spacing, robust validation states
+   ========================================================================== */
+
+.tm-vem-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background-color: rgba(10, 15, 26, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  animation: tm-vem-fade-in 0.18s ease-out;
+}
+
+@keyframes tm-vem-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.tm-vem-card {
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  background-color: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  box-sizing: border-box;
+  position: relative;
+  padding: 28px 28px 24px;
+  animation: tm-vem-scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tm-vem-scale-in {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.tm-vem-close-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  color: #64748B;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  line-height: 1;
+}
+
+.tm-vem-close-btn:hover {
+  background-color: #E2E8F0;
+  color: #0F172A;
+}
+
+/* Header */
+.tm-vem-header {
+  margin-bottom: 20px;
+  padding-right: 28px;
+}
+
+.tm-vem-eyebrow {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #B45309;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.tm-vem-title {
+  margin: 0 0 6px 0;
+  font-size: 22px;
+  font-weight: 850;
+  color: #0F172A;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.tm-vem-subtitle {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #64748B;
+}
+
+/* Error */
+.tm-vem-error {
+  background-color: #FEE2E2;
+  border: 1px solid #FECACA;
+  color: #B91C1C;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+/* Form */
+.tm-vem-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tm-vem-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tm-vem-field label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #1E293B;
+  letter-spacing: -0.01em;
+}
+
+.tm-vem-field input,
+.tm-vem-field select,
+.tm-vem-field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #CBD5E1;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: #0F172A;
+  background-color: #FFFFFF;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tm-vem-field input:focus,
+.tm-vem-field select:focus,
+.tm-vem-field textarea:focus {
+  outline: none;
+  border-color: #B45309;
+  box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.12);
+}
+
+.tm-vem-field input.invalid {
+  border-color: #DC2626;
+  background-color: #FFF5F5;
+}
+
+.tm-vem-err {
+  font-size: 11.5px;
+  color: #DC2626;
+  font-weight: 600;
+}
+
+.tm-vem-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.tm-vem-field textarea {
+  resize: vertical;
+  min-height: 75px;
+}
+
+/* Submit Button */
+.tm-vem-actions {
+  margin-top: 6px;
+}
+
+.tm-vem-btn-submit {
+  width: 100%;
+  background-color: #B45309;
+  border: 1px solid #B45309;
+  color: #FFFFFF;
+  padding: 13px 18px;
+  font-size: 14px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.tm-vem-btn-submit:hover {
+  background-color: #92400E;
+  border-color: #92400E;
+}
+
+.tm-vem-btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Success View */
+.tm-vem-success {
+  text-align: center;
+  padding: 20px 10px;
+}
+
+.tm-vem-status-pill {
+  display: inline-block;
+  background-color: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FDE68A;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 14px;
+}
+
+.tm-vem-success-title {
+  margin: 0 0 10px 0;
+  font-size: 22px;
+  font-weight: 850;
+  color: #0F172A;
+}
+
+.tm-vem-success-text {
+  margin: 0 0 20px 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #475569;
+}
+
+.tm-vem-contact-box {
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  padding: 14px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.tm-vem-contact-label {
+  font-size: 13px;
+  color: #64748B;
+  font-weight: 600;
+}
+
+.tm-vem-contact-phone {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0F172A;
+  text-decoration: none;
+}
+
+.tm-vem-btn-done {
+  background-color: #0F172A;
+  border: 1px solid #0F172A;
+  color: #FFFFFF;
+  padding: 11px 24px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tm-vem-btn-done:hover {
+  background-color: #1E293B;
+}
+
+/* --------------------------------------------------------------------------
+   DARK MODE
+   -------------------------------------------------------------------------- */
+html[data-theme="dark"] .tm-vem-card {
+  background-color: #0B0F19;
+  border-color: #1E293B;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
+}
+
+html[data-theme="dark"] .tm-vem-eyebrow {
+  color: #F59E0B;
+}
+
+html[data-theme="dark"] .tm-vem-title {
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .tm-vem-subtitle {
+  color: #94A3B8;
+}
+
+html[data-theme="dark"] .tm-vem-close-btn {
+  color: #94A3B8;
+}
+
+html[data-theme="dark"] .tm-vem-close-btn:hover {
+  background-color: #1E293B;
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .tm-vem-field label {
+  color: #F1F5F9;
+}
+
+html[data-theme="dark"] .tm-vem-field input,
+html[data-theme="dark"] .tm-vem-field select,
+html[data-theme="dark"] .tm-vem-field textarea {
+  background-color: #111827;
+  border-color: #1E293B;
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .tm-vem-field input.invalid {
+  background-color: #2D1515;
+  border-color: #EF4444;
+}
+
+html[data-theme="dark"] .tm-vem-success-title {
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .tm-vem-success-text {
+  color: #CBD5E1;
+}
+
+html[data-theme="dark"] .tm-vem-contact-box {
+  background-color: #111827;
+  border-color: #1E293B;
+}
+
+html[data-theme="dark"] .tm-vem-contact-label {
+  color: #94A3B8;
+}
+
+html[data-theme="dark"] .tm-vem-contact-phone {
+  color: #F59E0B;
+}
+
+html[data-theme="dark"] .tm-vem-btn-done {
+  background-color: #F1F5F9;
+  color: #0F172A;
+  border-color: #F1F5F9;
+}
+
+@media (max-width: 640px) {
+  .tm-vem-card {
+    padding: 20px 16px;
+    max-height: 94vh;
+  }
+  .tm-vem-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}

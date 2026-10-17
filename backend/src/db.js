@@ -84,33 +84,245 @@ export const initDb = async () => {
       );
 
       ALTER TABLE courses ALTER COLUMN thumbnail TYPE TEXT;
+      ALTER TABLE courses ADD COLUMN IF NOT EXISTS topics JSONB;
+      ALTER TABLE courses ADD COLUMN IF NOT EXISTS learning_outcomes TEXT;
+      ALTER TABLE courses ADD COLUMN IF NOT EXISTS objectives TEXT;
+      ALTER TABLE courses ADD COLUMN IF NOT EXISTS syllabus TEXT;
+      ALTER TABLE courses ADD COLUMN IF NOT EXISTS instructor_name VARCHAR(255) DEFAULT 'Patil Trader';
+      ALTER TABLE courses ADD COLUMN IF NOT EXISTS instructor_bio TEXT;
+      ALTER TABLE courses ADD COLUMN IF NOT EXISTS instructor_image TEXT DEFAULT '/heroo.png';
+      ALTER TABLE courses ADD COLUMN IF NOT EXISTS methodology TEXT;
+      ALTER TABLE courses ADD COLUMN IF NOT EXISTS assignments_info TEXT;
+      ALTER TABLE courses ADD COLUMN IF NOT EXISTS assessment_info TEXT;
+      ALTER TABLE courses ADD COLUMN IF NOT EXISTS is_enquiry_only BOOLEAN DEFAULT FALSE;
 
       CREATE INDEX IF NOT EXISTS idx_courses_slug ON courses(slug);
       CREATE INDEX IF NOT EXISTS idx_courses_published ON courses(is_published);
 
-      -- Seed Primary Course if not exists
+      -- Seed / Upsert Professional Courses Catalogue
+      -- 1. Basics to Advanced Course (Existing Course - preserve slug and associations)
       INSERT INTO courses (
         slug, title, subtitle, description, thumbnail, price, original_price,
-        discount_label, duration, level, learning_mode, batch_name, seats_available, is_published
+        discount_label, duration, level, learning_mode, batch_name, seats_available, is_published,
+        topics, learning_outcomes, is_enquiry_only
       ) VALUES (
         'trading-masterclass',
-        'Trading Masterclass',
-        'Forex & Crypto Trading',
-        'Structured 1-month online program covering market structure, technical analysis, trading psychology, and disciplined risk management.',
+        'Basics to Advanced Course',
+        'Forex & Crypto Trading Masterclass',
+        'A comprehensive foundation to advanced curriculum covering market structure, technical analysis, trading psychology, and disciplined risk management across Forex and Crypto markets.',
         '/1-c.jpeg',
-        19999.00,
-        24999.00,
+        20000.00,
+        25000.00,
         'Save ₹5,000 (20% OFF)',
-        '1 Month',
-        'Forex & Crypto',
+        '30 Days',
+        'Basic to Advanced',
         'Live Online',
         'November',
         15,
-        TRUE
+        TRUE,
+        '["Forex & Crypto Institutional Trading", "Technical Analysis & Market Structure", "Trading Psychology & Discipline", "Risk Management & Trade Planning", "Strategy Development", "Backtesting & Forward Testing", "Live Market Analysis for Educational Practice", "Trade Execution & Management", "TradingView & Chart Analysis", "Common Trading Mistakes and How to Avoid Them"]'::jsonb,
+        'Develop a structured, disciplined trading foundation with clear risk controls and institutional price action understanding.',
+        FALSE
       ) ON CONFLICT (slug) DO UPDATE SET
+        title = EXCLUDED.title,
+        price = EXCLUDED.price,
+        duration = EXCLUDED.duration,
+        topics = COALESCE(EXCLUDED.topics, courses.topics),
+        learning_outcomes = COALESCE(EXCLUDED.learning_outcomes, courses.learning_outcomes),
+        is_enquiry_only = EXCLUDED.is_enquiry_only;
+
+      -- 2. Professional Technical Analysis
+      INSERT INTO courses (
+        slug, title, subtitle, description, thumbnail, price, original_price,
+        discount_label, duration, level, learning_mode, batch_name, seats_available, is_published,
+        topics, learning_outcomes, is_enquiry_only
+      ) VALUES (
+        'professional-technical-analysis',
+        'Professional Technical Analysis',
+        'Structured Technical Analysis & Price Action',
+        'Learn to analyze financial markets using structured technical analysis.',
+        '/7999.jpeg',
+        7999.00,
+        9999.00,
+        'Save ₹2,000 (20% OFF)',
+        '7 Days',
+        'Intermediate to Advanced',
+        'Live Online',
+        'November',
+        20,
+        TRUE,
+        '["Market Structure & Trends", "Support and Resistance", "Supply and Demand Zones", "Candlestick Patterns", "Price Action", "Trendlines", "Breakouts", "Liquidity Concepts", "Market Structure Shifts", "Multi-Timeframe Analysis", "Practical Chart Analysis"]'::jsonb,
+        'Develop a structured approach to reading charts and identifying potential trading opportunities.',
+        FALSE
+      ) ON CONFLICT (slug) DO UPDATE SET
+        title = EXCLUDED.title,
+        subtitle = EXCLUDED.subtitle,
+        description = EXCLUDED.description,
         thumbnail = EXCLUDED.thumbnail,
         price = EXCLUDED.price,
-        original_price = EXCLUDED.original_price;
+        original_price = EXCLUDED.original_price,
+        duration = EXCLUDED.duration,
+        topics = EXCLUDED.topics,
+        learning_outcomes = EXCLUDED.learning_outcomes,
+        is_enquiry_only = EXCLUDED.is_enquiry_only;
+
+      -- 3. Trading Psychology Development
+      INSERT INTO courses (
+        slug, title, subtitle, description, thumbnail, price, original_price,
+        discount_label, duration, level, learning_mode, batch_name, seats_available, is_published,
+        topics, learning_outcomes, is_enquiry_only
+      ) VALUES (
+        'trading-psychology-development',
+        'Trading Psychology Development',
+        'Discipline, Emotional Control & Mindset',
+        'Develop the discipline and emotional control required for consistent execution of a trading plan.',
+        '/training-6999.jpeg',
+        6999.00,
+        8999.00,
+        'Save ₹2,000 (22% OFF)',
+        '5 Days',
+        'All Experience Levels',
+        'Live Online',
+        'November',
+        20,
+        TRUE,
+        '["Trading Mindset", "Fear and Greed", "FOMO", "Revenge Trading", "Overtrading", "Managing Losses", "Patience", "Emotional Control", "Trading Journals", "Performance Reviews"]'::jsonb,
+        'Build better trading habits and learn to follow predefined trading rules.',
+        FALSE
+      ) ON CONFLICT (slug) DO UPDATE SET
+        title = EXCLUDED.title,
+        subtitle = EXCLUDED.subtitle,
+        description = EXCLUDED.description,
+        thumbnail = EXCLUDED.thumbnail,
+        price = EXCLUDED.price,
+        original_price = EXCLUDED.original_price,
+        duration = EXCLUDED.duration,
+        topics = EXCLUDED.topics,
+        learning_outcomes = EXCLUDED.learning_outcomes,
+        is_enquiry_only = EXCLUDED.is_enquiry_only;
+
+      -- 4. Professional Risk Management
+      INSERT INTO courses (
+        slug, title, subtitle, description, thumbnail, price, original_price,
+        discount_label, duration, level, learning_mode, batch_name, seats_available, is_published,
+        topics, learning_outcomes, is_enquiry_only
+      ) VALUES (
+        'professional-risk-management',
+        'Professional Risk Management',
+        'Capital Preservation & Exposure Control',
+        'Learn to manage trading exposure and protect capital through structured risk management.',
+        '/professional-6999.jpeg',
+        6999.00,
+        8999.00,
+        'Save ₹2,000 (22% OFF)',
+        '5 Days',
+        'All Experience Levels',
+        'Live Online',
+        'November',
+        20,
+        TRUE,
+        '["Capital Preservation", "Risk-per-Trade Calculations", "Position Sizing", "Lot-Size Calculations", "Leverage", "Exposure", "Stop-Loss Placement", "Risk-to-Reward Ratios", "Drawdown", "Daily Loss Limits", "Personal Risk-Management Planning"]'::jsonb,
+        'Learn to calculate trade risk, control exposure, and develop a structured risk-management plan.',
+        FALSE
+      ) ON CONFLICT (slug) DO UPDATE SET
+        title = EXCLUDED.title,
+        subtitle = EXCLUDED.subtitle,
+        description = EXCLUDED.description,
+        thumbnail = EXCLUDED.thumbnail,
+        price = EXCLUDED.price,
+        original_price = EXCLUDED.original_price,
+        duration = EXCLUDED.duration,
+        topics = EXCLUDED.topics,
+        learning_outcomes = EXCLUDED.learning_outcomes,
+        is_enquiry_only = EXCLUDED.is_enquiry_only;
+
+      -- 5. Advanced Professional Strategy Development
+      INSERT INTO courses (
+        slug, title, subtitle, description, thumbnail, price, original_price,
+        discount_label, duration, level, learning_mode, batch_name, seats_available, is_published,
+        topics, learning_outcomes, is_enquiry_only
+      ) VALUES (
+        'advanced-professional-strategy-development',
+        'Advanced Professional Strategy Development',
+        'Rule-Based Strategy Refinement & Testing',
+        'An advanced program for experienced traders who want to develop, test, and refine their own rule-based trading strategies.',
+        '/14999.jpeg',
+        14999.00,
+        18999.00,
+        'Save ₹4,000 (21% OFF)',
+        '14 Days',
+        'Advanced & Experienced Traders',
+        'Live Online',
+        'November',
+        15,
+        TRUE,
+        '["Strategy Frameworks", "Market Selection", "Market Structure", "Liquidity Concepts", "Entry and Exit Models", "Higher-Timeframe Bias", "Lower-Timeframe Execution", "Stop-Loss and Target Rules", "Historical Backtesting", "Forward Testing", "Trade Journaling", "Win Rate", "Expectancy", "Drawdown Analysis", "Strategy Refinement", "Final Assessment"]'::jsonb,
+        'Develop a documented trading strategy with predefined rules, measurable performance criteria, and a structured improvement plan.',
+        FALSE
+      ) ON CONFLICT (slug) DO UPDATE SET
+        title = EXCLUDED.title,
+        subtitle = EXCLUDED.subtitle,
+        description = EXCLUDED.description,
+        thumbnail = EXCLUDED.thumbnail,
+        price = EXCLUDED.price,
+        original_price = EXCLUDED.original_price,
+        duration = EXCLUDED.duration,
+        topics = EXCLUDED.topics,
+        learning_outcomes = EXCLUDED.learning_outcomes,
+        is_enquiry_only = EXCLUDED.is_enquiry_only;
+
+      -- 6. Villa Trading Experience (Exclusive In-Person Immersion)
+      INSERT INTO courses (
+        slug, title, subtitle, description, thumbnail, price, original_price,
+        discount_label, duration, level, learning_mode, batch_name, seats_available, is_published,
+        topics, learning_outcomes, is_enquiry_only
+      ) VALUES (
+        'villa-trading-experience',
+        'Villa Trading Experience',
+        'Exclusive In-Person Trading Immersion',
+        'An exclusive villa-based trading experience intended for professional and experienced traders.',
+        '/villa.png',
+        0.00,
+        0.00,
+        'Contact for Pricing',
+        'Enquiry Based',
+        'Professional Traders',
+        'In-Person Immersion',
+        'Enquiry Based',
+        8,
+        TRUE,
+        '["Program Format and Schedule", "Eligibility Requirements", "Practical Trading Activities", "Group Size", "Participation Details", "Pricing", "Availability"]'::jsonb,
+        'Immersive in-person trading environment with live desk routines, real-time market execution, and peer collaborative reviews.',
+        TRUE
+      ) ON CONFLICT (slug) DO UPDATE SET
+        title = EXCLUDED.title,
+        subtitle = EXCLUDED.subtitle,
+        description = EXCLUDED.description,
+        thumbnail = EXCLUDED.thumbnail,
+        price = EXCLUDED.price,
+        duration = EXCLUDED.duration,
+        topics = EXCLUDED.topics,
+        learning_outcomes = EXCLUDED.learning_outcomes,
+        is_enquiry_only = EXCLUDED.is_enquiry_only;
+
+      -- 7. Enquiries Table for Villa Trading Experience & Special Programs
+      CREATE TABLE IF NOT EXISTS enquiries (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        course_slug VARCHAR(100) DEFAULT 'villa-trading-experience',
+        course_name VARCHAR(255) DEFAULT 'Villa Trading Experience',
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        mobile VARCHAR(50) NOT NULL,
+        trading_experience VARCHAR(50) DEFAULT 'Intermediate',
+        message TEXT,
+        status VARCHAR(50) DEFAULT 'new',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_enquiries_email ON enquiries(LOWER(email));
+      CREATE INDEX IF NOT EXISTS idx_enquiries_created ON enquiries(created_at DESC);
     `);
 
     // 3. Enrollments Table (Linked with Users and Courses)
@@ -276,6 +488,135 @@ export const initDb = async () => {
       CREATE INDEX IF NOT EXISTS idx_enrollments_order_id ON enrollments(order_id);
       CREATE INDEX IF NOT EXISTS idx_enrollments_payment_id ON enrollments(payment_id);
     `);
+
+    // 9. Recorded Video Lessons & Modules Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS course_lessons (
+        id SERIAL PRIMARY KEY,
+        course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+        module_name VARCHAR(255) DEFAULT 'Core Curriculum',
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        video_url TEXT NOT NULL,
+        duration_minutes INTEGER DEFAULT 30,
+        sort_order INTEGER DEFAULT 1,
+        is_published BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_course_lessons_course ON course_lessons(course_id, sort_order ASC);
+    `);
+
+    // 10. Student Lesson Progress Tracking Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS lesson_progress (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+        lesson_id INTEGER NOT NULL REFERENCES course_lessons(id) ON DELETE CASCADE,
+        is_completed BOOLEAN NOT NULL DEFAULT TRUE,
+        completed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, lesson_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_lesson_prog_user_course ON lesson_progress(user_id, course_id);
+      CREATE INDEX IF NOT EXISTS idx_lesson_prog_lesson ON lesson_progress(lesson_id);
+    `);
+
+    // 11. Course Posts, Notes, PDFs, Assignments & Resources Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS course_resources (
+        id SERIAL PRIMARY KEY,
+        course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        resource_type VARCHAR(50) DEFAULT 'pdf',
+        resource_url TEXT,
+        file_name VARCHAR(255),
+        file_size VARCHAR(50),
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_course_resources_course ON course_resources(course_id, created_at DESC);
+    `);
+
+    // 12. Course-Specific In-App Notifications Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS course_notifications (
+        id SERIAL PRIMARY KEY,
+        course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        type VARCHAR(50) DEFAULT 'announcement',
+        reference_id INTEGER,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_course_notif_course ON course_notifications(course_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_course_notif_user ON course_notifications(user_id, is_read);
+    `);
+
+    // 13. Ensure Announcements and Live Classes have course_id & indexes
+    await client.query(`
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE;
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author VARCHAR(100) DEFAULT 'Patil Trader';
+      CREATE INDEX IF NOT EXISTS idx_announcements_course ON announcements(course_id);
+
+      ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS course_id INTEGER REFERENCES courses(id) ON DELETE SET NULL;
+      ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS description TEXT;
+      ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS meeting_link VARCHAR(500);
+      CREATE INDEX IF NOT EXISTS idx_live_classes_course ON live_classes(course_id, scheduled_at ASC);
+
+      -- 14. Course Modules Table & Additive S3 Video Storage Schema
+      CREATE TABLE IF NOT EXISTS course_modules (
+        id SERIAL PRIMARY KEY,
+        course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        sort_order INTEGER DEFAULT 1,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_course_modules_course ON course_modules(course_id, sort_order ASC);
+
+      -- Additive S3 and metadata columns for course_lessons (S3 video storage)
+      ALTER TABLE course_lessons ALTER COLUMN video_url DROP NOT NULL;
+      ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS s3_key VARCHAR(500);
+      ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS batch_name VARCHAR(100) DEFAULT 'November';
+      ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS original_filename VARCHAR(255);
+      ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS content_type VARCHAR(100) DEFAULT 'video/mp4';
+      ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS file_size BIGINT;
+      ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS release_at TIMESTAMP WITH TIME ZONE;
+      ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+      ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS module_id INTEGER REFERENCES course_modules(id) ON DELETE SET NULL;
+      CREATE INDEX IF NOT EXISTS idx_course_lessons_s3_key ON course_lessons(s3_key);
+      CREATE INDEX IF NOT EXISTS idx_course_lessons_batch ON course_lessons(course_id, batch_name);
+
+      -- Additive columns for live_classes (Google Meet & instructions)
+      ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS instructions TEXT;
+      ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS end_time TIMESTAMP WITH TIME ZONE;
+      ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;
+
+      -- Additive columns for announcements
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS batch_name VARCHAR(100) DEFAULT 'All Batches';
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE;
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS attachment_url TEXT;
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMP WITH TIME ZONE;
+
+      -- Additive columns for course_resources (materials)
+      ALTER TABLE course_resources ADD COLUMN IF NOT EXISTS batch_name VARCHAR(100) DEFAULT 'All Batches';
+      ALTER TABLE course_resources ADD COLUMN IF NOT EXISTS s3_key VARCHAR(500);
+      ALTER TABLE course_resources ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;
+
+      -- Additive columns for course_notifications
+      ALTER TABLE course_notifications ADD COLUMN IF NOT EXISTS batch_name VARCHAR(100) DEFAULT 'All Batches';
+    `);
+    // Database initialized without dummy or placeholder course content.
+    // Real curriculum content is published exclusively by authorized administrators.
+
 
     // 8. Secure Database Seeding for Admin Account
     const adminEmail = (process.env.ADMIN_EMAIL || 'admin@trademaxclub.in').trim().toLowerCase();

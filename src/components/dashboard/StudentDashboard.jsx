@@ -1,23 +1,46 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SUPPORTED_LANGUAGES, getTranslation } from '../../i18n/translations';
 import { loadRazorpay } from '../../utils/loadRazorpay';
+import { CourseClassroom } from './CourseClassroom';
 import './StudentDashboard.css';
 
 export const StudentDashboard = ({
   user,
   course: primaryCourse,
+  initialTab = 'dashboard',
+  onTabChange,
   onOpenCourseDetails,
   onLogout,
   onExit,
+  onNavigate,
   theme = 'dark',
   onToggleTheme,
 }) => {
-  // Navigation tabs: dashboard | courses | live-classes | announcements | settings
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // Navigation tabs: dashboard | my-courses | courses | live-classes | announcements
+  const [activeTab, setActiveTab] = useState(initialTab || 'dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const langDropdownRef = useRef(null);
+
+  // Synchronize activeTab when parent changes initialTab (e.g. mobile bottom bar clicks)
+  useEffect(() => {
+    if (initialTab && initialTab !== activeTab) {
+      if (initialTab === 'settings') {
+        if (onNavigate) onNavigate('settings');
+      } else {
+        setActiveTab(initialTab);
+        setActiveCourseClassroom(null);
+      }
+    }
+  }, [initialTab, onNavigate]);
+
+  const handleTabSwitch = (tab) => {
+    setActiveCourseClassroom(null);
+    setActiveTab(tab);
+    if (onTabChange) onTabChange(tab);
+    setIsMobileDrawerOpen(false);
+  };
 
   // Close mobile language dropdown when clicking or touching outside
   useEffect(() => {
@@ -55,8 +78,10 @@ export const StudentDashboard = ({
   // Student Data States
   const [dashboardData, setDashboardData] = useState(null);
   const [coursesList, setCoursesList] = useState([]);
+  const [myCoursesList, setMyCoursesList] = useState([]);
   const [liveClassesList, setLiveClassesList] = useState([]);
   const [announcementsList, setAnnouncementsList] = useState([]);
+  const [activeCourseClassroom, setActiveCourseClassroom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState(null);
 
@@ -66,14 +91,6 @@ export const StudentDashboard = ({
     mobile: user?.mobile || '',
     trading_experience: user?.trading_experience || 'Intermediate',
   });
-  const [profileSaving, setProfileSaving] = useState(false);
-
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
-  const [passwordSaving, setPasswordSaving] = useState(false);
 
   // 1-click enroll loading state
   const [enrollingCourseId, setEnrollingCourseId] = useState(null);
@@ -85,14 +102,17 @@ export const StudentDashboard = ({
   }, [activeTab]);
 
   // Fetch Dashboard & Portal Data from PostgreSQL Backend
-  const fetchPortalData = useCallback(async () => {
+  const fetchPortalData = useCallback(async (isSilent = false) => {
     try {
-      setLoading(true);
-      const [dashRes, coursesRes, liveRes, announceRes] = await Promise.all([
+      if (!isSilent) {
+        setLoading(true);
+      }
+      const [dashRes, coursesRes, liveRes, announceRes, myCoursesRes] = await Promise.all([
         fetch('/api/student/dashboard', { credentials: 'include' }).then((r) => r.json()).catch(() => ({ success: false })),
         fetch('/api/student/courses', { credentials: 'include' }).then((r) => r.json()).catch(() => ({ success: false })),
         fetch('/api/student/live-classes', { credentials: 'include' }).then((r) => r.json()).catch(() => ({ success: false })),
         fetch('/api/student/announcements', { credentials: 'include' }).then((r) => r.json()).catch(() => ({ success: false })),
+        fetch('/api/student/my-courses', { credentials: 'include' }).then((r) => r.json()).catch(() => ({ success: false })),
       ]);
 
       if (dashRes.success && dashRes.data) {
@@ -110,6 +130,10 @@ export const StudentDashboard = ({
         setCoursesList(coursesRes.courses);
       }
 
+      if (myCoursesRes.success && Array.isArray(myCoursesRes.courses)) {
+        setMyCoursesList(myCoursesRes.courses);
+      }
+
       if (liveRes.success && Array.isArray(liveRes.liveClasses)) {
         setLiveClassesList(liveRes.liveClasses);
       }
@@ -120,7 +144,9 @@ export const StudentDashboard = ({
     } catch (err) {
       console.warn('Error fetching student portal data:', err);
     } finally {
-      setLoading(false);
+      if (!isSilent) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -308,78 +334,7 @@ export const StudentDashboard = ({
     }
   };
 
-  // Handle Profile Update
-  const handleProfileSubmit = async (e) => {
-    e.preventDefault();
-    if (!profileForm.name.trim()) {
-      showToast('Full name is required.', 'error');
-      return;
-    }
 
-    try {
-      setProfileSaving(true);
-      const res = await fetch('/api/auth/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(profileForm),
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        showToast(t.settings.profileUpdated, 'success');
-        fetchPortalData();
-      } else {
-        showToast(data.error || 'Failed to update profile.', 'error');
-      }
-    } catch (err) {
-      showToast('Network error while saving profile.', 'error');
-    } finally {
-      setProfileSaving(false);
-    }
-  };
-
-  // Handle Password Change
-  const handlePasswordSubmit = async (e) => {
-    e.preventDefault();
-    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
-      showToast('Please fill in all password fields.', 'error');
-      return;
-    }
-    if (passwordForm.newPassword.length < 6) {
-      showToast(t.settings.passShort, 'error');
-      return;
-    }
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      showToast(t.settings.passMismatch, 'error');
-      return;
-    }
-
-    try {
-      setPasswordSaving(true);
-      const res = await fetch('/api/auth/password', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          currentPassword: passwordForm.currentPassword,
-          newPassword: passwordForm.newPassword,
-        }),
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        showToast(t.settings.passwordUpdated, 'success');
-        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      } else {
-        showToast(data.error || 'Failed to update password.', 'error');
-      }
-    } catch (err) {
-      showToast('Network error while updating password.', 'error');
-    } finally {
-      setPasswordSaving(false);
-    }
-  };
 
   // Safe student identifiers
   const displayName = profileForm.name || user?.name || dashboardData?.profile?.name || 'Student';
@@ -410,10 +365,9 @@ export const StudentDashboard = ({
 
   const navItems = [
     { id: 'dashboard', label: t.nav.dashboard, group: 'MAIN' },
-    { id: 'courses', label: t.nav.courses, group: 'LEARNING' },
-    { id: 'live-classes', label: t.nav.liveClasses, group: 'LEARNING' },
+    { id: 'my-courses', label: t.nav.myCourses || 'My Courses', group: 'LEARNING' },
+    { id: 'courses', label: t.nav.courses || 'All Courses', group: 'LEARNING' },
     { id: 'announcements', label: t.nav.announcements, group: 'LEARNING' },
-    { id: 'settings', label: t.nav.settings, group: 'ACCOUNT' },
   ];
 
   const currentTabLabel = navItems.find((n) => n.id === activeTab)?.label || t.nav.dashboard;
@@ -659,10 +613,7 @@ export const StudentDashboard = ({
               <button
                 type="button"
                 className={`tm-sidebar-nav-item ${activeTab === 'dashboard' ? 'is-active' : ''}`}
-                onClick={() => {
-                  setActiveTab('dashboard');
-                  setIsMobileDrawerOpen(false);
-                }}
+                onClick={() => handleTabSwitch('dashboard')}
               >
                 <span className="tm-nav-text">{t.nav.dashboard}</span>
               </button>
@@ -675,31 +626,22 @@ export const StudentDashboard = ({
               <span className="tm-group-title">ACADEMICS</span>
               <button
                 type="button"
-                className={`tm-sidebar-nav-item ${activeTab === 'courses' ? 'is-active' : ''}`}
-                onClick={() => {
-                  setActiveTab('courses');
-                  setIsMobileDrawerOpen(false);
-                }}
+                className={`tm-sidebar-nav-item ${activeTab === 'my-courses' && !activeCourseClassroom ? 'is-active' : ''}`}
+                onClick={() => handleTabSwitch('my-courses')}
+              >
+                <span className="tm-nav-text">{t.nav.myCourses || 'My Courses'}</span>
+              </button>
+              <button
+                type="button"
+                className={`tm-sidebar-nav-item ${activeTab === 'courses' && !activeCourseClassroom ? 'is-active' : ''}`}
+                onClick={() => handleTabSwitch('courses')}
               >
                 <span className="tm-nav-text">{t.nav.courses}</span>
               </button>
               <button
                 type="button"
-                className={`tm-sidebar-nav-item ${activeTab === 'live-classes' ? 'is-active' : ''}`}
-                onClick={() => {
-                  setActiveTab('live-classes');
-                  setIsMobileDrawerOpen(false);
-                }}
-              >
-                <span className="tm-nav-text">{t.nav.liveClasses}</span>
-              </button>
-              <button
-                type="button"
-                className={`tm-sidebar-nav-item ${activeTab === 'announcements' ? 'is-active' : ''}`}
-                onClick={() => {
-                  setActiveTab('announcements');
-                  setIsMobileDrawerOpen(false);
-                }}
+                className={`tm-sidebar-nav-item ${activeTab === 'announcements' && !activeCourseClassroom ? 'is-active' : ''}`}
+                onClick={() => handleTabSwitch('announcements')}
               >
                 <span className="tm-nav-text">{t.nav.announcements}</span>
               </button>
@@ -707,14 +649,18 @@ export const StudentDashboard = ({
 
             <div className="tm-nav-divider" />
 
-            {/* GROUP: ACCOUNT */}
+            {/* GROUP: ACCOUNT - Directs to Unified Settings Page */}
             <div className="tm-nav-group">
               <span className="tm-group-title">ACCOUNT</span>
               <button
                 type="button"
-                className={`tm-sidebar-nav-item ${activeTab === 'settings' ? 'is-active' : ''}`}
+                className="tm-sidebar-nav-item"
                 onClick={() => {
-                  setActiveTab('settings');
+                  if (onNavigate) {
+                    onNavigate('settings');
+                  } else {
+                    window.location.hash = '#settings';
+                  }
                   setIsMobileDrawerOpen(false);
                 }}
               >
@@ -751,7 +697,17 @@ export const StudentDashboard = ({
             3. MAIN CONTENT VIEWS
             ------------------------------------------------------------------ */}
         <main className="tm-portal-main">
-          {loading && !dashboardData ? (
+          {activeCourseClassroom ? (
+            <CourseClassroom
+              courseId={activeCourseClassroom}
+              user={user}
+              theme={theme}
+              onBack={() => {
+                setActiveCourseClassroom(null);
+                fetchPortalData(true);
+              }}
+            />
+          ) : loading && !dashboardData ? (
             <div className="tm-portal-loading-card">
               <div className="tm-loading-text">{t.common.loading}</div>
             </div>
@@ -762,25 +718,6 @@ export const StudentDashboard = ({
                   ============================================================== */}
               {activeTab === 'dashboard' && (
                 <div className="tm-tab-pane tm-dashboard-view">
-                  {/* Welcome Greeting Banner */}
-                  <div className="tm-welcome-banner">
-                    <div className="tm-welcome-copy">
-                      <span className="tm-welcome-eyebrow">STUDENT LEARNING OVERVIEW</span>
-                      <h1 className="tm-welcome-title">
-                        {t.common.welcome}, {displayName}
-                      </h1>
-                      <p className="tm-welcome-desc">{t.dashboard.greetingSub}</p>
-                    </div>
-                    <div className="tm-welcome-actions">
-                      <button
-                        type="button"
-                        className="tm-btn-solid-primary"
-                        onClick={() => setActiveTab('courses')}
-                      >
-                        {t.common.exploreCourses}
-                      </button>
-                    </div>
-                  </div>
 
                   {/* 3 Metric Cards */}
                   <div className="tm-stats-grid">
@@ -814,7 +751,7 @@ export const StudentDashboard = ({
                       <div>
                         <h2 className="tm-section-title">{t.dashboard.myCourses}</h2>
                         <span className="tm-section-sub">
-                          Programs linked to your student registration in PostgreSQL
+                          Your active enrolled trading education programs
                         </span>
                       </div>
                       <button
@@ -863,33 +800,13 @@ export const StudentDashboard = ({
                               <h3 className="tm-enrolled-title">{item.course_title}</h3>
                               <p className="tm-enrolled-subtitle">{item.course_subtitle}</p>
 
-                              <div className="tm-enrolled-progress-wrap">
-                                <div className="tm-progress-labels">
-                                  <span>{t.dashboard.progressLabel}</span>
-                                  <span>{item.progress_percentage}%</span>
-                                </div>
-                                <div className="tm-progress-track">
-                                  <div
-                                    className="tm-progress-bar"
-                                    style={{ width: `${item.progress_percentage}%` }}
-                                  />
-                                </div>
-                              </div>
-
                               <div className="tm-enrolled-actions">
                                 <button
                                   type="button"
-                                  className="tm-btn-solid-secondary"
-                                  onClick={onOpenCourseDetails}
+                                  className="tm-btn-solid-primary tm-btn-view-course"
+                                  onClick={() => setActiveCourseClassroom(item.course_id || item.id)}
                                 >
-                                  {t.common.viewDetails}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="tm-btn-solid-primary"
-                                  onClick={() => setActiveTab('live-classes')}
-                                >
-                                  {t.dashboard.liveClassesBtn || 'Live Classes'}
+                                  View Course &rarr;
                                 </button>
                               </div>
                             </div>
@@ -1003,19 +920,89 @@ export const StudentDashboard = ({
               )}
 
               {/* ==============================================================
-                  TAB 2: COURSES CATALOG (Available Courses)
+                  TAB 2: DEDICATED "MY COURSES" PAGE (Only Enrolled & Verified Courses)
+                  ============================================================== */}
+              {activeTab === 'my-courses' && (
+                <div className="tm-tab-pane tm-mycourses-view">
+                  <div className="tm-pane-header">
+                    <h1 className="tm-pane-title">{t.nav.myCourses || 'My Courses'}</h1>
+                  </div>
+
+                  {myCoursesList.length === 0 ? (
+                    <div className="tm-empty-state-card">
+                      <span className="tm-empty-state-tag">[ NO ACTIVE ENROLLMENT ]</span>
+                      <h3 className="tm-empty-state-title">No Enrolled Courses Found</h3>
+                      <p className="tm-empty-state-desc">
+                        You have not enrolled in any trading program yet. Only courses with verified payments or authorized admin approvals appear here.
+                      </p>
+                      <button
+                        type="button"
+                        className="tm-btn-solid-primary"
+                        onClick={() => setActiveTab('courses')}
+                      >
+                        Explore All Courses &rarr;
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="tm-mycourses-grid">
+                      {myCoursesList.map((course) => (
+                        <div key={course.enrollment_id || course.course_id} className="tm-mycourse-card">
+                          <div className="tm-mycourse-thumb-box">
+                            <img
+                              src={course.thumbnail || '/1-c.jpeg'}
+                              alt={course.title}
+                              className="tm-mycourse-thumb-img"
+                              onError={(e) => {
+                                e.target.src = '/1-c.jpeg';
+                              }}
+                            />
+                            <span className="tm-mycourse-badge">[ ENROLLED ]</span>
+                          </div>
+
+                          <div className="tm-mycourse-card-content">
+                            <div className="tm-mycourse-meta-top">
+                              <span>{course.batch_name || 'November'} Cohort</span>
+                              <span>{course.learning_mode || 'Live Online'}</span>
+                            </div>
+
+                            <h3 className="tm-mycourse-title">{course.title}</h3>
+                            <p className="tm-mycourse-desc">{course.subtitle || course.description}</p>
+
+                            <div className="tm-mycourse-specs">
+                              <span>⏱ Duration: {course.duration || '30 Days'}</span>
+                              <span>📊 Level: {course.level || 'Institutional'}</span>
+                            </div>
+
+                            <div className="tm-mycourse-actions">
+                              <button
+                                type="button"
+                                className="tm-mycourse-btn-primary tm-btn-view-course"
+                                onClick={() => setActiveCourseClassroom(course.course_id || course.id)}
+                              >
+                                <span>View Course</span>
+                                <span>&rarr;</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ==============================================================
+                  TAB 3: COURSES CATALOG (Available Courses)
                   ============================================================== */}
               {activeTab === 'courses' && (
                 <div className="tm-tab-pane tm-courses-view">
                   <div className="tm-pane-header">
-                    <span className="tm-pane-eyebrow">POSTGRESQL CURRICULUM CATALOG</span>
-                    <h1 className="tm-pane-title">{t.courses.pageTitle}</h1>
-                    <p className="tm-pane-desc">{t.courses.pageDesc}</p>
+                    <h1 className="tm-pane-title">{t.courses.pageTitle || 'Available Courses'}</h1>
                   </div>
 
                   {coursesList.length === 0 ? (
                     <div className="tm-empty-state-card">
-                      <span className="tm-empty-state-tag">[ DATABASE SYNC ]</span>
+                      <span className="tm-empty-state-tag">[ NO COURSES ]</span>
                       <h3 className="tm-empty-state-title">{t.courses.noCourses}</h3>
                     </div>
                   ) : (
@@ -1087,19 +1074,24 @@ export const StudentDashboard = ({
                                   <button
                                     type="button"
                                     className="tm-btn-solid-secondary"
-                                    onClick={onOpenCourseDetails}
+                                    onClick={() => onOpenCourseDetails(c)}
                                   >
                                     {t.common.viewDetails}
                                   </button>
 
                                   {isEnrolled ? (
-                                    <button
-                                      type="button"
-                                      className="tm-btn-solid-enrolled"
-                                      disabled
-                                    >
-                                      {t.courses.alreadyEnrolled}
-                                    </button>
+                                    <>
+                                      <span className="tm-catalog-badge-enrolled">
+                                        ENROLLED
+                                      </span>
+                                      <button
+                                        type="button"
+                                        className="tm-btn-solid-primary tm-btn-view-course"
+                                        onClick={() => setActiveCourseClassroom(c.id)}
+                                      >
+                                        View Course &rarr;
+                                      </button>
+                                    </>
                                   ) : (
                                     <button
                                       type="button"
@@ -1249,196 +1241,6 @@ export const StudentDashboard = ({
                       ))}
                     </div>
                   )}
-                </div>
-              )}
-
-              {/* ==============================================================
-                  TAB 5: SETTINGS & PREFERENCES
-                  ============================================================== */}
-              {activeTab === 'settings' && (
-                <div className="tm-tab-pane tm-settings-view">
-                  <div className="tm-pane-header">
-                    <span className="tm-pane-eyebrow">PORTAL PREFERENCES & SECURITY</span>
-                    <h1 className="tm-pane-title">{t.settings.pageTitle}</h1>
-                    <p className="tm-pane-desc">{t.settings.pageDesc}</p>
-                  </div>
-
-                  <div className="tm-settings-grid">
-                    {/* Section 1: Profile Details */}
-                    <div className="tm-settings-card">
-                      <h3 className="tm-settings-card-title">{t.settings.profileSection}</h3>
-                      <form onSubmit={handleProfileSubmit} className="tm-portal-form">
-                        <div className="tm-form-field">
-                          <label className="tm-field-label">{t.settings.name} *</label>
-                          <input
-                            type="text"
-                            className="tm-form-input"
-                            value={profileForm.name}
-                            onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                            required
-                          />
-                        </div>
-
-                        <div className="tm-form-field">
-                          <label className="tm-field-label">{t.settings.email}</label>
-                          <input
-                            type="email"
-                            className="tm-form-input is-readonly"
-                            value={user?.email || dashboardData?.profile?.email || ''}
-                            readOnly
-                            disabled
-                          />
-                          <span className="tm-field-hint">{t.settings.emailNotice}</span>
-                        </div>
-
-                        <div className="tm-form-field">
-                          <label className="tm-field-label">{t.settings.mobile} *</label>
-                          <input
-                            type="tel"
-                            className="tm-form-input"
-                            value={profileForm.mobile}
-                            onChange={(e) => setProfileForm({ ...profileForm, mobile: e.target.value })}
-                            placeholder="e.g. 9876543210"
-                            required
-                          />
-                        </div>
-
-                        <div className="tm-form-field">
-                          <label className="tm-field-label">{t.settings.tradingExp}</label>
-                          <select
-                            className="tm-form-select"
-                            value={profileForm.trading_experience}
-                            onChange={(e) =>
-                              setProfileForm({ ...profileForm, trading_experience: e.target.value })
-                            }
-                          >
-                            <option value="Beginner">Beginner (0-1 Years)</option>
-                            <option value="Intermediate">Intermediate (1-3 Years)</option>
-                            <option value="Advanced">Advanced (3-5 Years)</option>
-                            <option value="Professional">Professional (Institutional)</option>
-                          </select>
-                        </div>
-
-                        <div className="tm-form-actions">
-                          <button
-                            type="submit"
-                            className="tm-btn-solid-primary"
-                            disabled={profileSaving}
-                          >
-                            {profileSaving ? t.common.saving : t.common.saveChanges}
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-
-                    {/* Section 2: Preferences (Language + Theme) */}
-                    <div className="tm-settings-card">
-                      <h3 className="tm-settings-card-title">{t.settings.prefSection}</h3>
-
-                      <div className="tm-pref-group">
-                        <label className="tm-field-label">{t.settings.langPref}</label>
-                        <p className="tm-pref-desc">
-                          Select your preferred interface language. The portal updates immediately without reloading.
-                        </p>
-                        <div className="tm-lang-options-grid">
-                          {SUPPORTED_LANGUAGES.map((lang) => (
-                            <button
-                              key={lang.code}
-                              type="button"
-                              className={`tm-lang-option-card ${currentLang === lang.code ? 'is-selected' : ''}`}
-                              onClick={() => handleLanguageChange(lang.code)}
-                            >
-                              <span className="tm-lang-card-code">{lang.short}</span>
-                              <span className="tm-lang-card-label">{lang.label}</span>
-                              {currentLang === lang.code && (
-                                <span className="tm-lang-card-active-tag">[ ACTIVE ]</span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="tm-pref-group" style={{ marginTop: '2rem' }}>
-                        <label className="tm-field-label">{t.settings.themePref}</label>
-                        <p className="tm-pref-desc">
-                          Toggle between High-Contrast Dark mode and Clean White Day mode.
-                        </p>
-                        <div className="tm-theme-switch-row">
-                          <button
-                            type="button"
-                            className={`tm-theme-option-btn ${theme === 'light' ? 'is-selected' : ''}`}
-                            onClick={() => onToggleTheme && onToggleTheme('light')}
-                          >
-                            [ DAY MODE (LIGHT) ]
-                          </button>
-                          <button
-                            type="button"
-                            className={`tm-theme-option-btn ${theme === 'dark' ? 'is-selected' : ''}`}
-                            onClick={() => onToggleTheme && onToggleTheme('dark')}
-                          >
-                            [ NIGHT MODE (DARK) ]
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Section 3: Password & Security */}
-                    <div className="tm-settings-card tm-card-fullwidth">
-                      <h3 className="tm-settings-card-title">{t.settings.securitySection}</h3>
-                      <form onSubmit={handlePasswordSubmit} className="tm-portal-form tm-password-form-grid">
-                        <div className="tm-form-field">
-                          <label className="tm-field-label">{t.settings.currentPass} *</label>
-                          <input
-                            type="password"
-                            className="tm-form-input"
-                            value={passwordForm.currentPassword}
-                            onChange={(e) =>
-                              setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
-                            }
-                            required
-                          />
-                        </div>
-
-                        <div className="tm-form-field">
-                          <label className="tm-field-label">{t.settings.newPass} *</label>
-                          <input
-                            type="password"
-                            className="tm-form-input"
-                            value={passwordForm.newPassword}
-                            onChange={(e) =>
-                              setPasswordForm({ ...passwordForm, newPassword: e.target.value })
-                            }
-                            required
-                            minLength={6}
-                          />
-                        </div>
-
-                        <div className="tm-form-field">
-                          <label className="tm-field-label">{t.settings.confirmPass} *</label>
-                          <input
-                            type="password"
-                            className="tm-form-input"
-                            value={passwordForm.confirmPassword}
-                            onChange={(e) =>
-                              setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
-                            }
-                            required
-                            minLength={6}
-                          />
-                        </div>
-
-                        <div className="tm-form-actions tm-col-span-full">
-                          <button
-                            type="submit"
-                            className="tm-btn-solid-primary"
-                            disabled={passwordSaving}
-                          >
-                            {passwordSaving ? t.common.saving : t.settings.updatePassword}
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
                 </div>
               )}
             </>

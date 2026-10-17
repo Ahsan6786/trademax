@@ -50,6 +50,9 @@ app.use(
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
+// Serve uploaded course resources securely
+app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
+
 // Health Check
 app.get('/api/health', (req, res) => {
   res.status(200).json({

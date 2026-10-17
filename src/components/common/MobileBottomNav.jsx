@@ -3,6 +3,7 @@ import './MobileBottomNav.css';
 
 export const MobileBottomNav = ({
   currentView = 'landing',
+  activeTab = 'dashboard',
   onNavigate,
   theme = 'dark',
   onToggleTheme,
@@ -12,10 +13,10 @@ export const MobileBottomNav = ({
   return (
     <nav className="tm-mobile-bottom-nav" aria-label="Mobile Bottom Navigation">
       <div className="tm-bottom-nav-inner">
-        {/* 1. HOME BUTTON (Directs to Student Dashboard) */}
+        {/* 1. HOME BUTTON (Directs to Student Dashboard Overview) */}
         <button
           type="button"
-          className={`tm-bottom-nav-item ${currentView === 'dashboard' ? 'active' : ''}`}
+          className={`tm-bottom-nav-item ${currentView === 'dashboard' && activeTab === 'dashboard' ? 'active' : ''}`}
           onClick={() => onNavigate && onNavigate('dashboard')}
           aria-label="Go to Student Dashboard"
         >
@@ -38,12 +39,12 @@ export const MobileBottomNav = ({
           <span className="tm-bottom-nav-label">Home</span>
         </button>
 
-        {/* 2. COURSES BUTTON */}
+        {/* 2. MY COURSES BUTTON (Directly opens My Courses page) */}
         <button
           type="button"
-          className={`tm-bottom-nav-item ${currentView === 'course-details' ? 'active' : ''}`}
-          onClick={() => onNavigate && onNavigate('course-details')}
-          aria-label="View Courses"
+          className={`tm-bottom-nav-item ${currentView === 'dashboard' && activeTab === 'my-courses' ? 'active' : ''}`}
+          onClick={() => onNavigate && onNavigate('my-courses')}
+          aria-label="My Courses"
         >
           <span className="tm-bottom-nav-icon-wrap">
             <svg
@@ -63,7 +64,7 @@ export const MobileBottomNav = ({
               <line x1="9" y1="11" x2="13" y2="11"></line>
             </svg>
           </span>
-          <span className="tm-bottom-nav-label">Courses</span>
+          <span className="tm-bottom-nav-label">My Courses</span>
         </button>
 
         {/* 3. STOCKS BUTTON */}
@@ -92,7 +93,7 @@ export const MobileBottomNav = ({
           <span className="tm-bottom-nav-label">Stocks</span>
         </button>
 
-        {/* 4. SETTING (CREATE NEW PASSWORD & SETTINGS) */}
+        {/* 4. SETTINGS (Account Settings & Password) */}
         <button
           type="button"
           className={`tm-bottom-nav-item ${currentView === 'settings' ? 'active' : ''}`}
@@ -116,7 +117,7 @@ export const MobileBottomNav = ({
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
           </span>
-          <span className="tm-bottom-nav-label">Setting</span>
+          <span className="tm-bottom-nav-label">Settings</span>
         </button>
       </div>
     </nav>

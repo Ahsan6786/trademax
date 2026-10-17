@@ -4,8 +4,10 @@ import './CourseDetailsPage.css';
 export const CourseDetailsPage = ({
   onBack,
   onRegister,
+  onNavigate,
   course,
   settings,
+  user,
   theme: propTheme,
   onToggleTheme,
 }) => {
@@ -17,14 +19,75 @@ export const CourseDetailsPage = ({
   });
 
   const activeTheme = propTheme || internalTheme;
+  const [dbCourse, setDbCourse] = useState(typeof course === 'object' ? course : null);
+  const [isEnrolled, setIsEnrolled] = useState(Boolean(course?.is_enrolled));
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     if (document.documentElement) document.documentElement.scrollTop = 0;
     if (document.body) document.body.scrollTop = 0;
-  }, []);
 
-  const whatYoullLearn = [
+    let isMounted = true;
+    const targetSlugOrId =
+      typeof course === 'string' || typeof course === 'number'
+        ? course
+        : course?.slug || course?.id || 'trading-masterclass';
+
+    const token = localStorage.getItem('tm_token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+    setLoading(true);
+    fetch(`/api/courses/${targetSlugOrId}`, { headers, credentials: 'include' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isMounted) return;
+        if (data.success && data.course) {
+          setDbCourse(data.course);
+          setIsEnrolled(Boolean(data.isEnrolled || data.course.is_enrolled));
+        } else if (typeof course === 'object' && course !== null) {
+          setDbCourse(course);
+          setIsEnrolled(Boolean(course.is_enrolled));
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to fetch course details from backend:', err);
+        if (isMounted && typeof course === 'object' && course !== null) {
+          setDbCourse(course);
+          setIsEnrolled(Boolean(course.is_enrolled));
+        }
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [course]);
+
+  const activeCourse = dbCourse || (typeof course === 'object' ? course : null);
+
+  const isEnquiryOnly =
+    activeCourse?.is_enquiry_only ||
+    activeCourse?.slug === 'villa-trading-experience' ||
+    parseFloat(activeCourse?.price || 0) === 0;
+
+  // Derive topics dynamically from course if available
+  let dynamicTopics = [];
+  if (Array.isArray(activeCourse?.topics)) {
+    dynamicTopics = activeCourse.topics;
+  } else if (typeof activeCourse?.topics === 'string') {
+    try {
+      const parsed = JSON.parse(activeCourse.topics);
+      if (Array.isArray(parsed)) dynamicTopics = parsed;
+      else dynamicTopics = [activeCourse.topics];
+    } catch {
+      dynamicTopics = activeCourse.topics.split(',').map((t) => t.trim());
+    }
+  }
+
+  const whatYoullLearn = dynamicTopics.length > 0 ? dynamicTopics : [
     'Forex & Crypto Institutional Trading',
     'Technical Analysis & Market Structure',
     'Trading Psychology & Discipline',
@@ -50,26 +113,27 @@ export const CourseDetailsPage = ({
     'Trade Management, Trading Psychology, and Risk Management Discussions',
   ];
 
-  const title = course?.title || 'Trading Masterclass';
-  const rawSubtitle = course?.subtitle || 'Forex & Crypto Trading';
+  const title = activeCourse?.title || 'Basics to Advanced Course';
+  const rawSubtitle = activeCourse?.subtitle || 'Forex & Crypto Trading';
   const subtitle = rawSubtitle
     .replace(/\s*[—–-]\s*Basic to Advanced/gi, '')
     .replace(/Basic to Advanced/gi, '')
     .trim();
   const description =
-    course?.description ||
-    'A structured one-month online program designed to build strong foundations in financial markets, technical analysis, trading psychology, and risk management across Forex and Crypto markets.';
-  const thumbnail = course?.thumbnail || '/1-c.jpeg';
-  const price = course?.price !== undefined ? parseFloat(course.price) : 19999;
+    activeCourse?.description ||
+    'A structured program designed to build strong foundations in financial markets, technical analysis, trading psychology, and risk management across Forex and Crypto markets.';
+  const thumbnail = activeCourse?.thumbnail || '/1-c.jpeg';
+  const price = activeCourse?.price !== undefined ? parseFloat(activeCourse.price) : 20000;
   const originalPrice =
-    course?.original_price !== undefined ? parseFloat(course.original_price) : 24999;
+    activeCourse?.original_price !== undefined ? parseFloat(activeCourse.original_price) : 25000;
   const discountLabel =
-    course?.discount_label ||
+    activeCourse?.discount_label ||
     (originalPrice > price ? `Save ₹${(originalPrice - price).toLocaleString('en-IN')}` : '');
-  const duration = course?.duration || '1 Month';
-  const mode = course?.learning_mode || 'Online';
-  const batchName = course?.batch_name || settings?.batchName || 'November';
-  const isPublished = course?.is_published !== undefined ? Boolean(course.is_published) : true;
+  const duration = activeCourse?.duration || '30 Days';
+  const mode = activeCourse?.learning_mode || 'Live Online';
+  const batchName = activeCourse?.batch_name || settings?.batchName || 'November';
+  const isPublished = activeCourse?.is_published !== undefined ? Boolean(activeCourse.is_published) : true;
+
 
   return (
     <div className={`tm-cdp-root tm-theme-${activeTheme}`}>
@@ -80,7 +144,10 @@ export const CourseDetailsPage = ({
             <button
               type="button"
               className="tm-cdp-back-btn"
-              onClick={onBack}
+              onClick={(e) => {
+                if (e && e.preventDefault) e.preventDefault();
+                if (onBack) onBack(e);
+              }}
               aria-label="Back to courses"
             >
               <span className="tm-cdp-back-arrow" aria-hidden="true">&larr;</span> Back
@@ -120,12 +187,18 @@ export const CourseDetailsPage = ({
 
                   <div className="tm-cdp-panel-pricing">
                     <div className="tm-cdp-price-meta">
-                      <span className="tm-cdp-price-bold">₹{price.toLocaleString('en-IN')}</span>
-                      {originalPrice > price && (
-                        <span className="tm-cdp-price-strike">₹{originalPrice.toLocaleString('en-IN')}</span>
-                      )}
-                      {discountLabel && (
-                        <span className="tm-cdp-savings-badge">{discountLabel}</span>
+                      {isEnquiryOnly ? (
+                        <span className="tm-cdp-price-bold" style={{ fontSize: '22px', color: '#B45309' }}>Contact for Pricing</span>
+                      ) : (
+                        <>
+                          <span className="tm-cdp-price-bold">₹{price.toLocaleString('en-IN')}</span>
+                          {originalPrice > price && (
+                            <span className="tm-cdp-price-strike">₹{originalPrice.toLocaleString('en-IN')}</span>
+                          )}
+                          {discountLabel && (
+                            <span className="tm-cdp-savings-badge">{discountLabel}</span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -150,15 +223,36 @@ export const CourseDetailsPage = ({
 
                 <div className="tm-cdp-panel-bottom">
                   <div className="tm-cdp-panel-actions">
-                    <button
-                      type="button"
-                      className="tm-cdp-btn-register"
-                      onClick={onRegister}
-                      disabled={!isPublished}
-                      style={!isPublished ? { opacity: 0.6, cursor: 'not-allowed', background: '#475569' } : {}}
-                    >
-                      {isPublished ? 'REGISTER FOR COURSE' : 'ADMISSIONS TEMPORARILY CLOSED'}
-                    </button>
+                    {isEnrolled ? (
+                      <div className="tm-cdp-enrolled-action-wrap">
+                        <div className="tm-cdp-enrolled-status-badge">
+                          <span className="tm-cdp-badge-check" aria-hidden="true">✓</span>
+                          <span>ENROLLED</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="tm-cdp-btn-register"
+                        onClick={() => {
+                          if (onRegister) onRegister(activeCourse);
+                        }}
+                        disabled={!isPublished}
+                        style={
+                          !isPublished
+                            ? { opacity: 0.6, cursor: 'not-allowed', background: '#475569' }
+                            : isEnquiryOnly
+                            ? { background: '#B45309', borderColor: '#B45309' }
+                            : {}
+                        }
+                      >
+                        {!isPublished
+                          ? 'ADMISSIONS TEMPORARILY CLOSED'
+                          : isEnquiryOnly
+                          ? 'ENQUIRE NOW'
+                          : 'REGISTER FOR COURSE'}
+                      </button>
+                    )}
                     <p className="tm-cdp-panel-warning">
                       Trading involves substantial risk. This program is for educational purposes only.
                     </p>
@@ -234,7 +328,7 @@ export const CourseDetailsPage = ({
                   <div className="tm-cdp-details-table">
                     <div className="tm-cdp-table-row">
                       <span className="tm-cdp-table-label">Duration</span>
-                      <span className="tm-cdp-table-val">1 Month</span>
+                      <span className="tm-cdp-table-val">{duration}</span>
                     </div>
                     <div className="tm-cdp-table-row">
                       <span className="tm-cdp-table-label">Mode</span>

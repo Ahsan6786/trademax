@@ -1,41 +1,44 @@
 /* ==========================================================================
-   TRADEMAX — Simplified, Premium Institutional Course Card
-   Zero black overlay, 100% solid surfaces (no glassmorphism), crisp hierarchy
+   TRADEMAX — Premium Institutional Course Card
+   100% Solid surfaces (No glassmorphism, No backdrop blur, No icons)
+   Pure typography, clear visual hierarchy, balanced spacing
    ========================================================================== */
 
 .tm-course-card {
   width: 100%;
-  max-width: 450px;
-  background-color: #FFFFFF;
-  border: 1px solid #E2E8F0;
-  border-radius: 20px;
+  min-width: 0;
+  height: 100%;
+  background-color: #0A0D14;
+  border: 1px solid #1E293B;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 10px 30px -8px rgba(15, 23, 42, 0.08), 0 2px 8px -2px rgba(15, 23, 42, 0.04);
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 0.22s ease;
+  box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s ease;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  margin: 0 auto;
   position: relative;
+  box-sizing: border-box;
 }
 
 .tm-course-card:hover {
   transform: translateY(-4px);
-  border-color: #CBD5E1;
-  box-shadow: 0 20px 42px -10px rgba(15, 23, 42, 0.14), 0 4px 14px -2px rgba(15, 23, 42, 0.06);
+  border-color: #334155;
+  box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.55);
 }
 
 /* --------------------------------------------------------------------------
-   1. CRISP BANNER POSTER WRAP (NO OVERLAYS, NATURAL 16:9 PROPORTIONS)
+   1. BANNER POSTER WRAP (NATURAL 16:9 PROPORTIONS)
    -------------------------------------------------------------------------- */
 .tm-card-poster-wrap {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  background-color: #F1F5F9;
+  background-color: #0F172A;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .tm-card-poster-img {
@@ -43,397 +46,396 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tm-course-card:hover .tm-card-poster-img {
-  transform: scale(1.025);
+  transform: scale(1.02);
+}
+
+.tm-card-badge-exclusive {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background-color: #B45309;
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 4px;
 }
 
 /* --------------------------------------------------------------------------
-   2. SPACIOUS CARD BODY
+   2. SPACIOUS SOLID CARD BODY
    -------------------------------------------------------------------------- */
 .tm-card-body {
-  padding: 22px 24px 24px;
+  padding: 22px 20px 20px;
   display: flex;
   flex-direction: column;
   flex-grow: 1;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 /* Course Header Info */
 .tm-card-title-group {
-  margin-bottom: 16px;
-}
-
-.tm-card-eyebrow {
-  display: block;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  color: #B45309;
-  text-transform: uppercase;
-  margin-bottom: 4px;
+  margin-bottom: 12px;
+  min-width: 0;
 }
 
 .tm-card-title {
-  margin: 0 0 4px 0;
-  font-size: 21px;
+  margin: 0 0 6px 0;
+  font-size: 18px;
   font-weight: 850;
-  color: #0F172A;
-  line-height: 1.25;
-  letter-spacing: -0.02em;
+  color: #FFFFFF;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  min-height: 48px;
+  display: flex;
+  align-items: flex-start;
+  word-break: break-word;
 }
 
 .tm-card-subtitle {
   margin: 0;
-  font-size: 13.5px;
-  color: #64748B;
+  font-size: 13px;
+  color: #94A3B8;
   font-weight: 550;
   line-height: 1.4;
+  min-height: 36px;
+}
+
+/* Short Description */
+.tm-card-desc {
+  margin: 0 0 16px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #CBD5E1;
+  font-weight: 450;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 58px;
 }
 
 /* --------------------------------------------------------------------------
-   3. COMPACT SPECIFICATIONS: 1 Month · Live Online · Forex & Crypto
+   3. PURE TEXT SPECIFICATIONS (NO ICONS)
    -------------------------------------------------------------------------- */
 .tm-card-specs-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 14px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .tm-spec-pill {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: center;
-  gap: 6px;
-  background-color: #F8FAFC;
-  border: 1px solid #E2E8F0;
-  padding: 8px 6px;
-  border-radius: 9px;
-  color: #1E293B;
-  transition: border-color 0.15s ease;
+  background-color: #111827;
+  border: 1px solid #1F2937;
+  padding: 7px 8px;
+  border-radius: 8px;
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
-.tm-spec-icon {
-  color: #DC2626;
-  flex-shrink: 0;
+.tm-spec-label {
+  font-size: 9.5px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94A3B8;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
 }
 
 .tm-spec-value {
   font-size: 11.5px;
-  font-weight: 650;
+  font-weight: 750;
+  color: #F1F5F9;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  width: 100%;
 }
 
 /* --------------------------------------------------------------------------
-   4. COMPACT PRICING BAR (SINGLE DISCOUNT BADGE)
+   4. SOLID PRICING BAR
    -------------------------------------------------------------------------- */
 .tm-card-pricing-block {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 10px 14px;
-  background-color: #F8FAFC;
-  border: 1px solid #E2E8F0;
-  border-radius: 11px;
-  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  background-color: #111827;
+  border: 1px solid #1F2937;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  margin-top: auto;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .tm-card-price-row {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .tm-card-price-offer {
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 850;
-  color: #0F172A;
-  letter-spacing: -0.025em;
+  color: #FFFFFF;
+  letter-spacing: -0.02em;
   line-height: 1;
 }
 
+.tm-card-price-offer.tm-price-enquiry {
+  font-size: 15px;
+  font-weight: 800;
+  color: #F59E0B;
+  letter-spacing: -0.01em;
+}
+
 .tm-card-price-regular {
-  font-size: 13.5px;
-  font-weight: 500;
-  color: #94A3B8;
+  font-size: 13px;
+  font-weight: 550;
+  color: #64748B;
   text-decoration: line-through;
 }
 
 .tm-card-saving-pill {
-  font-size: 11.5px;
+  font-size: 10.5px;
   font-weight: 750;
-  color: #15803D;
-  background-color: #DCFCE7;
-  border: 1px solid #BBF7D0;
-  padding: 4px 9px;
-  border-radius: 7px;
+  color: #FCA5A5;
+  background-color: #450A0A;
+  border: 1px solid #7F1D1D;
+  padding: 3px 7px;
+  border-radius: 5px;
   white-space: nowrap;
-  letter-spacing: 0.01em;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* --------------------------------------------------------------------------
-   5. ACTION BUTTONS: REGISTER FOR COURSE & View Details
+   5. ACTION BUTTONS: Clean solid buttons, no icons
    -------------------------------------------------------------------------- */
 .tm-card-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
-/* Primary Register Button */
-.tm-card-btn-register {
-  flex: 1.35;
-  min-height: 46px;
-  padding: 11px 14px;
-  background-color: #DC2626;
-  color: #FFFFFF;
-  font-size: 13px;
-  font-weight: 750;
-  letter-spacing: 0.025em;
-  border: none;
-  border-radius: 10px;
+.tm-card-btn-register,
+.tm-card-btn-details {
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 11px 8px;
   cursor: pointer;
-  transition: all 0.16s ease;
+  text-align: center;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  font-family: inherit;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   white-space: nowrap;
-  touch-action: manipulation;
-  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.28);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  width: 100%;
+}
+
+.tm-card-btn-register {
+  background-color: #DC2626;
+  border: 1px solid #DC2626;
+  color: #FFFFFF;
 }
 
 .tm-card-btn-register:hover {
   background-color: #B91C1C;
-  transform: translateY(-1px);
-  box-shadow: 0 5px 14px rgba(220, 38, 38, 0.35);
+  border-color: #B91C1C;
 }
 
-.tm-card-btn-register:active {
-  transform: translateY(0);
+.tm-card-btn-register.tm-btn-enquire {
+  background-color: #B45309;
+  border-color: #B45309;
 }
 
-/* Secondary "View Details" Button */
+.tm-card-btn-register.tm-btn-enquire:hover {
+  background-color: #92400E;
+  border-color: #92400E;
+}
+
+.tm-card-btn-register:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .tm-card-btn-details {
-  flex: 1;
-  min-height: 46px;
-  padding: 11px 14px;
-  background-color: #F8FAFC;
-  color: #0F172A;
-  border: 1px solid #CBD5E1;
-  font-size: 13px;
-  font-weight: 650;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.16s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  white-space: nowrap;
-  touch-action: manipulation;
-}
-
-.tm-card-btn-details .tm-arrow-icon {
-  transition: transform 0.16s ease;
-  color: #DC2626;
+  background-color: #111827;
+  border: 1px solid #334155;
+  color: #F1F5F9;
 }
 
 .tm-card-btn-details:hover {
-  background-color: #EDF2F7;
-  border-color: #94A3B8;
-  color: #0F172A;
+  background-color: #1E293B;
+  border-color: #475569;
 }
 
-.tm-card-btn-details:hover .tm-arrow-icon {
-  transform: translateX(3px);
+.tm-card-badge-enrolled {
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 11px 8px;
+  text-align: center;
+  box-sizing: border-box;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  min-width: 0;
+  width: 100%;
+  background-color: #059669;
+  border: 1px solid #059669;
+  color: #FFFFFF;
+  text-transform: uppercase;
 }
 
 /* --------------------------------------------------------------------------
-   DARK MODE OVERRIDES (PURE BLACK IDENTITY WITH CHARCOAL #111111 SURFACES)
+   DARK MODE (Pure solid black & dark surfaces)
    -------------------------------------------------------------------------- */
-html[data-theme="dark"] .tm-course-card,
-.tm-card-dark.tm-course-card {
-  background-color: #111111;
-  border-color: #222222;
-  box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.03);
+html[data-theme="dark"] .tm-course-card {
+  background-color: #0B0F19;
+  border-color: #1E293B;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
 }
 
-html[data-theme="dark"] .tm-course-card:hover,
-.tm-card-dark.tm-course-card:hover {
-  border-color: #333333;
-  box-shadow: 0 18px 40px -10px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(220, 38, 38, 0.2);
+html[data-theme="dark"] .tm-course-card:hover {
+  border-color: #334155;
+  box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.6);
 }
 
-html[data-theme="dark"] .tm-card-eyebrow,
-.tm-card-dark .tm-card-eyebrow {
+html[data-theme="dark"] .tm-card-eyebrow {
   color: #F59E0B;
 }
 
-html[data-theme="dark"] .tm-card-title,
-.tm-card-dark .tm-card-title {
+html[data-theme="dark"] .tm-card-title {
   color: #FFFFFF;
 }
 
-html[data-theme="dark"] .tm-card-subtitle,
-.tm-card-dark .tm-card-subtitle {
+html[data-theme="dark"] .tm-card-subtitle {
   color: #94A3B8;
 }
 
-html[data-theme="dark"] .tm-spec-pill,
-.tm-card-dark .tm-spec-pill {
-  background-color: #161616;
-  border-color: #222222;
-  color: #E2E8F0;
+html[data-theme="dark"] .tm-card-desc {
+  color: #CBD5E1;
 }
 
-html[data-theme="dark"] .tm-card-pricing-block,
-.tm-card-dark .tm-card-pricing-block {
-  background-color: #161616;
-  border-color: #222222;
+html[data-theme="dark"] .tm-spec-pill {
+  background-color: #111827;
+  border-color: #1F2937;
 }
 
-html[data-theme="dark"] .tm-card-price-offer,
-.tm-card-dark .tm-card-price-offer {
+html[data-theme="dark"] .tm-spec-label {
+  color: #94A3B8;
+}
+
+html[data-theme="dark"] .tm-spec-value {
+  color: #F1F5F9;
+}
+
+html[data-theme="dark"] .tm-card-pricing-block {
+  background-color: #111827;
+  border-color: #1F2937;
+}
+
+html[data-theme="dark"] .tm-card-price-offer {
   color: #FFFFFF;
 }
 
-html[data-theme="dark"] .tm-card-price-regular,
-.tm-card-dark .tm-card-price-regular {
+html[data-theme="dark"] .tm-card-price-offer.tm-price-enquiry {
+  color: #F59E0B;
+}
+
+html[data-theme="dark"] .tm-card-price-regular {
   color: #64748B;
 }
 
-html[data-theme="dark"] .tm-card-saving-pill,
-.tm-card-dark .tm-card-saving-pill {
-  color: #4ADE80;
-  background-color: #0E2919;
-  border-color: #14532D;
+html[data-theme="dark"] .tm-card-saving-pill {
+  background-color: #450A0A;
+  border-color: #7F1D1D;
+  color: #FCA5A5;
 }
 
-html[data-theme="dark"] .tm-card-btn-details,
-.tm-card-dark .tm-card-btn-details {
-  background-color: #161616;
-  border-color: #2A2A2A;
-  color: #FFFFFF;
+html[data-theme="dark"] .tm-card-btn-details {
+  background-color: #111827;
+  border-color: #334155;
+  color: #F1F5F9;
 }
 
-html[data-theme="dark"] .tm-card-btn-details:hover,
-.tm-card-dark .tm-card-btn-details:hover {
-  background-color: #222222;
-  border-color: #383838;
-  color: #FFFFFF;
+html[data-theme="dark"] .tm-card-btn-details:hover {
+  background-color: #1E293B;
+  border-color: #475569;
 }
 
 /* --------------------------------------------------------------------------
-   RESPONSIVENESS (MOBILE POLISH: 430px, 390px, 375px, 360px)
+   RESPONSIVENESS
    -------------------------------------------------------------------------- */
-@media (max-width: 480px) {
-  .tm-course-card {
-    max-width: 100%;
-    border-radius: 18px;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-  }
-
+@media (max-width: 640px) {
   .tm-card-body {
-    padding: 18px 16px 20px;
+    padding: 18px 16px 18px;
   }
-
-  .tm-card-title-group {
-    margin-bottom: 14px;
-  }
-
-  .tm-card-eyebrow {
-    font-size: 10px;
-  }
-
   .tm-card-title {
-    font-size: clamp(18px, 5.5vw, 20px);
-    line-height: 1.25;
+    font-size: 18px;
   }
-
-  .tm-card-subtitle {
-    font-size: 12.5px;
-  }
-
-  .tm-card-specs-row {
-    gap: 6px;
+  .tm-card-desc {
+    font-size: 13px;
+    min-height: auto;
     margin-bottom: 14px;
   }
-
   .tm-spec-pill {
-    padding: 7px 4px;
-    font-size: 11px;
-    border-radius: 7px;
+    padding: 6px 8px;
   }
-
   .tm-spec-value {
-    font-size: 10.5px;
+    font-size: 11.5px;
   }
-
-  .tm-card-pricing-block {
-    padding: 9px 12px;
-    margin-bottom: 14px;
-  }
-
   .tm-card-price-offer {
-    font-size: 20px;
+    font-size: 19px;
   }
-
-  .tm-card-price-regular {
-    font-size: 12.5px;
-  }
-
-  .tm-card-saving-pill {
-    font-size: 10.5px;
-    padding: 3px 7px;
-  }
-
   .tm-card-actions {
-    flex-direction: row;
-    gap: 8px;
-  }
-
-  .tm-card-btn-register {
-    flex: 1.35;
-    min-height: 46px;
-    font-size: 12px;
-    font-weight: 750;
-    padding: 0 8px;
-  }
-
-  .tm-card-btn-details {
-    flex: 1;
-    min-height: 46px;
-    font-size: 12px;
-    font-weight: 650;
-    padding: 0 8px;
-  }
-}
-
-@media (max-width: 360px) {
-  .tm-card-specs-row {
     grid-template-columns: 1fr;
-    gap: 5px;
-  }
-
-  .tm-spec-pill {
-    justify-content: flex-start;
-    padding: 6px 10px;
-  }
-
-  .tm-card-actions {
-    flex-direction: column;
     gap: 8px;
   }
-
   .tm-card-btn-register,
   .tm-card-btn-details {
-    width: 100%;
-    min-height: 44px;
+    padding: 11px 12px;
+    font-size: 12.5px;
   }
 }

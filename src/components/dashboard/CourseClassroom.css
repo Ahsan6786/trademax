@@ -1,0 +1,1165 @@
+/* ==========================================================================
+   TRADEMAX BY PATIL TRADER — Production Mobile-First Course Classroom
+   Fully Responsive Dashboard for Recorded Lectures, Live Sessions & Materials
+   ========================================================================== */
+
+.tm-classroom-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 1380px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   1. TOPBAR & BACK NAVIGATION
+   -------------------------------------------------------------------------- */
+.tm-classroom-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+}
+
+.tm-classroom-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--tm-portal-card);
+  border: 1px solid var(--tm-portal-border);
+  color: var(--tm-portal-text-main);
+  padding: 10px 18px;
+  font-size: 13.5px;
+  font-weight: 750;
+  border-radius: 8px;
+  cursor: pointer;
+  min-height: 42px;
+  transition: all 0.16s ease;
+  touch-action: manipulation;
+}
+
+.tm-classroom-back-btn:hover {
+  background: var(--tm-portal-card-inner);
+  border-color: var(--tm-accent-red);
+  color: var(--tm-accent-red);
+}
+
+.tm-classroom-cohort-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 750;
+  background-color: var(--tm-portal-card);
+  color: var(--tm-portal-text-main);
+  border: 1px solid var(--tm-portal-border);
+  letter-spacing: 0.02em;
+}
+
+.tm-cohort-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #059669;
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   2. COURSE HERO BANNER (Solid, No Glassmorphism, No Progress Bar)
+   -------------------------------------------------------------------------- */
+.tm-classroom-hero {
+  display: flex;
+  gap: 24px;
+  background: var(--tm-portal-card);
+  border: 1px solid var(--tm-portal-border);
+  border-radius: 12px;
+  padding: 24px;
+  box-sizing: border-box;
+  align-items: center;
+  width: 100%;
+}
+
+.tm-classroom-hero-thumb-box {
+  width: 240px;
+  min-width: 240px;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--tm-portal-border);
+  background-color: #0B0F19;
+  flex-shrink: 0;
+}
+
+.tm-classroom-hero-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tm-classroom-hero-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tm-classroom-hero-batch {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--tm-accent-red);
+  text-transform: uppercase;
+}
+
+.tm-classroom-hero-title {
+  font-size: 24px;
+  font-weight: 850;
+  line-height: 1.25;
+  color: var(--tm-portal-text-main);
+  margin: 0;
+  letter-spacing: -0.02em;
+  word-break: break-word;
+}
+
+.tm-classroom-hero-subtitle {
+  font-size: 14px;
+  color: var(--tm-portal-text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* --------------------------------------------------------------------------
+   3. RESPONSIVE SWIPEABLE NAVIGATION TABS
+   -------------------------------------------------------------------------- */
+.tm-classroom-nav-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid var(--tm-portal-border);
+  padding-bottom: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tm-classroom-nav-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tm-classroom-tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 750;
+  color: var(--tm-portal-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  box-sizing: border-box;
+  touch-action: manipulation;
+  flex-shrink: 0;
+}
+
+.tm-classroom-tab-btn:hover {
+  color: var(--tm-portal-text-main);
+}
+
+.tm-classroom-tab-btn.is-active {
+  color: var(--tm-accent-red);
+  border-bottom-color: var(--tm-accent-red);
+}
+
+.tm-tab-count-badge {
+  background: var(--tm-portal-card-inner);
+  border: 1px solid var(--tm-portal-border);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--tm-portal-text-muted);
+}
+
+.tm-classroom-tab-btn.is-active .tm-tab-count-badge {
+  background: rgba(220, 38, 38, 0.14);
+  color: var(--tm-accent-red);
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+/* --------------------------------------------------------------------------
+   4. CONTENT BODY CONTAINER
+   -------------------------------------------------------------------------- */
+.tm-classroom-content-body {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* --------------------------------------------------------------------------
+   5. TAB 1: RECORDED LECTURES & RESPONSIVE PLAYLIST
+   -------------------------------------------------------------------------- */
+.tm-lectures-layout {
+  display: grid;
+  grid-template-columns: 2.1fr 1fr;
+  gap: 24px;
+  align-items: start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tm-lecture-player-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.tm-video-frame-container {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #000000;
+  border: 1px solid var(--tm-portal-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.tm-lecture-video {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  object-fit: contain;
+  background: #000000;
+}
+
+.tm-video-loading-placeholder,
+.tm-video-error-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #0d0f12;
+  color: #94a3b8;
+  padding: 24px;
+  text-align: center;
+}
+
+.tm-spinner-ring {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(220, 38, 38, 0.2);
+  border-top-color: #dc2626;
+  border-radius: 50%;
+  animation: spinRing 0.8s linear infinite;
+}
+
+@keyframes spinRing {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.tm-video-error-badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.tm-btn-retry-playback {
+  background: #dc2626;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.tm-btn-retry-playback:hover {
+  background: #b91c1c;
+}
+
+.tm-video-meta-box {
+  background: var(--tm-portal-card);
+  border: 1px solid var(--tm-portal-border);
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.tm-video-meta-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.tm-video-module-tag {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--tm-accent-red);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tm-btn-complete-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 750;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  border: 1px solid var(--tm-portal-border);
+  background: var(--tm-portal-card-inner);
+  color: var(--tm-portal-text-main);
+  min-height: 40px;
+  touch-action: manipulation;
+}
+
+.tm-btn-complete-toggle.is-completed {
+  background-color: #059669;
+  color: #FFFFFF;
+  border-color: #059669;
+}
+
+.tm-video-meta-box h2 {
+  font-size: 20px;
+  font-weight: 850;
+  color: var(--tm-portal-text-main);
+  margin: 0;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+.tm-video-meta-box p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--tm-portal-text-muted);
+  margin: 0;
+}
+
+/* Playlist Column */
+.tm-lecture-playlist-col {
+  background: var(--tm-portal-card);
+  border: 1px solid var(--tm-portal-border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tm-playlist-header {
+  padding: 16px 20px;
+  background: var(--tm-portal-card-inner);
+  border-bottom: 1px solid var(--tm-portal-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tm-playlist-header h4 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--tm-portal-text-main);
+}
+
+.tm-playlist-scroll {
+  max-height: 580px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tm-playlist-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--tm-portal-border-subtle);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  border-left: 3px solid transparent;
+  transition: all 0.16s ease;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 52px;
+  touch-action: manipulation;
+}
+
+.tm-playlist-item:hover {
+  background: var(--tm-portal-card-inner);
+}
+
+.tm-playlist-item.is-active {
+  background: var(--tm-portal-card-inner);
+  border-left-color: var(--tm-accent-red);
+}
+
+.tm-playlist-item-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.tm-playlist-num {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--tm-portal-text-dim);
+  min-width: 22px;
+  flex-shrink: 0;
+}
+
+.tm-playlist-item.is-active .tm-playlist-num {
+  color: var(--tm-accent-red);
+}
+
+.tm-playlist-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.tm-playlist-title {
+  font-size: 13.5px;
+  font-weight: 750;
+  color: var(--tm-portal-text-main);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.tm-playlist-duration {
+  font-size: 11.5px;
+  color: var(--tm-portal-text-dim);
+}
+
+.tm-playlist-check {
+  font-size: 14px;
+  color: #059669;
+  font-weight: 900;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   6. TAB 2: LIVE CLASSES & MEETINGS
+   -------------------------------------------------------------------------- */
+.tm-live-classes-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tm-live-class-card {
+  background: var(--tm-portal-card);
+  border: 1px solid var(--tm-portal-border);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  box-sizing: border-box;
+  width: 100%;
+  transition: border-color 0.16s ease;
+}
+
+.tm-live-class-card:hover {
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
+.tm-live-class-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  flex: 1;
+  min-width: 0;
+}
+
+.tm-live-date-badge {
+  background: var(--tm-portal-card-inner);
+  border: 1px solid var(--tm-portal-border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  text-align: center;
+  min-width: 64px;
+  flex-shrink: 0;
+}
+
+.tm-live-date-month {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--tm-accent-red);
+  text-transform: uppercase;
+}
+
+.tm-live-date-day {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--tm-portal-text-main);
+  line-height: 1.1;
+}
+
+.tm-live-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tm-live-details h3 {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--tm-portal-text-main);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.tm-live-meta-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--tm-portal-text-muted);
+}
+
+.tm-live-desc {
+  font-size: 13.5px;
+  color: var(--tm-portal-text-muted);
+  margin: 4px 0 0 0;
+  max-width: 680px;
+  line-height: 1.5;
+}
+
+.tm-live-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.tm-btn-meet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: #DC2626;
+  color: #FFFFFF;
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 750;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  min-height: 44px;
+  box-sizing: border-box;
+  transition: background-color 0.16s ease;
+  border: none;
+  touch-action: manipulation;
+}
+
+.tm-btn-meet:hover {
+  background-color: #B91C1C;
+}
+
+/* --------------------------------------------------------------------------
+   7. TAB 3: POSTS & RESOURCES
+   -------------------------------------------------------------------------- */
+.tm-resources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tm-resource-card {
+  background: var(--tm-portal-card);
+  border: 1px solid var(--tm-portal-border);
+  border-radius: 12px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  box-sizing: border-box;
+  transition: border-color 0.16s ease;
+}
+
+.tm-resource-card:hover {
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
+.tm-resource-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.tm-resource-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  background: var(--tm-portal-card-inner);
+  color: var(--tm-portal-text-main);
+  border: 1px solid var(--tm-portal-border);
+}
+
+.tm-resource-badge.pdf {
+  color: #EF4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.tm-resource-badge.notes {
+  color: #3B82F6;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.tm-resource-badge.assignment {
+  color: #F59E0B;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.tm-resource-size {
+  font-size: 11.5px;
+  color: var(--tm-portal-text-dim);
+}
+
+.tm-resource-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--tm-portal-text-main);
+  margin: 0 0 6px 0;
+  line-height: 1.35;
+}
+
+.tm-resource-desc {
+  font-size: 13px;
+  color: var(--tm-portal-text-muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.tm-btn-download-resource {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 44px;
+  background: var(--tm-portal-card-inner);
+  border: 1px solid var(--tm-portal-border);
+  color: var(--tm-portal-text-main);
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: all 0.16s ease;
+  touch-action: manipulation;
+}
+
+.tm-btn-download-resource:hover {
+  background: #DC2626;
+  border-color: #DC2626;
+  color: #FFFFFF;
+}
+
+/* --------------------------------------------------------------------------
+   8. TAB 4: ANNOUNCEMENTS
+   -------------------------------------------------------------------------- */
+.tm-announcements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tm-announce-card {
+  background: var(--tm-portal-card);
+  border: 1px solid var(--tm-portal-border);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.tm-announce-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tm-announce-category {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--tm-accent-red);
+  text-transform: uppercase;
+}
+
+.tm-announce-date {
+  font-size: 12px;
+  color: var(--tm-portal-text-dim);
+}
+
+.tm-announce-card h3 {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--tm-portal-text-main);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.tm-announce-card p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--tm-portal-text-muted);
+  margin: 0;
+  white-space: pre-line;
+}
+
+/* --------------------------------------------------------------------------
+   9. TAB 5: OVERVIEW (Clean, Organized, No Dummy Milestones)
+   -------------------------------------------------------------------------- */
+.tm-overview-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tm-overview-main-col,
+.tm-overview-side-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.tm-overview-banner-wrap {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--tm-portal-border);
+  background: #000000;
+  max-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tm-overview-banner-img {
+  width: 100%;
+  height: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  display: block;
+}
+
+.tm-overview-card {
+  background: var(--tm-portal-card);
+  border: 1px solid var(--tm-portal-border);
+  border-radius: 12px;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.tm-overview-card-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--tm-portal-gold, #D97706);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.tm-overview-card-heading {
+  font-size: 20px;
+  font-weight: 850;
+  margin: 0 0 6px 0;
+  color: var(--tm-portal-text-main);
+  letter-spacing: -0.015em;
+}
+
+.tm-overview-card-subtitle {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--tm-portal-gold, #B45309);
+  margin: 0 0 14px 0;
+}
+
+.tm-overview-card-title {
+  font-size: 16px;
+  font-weight: 800;
+  margin: 0 0 14px 0;
+  color: var(--tm-portal-text-main);
+  letter-spacing: -0.01em;
+}
+
+.tm-overview-card-desc {
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--tm-portal-text-muted);
+  margin: 0;
+}
+
+.tm-overview-card-empty-note {
+  font-size: 13.5px;
+  font-style: italic;
+  color: var(--tm-portal-text-muted);
+  margin: 0;
+}
+
+.tm-overview-preline {
+  white-space: pre-line;
+  line-height: 1.7;
+}
+
+.tm-topics-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tm-topic-chip {
+  background: var(--tm-portal-card-inner);
+  border: 1px solid var(--tm-portal-border);
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tm-portal-text-main);
+}
+
+.tm-instructor-box {
+  background: var(--tm-portal-card);
+  border: 1px solid var(--tm-portal-border);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-sizing: border-box;
+}
+
+.tm-instructor-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tm-instructor-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--tm-accent-red);
+}
+
+.tm-instructor-meta h4 {
+  margin: 0 0 2px 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--tm-portal-text-main);
+}
+
+.tm-instructor-meta span {
+  font-size: 12px;
+  color: var(--tm-portal-text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   10. TAB 6: NOTIFICATIONS
+   -------------------------------------------------------------------------- */
+.tm-notifications-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tm-notif-item {
+  background: var(--tm-portal-card);
+  border: 1px solid var(--tm-portal-border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-sizing: border-box;
+  transition: all 0.16s ease;
+}
+
+.tm-notif-item.is-unread {
+  border-left: 3px solid var(--tm-accent-red);
+  background: var(--tm-portal-card-inner);
+}
+
+.tm-notif-meta h4 {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--tm-portal-text-main);
+  margin: 0 0 4px 0;
+}
+
+.tm-notif-meta p {
+  font-size: 13px;
+  color: var(--tm-portal-text-muted);
+  margin: 0;
+  line-height: 1.45;
+}
+
+.tm-notif-time {
+  font-size: 11px;
+  color: var(--tm-portal-text-dim);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   11. EMPTY STATES (Clean, Professional, No Placeholders)
+   -------------------------------------------------------------------------- */
+.tm-empty-classroom-state {
+  background: var(--tm-portal-card);
+  border: 1px dashed var(--tm-portal-border);
+  border-radius: 12px;
+  padding: 48px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tm-empty-classroom-state h3 {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--tm-portal-text-main);
+  margin: 0;
+}
+
+.tm-empty-classroom-state p {
+  font-size: 13.5px;
+  color: var(--tm-portal-text-muted);
+  max-width: 440px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* --------------------------------------------------------------------------
+   12. MOBILE & TABLET RESPONSIVENESS (Mobile-First Stacking)
+   -------------------------------------------------------------------------- */
+@media (max-width: 960px) {
+  .tm-classroom-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px;
+  }
+
+  .tm-classroom-hero-thumb-box {
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+  }
+
+  .tm-lectures-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .tm-overview-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .tm-playlist-scroll {
+    max-height: 420px;
+  }
+}
+
+@media (max-width: 640px) {
+  .tm-classroom-wrapper {
+    gap: 16px;
+  }
+
+  .tm-classroom-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .tm-classroom-back-btn,
+  .tm-classroom-cohort-pill {
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: center;
+  }
+
+  .tm-classroom-hero {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .tm-classroom-hero-title {
+    font-size: 20px;
+  }
+
+  .tm-classroom-hero-subtitle {
+    font-size: 13px;
+  }
+
+  .tm-classroom-nav-tabs {
+    gap: 4px;
+    padding-bottom: 0;
+  }
+
+  .tm-classroom-tab-btn {
+    padding: 10px 14px;
+    font-size: 13px;
+    min-height: 44px;
+  }
+
+  .tm-video-meta-box {
+    padding: 16px;
+  }
+
+  .tm-video-meta-box h2 {
+    font-size: 17px;
+  }
+
+  .tm-video-meta-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .tm-btn-complete-toggle {
+    width: 100%;
+  }
+
+  .tm-playlist-header {
+    padding: 14px 16px;
+  }
+
+  .tm-playlist-item {
+    padding: 12px 14px;
+  }
+
+  .tm-live-class-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .tm-live-class-left {
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .tm-live-date-badge {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 6px 12px;
+    width: auto;
+  }
+
+  .tm-live-date-day {
+    font-size: 18px;
+  }
+
+  .tm-live-actions {
+    width: 100%;
+  }
+
+  .tm-btn-meet {
+    width: 100%;
+  }
+
+  .tm-resources-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tm-resource-card {
+    padding: 16px;
+  }
+
+  .tm-announce-card {
+    padding: 16px;
+  }
+
+  .tm-overview-card {
+    padding: 16px;
+  }
+
+  .tm-notif-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 14px 16px;
+  }
+
+  .tm-empty-classroom-state {
+    padding: 36px 16px;
+  }
+}
