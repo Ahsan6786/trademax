@@ -174,9 +174,6 @@ export const Hero = ({ onOpenAuth, onNavigate }) => {
                 <span className="tm-hero-stat-lbl">Liquidity-Based Trading Strategy</span>
               </div>
             </div>
-            <p className="tm-hero-stats-disclaimer">
-              *Client-provided claims and event participation. Trading involves financial risk; past performance does not guarantee future results.
-            </p>
           </div>
         </div>
       </section>
@@ -279,9 +276,6 @@ export const Hero = ({ onOpenAuth, onNavigate }) => {
                         <span className="tm-hero-stat-lbl">Resort Trading Experience</span>
                       </div>
                     </div>
-                    <p className="tm-hero-stats-disclaimer">
-                      *Client-provided claims and event participation. Trading involves financial risk; past performance does not guarantee future results.
-                    </p>
                   </div>
                 </div>
               </div>

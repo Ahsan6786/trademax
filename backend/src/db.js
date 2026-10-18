@@ -613,12 +613,164 @@ export const initDb = async () => {
 
       -- Additive columns for course_notifications
       ALTER TABLE course_notifications ADD COLUMN IF NOT EXISTS batch_name VARCHAR(100) DEFAULT 'All Batches';
+
+      -- Additive column for enrollments claim reference
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS claim_id VARCHAR(50);
+      CREATE INDEX IF NOT EXISTS idx_enrollments_claim_id ON enrollments(claim_id);
     `);
-    // Database initialized without dummy or placeholder course content.
-    // Real curriculum content is published exclusively by authorized administrators.
 
+    // 15. Admin-Configurable Payment Settings Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS payment_settings (
+        id SERIAL PRIMARY KEY,
+        is_manual_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        qr_code_url TEXT NOT NULL DEFAULT '/qr.jpg',
+        qr_code_storage_key VARCHAR(500),
+        recipient_name VARCHAR(255) NOT NULL DEFAULT 'PATIL TANISHQ DEEPAK',
+        upi_id VARCHAR(255) NOT NULL DEFAULT '',
+        instructions TEXT NOT NULL DEFAULT 'Open any supported UPI payment app and scan the QR code above to pay the course fee. After completing your payment, return to TRADEMAX and submit your UPI transaction reference/UTR number along with a screenshot of your successful payment.',
+        updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
 
-    // 8. Secure Database Seeding for Admin Account
+      INSERT INTO payment_settings (id, is_manual_enabled, qr_code_url, recipient_name, upi_id, instructions)
+      VALUES (
+        1,
+        TRUE,
+        '/qr.jpg',
+        'PATIL TANISHQ DEEPAK',
+        '',
+        'Open any supported UPI payment app and scan the QR code above to pay the course fee. After completing your payment, return to TRADEMAX and submit your UPI transaction reference/UTR number along with a screenshot of your successful payment.'
+      )
+      ON CONFLICT (id) DO NOTHING;
+    `);
+
+    // 16. Dedicated Manual Payment Claims Model & Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS manual_payment_claims (
+        id SERIAL PRIMARY KEY,
+        claim_id VARCHAR(50) UNIQUE NOT NULL,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+        enrollment_id INTEGER REFERENCES enrollments(id) ON DELETE SET NULL,
+        amount NUMERIC(10, 2) NOT NULL,
+        currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+        transaction_ref VARCHAR(100) NOT NULL,
+        screenshot_path TEXT NOT NULL,
+        screenshot_original_name VARCHAR(255),
+        screenshot_mime_type VARCHAR(100),
+        screenshot_size_bytes BIGINT,
+        status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+        student_notes TEXT,
+        reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        reviewed_at TIMESTAMP WITH TIME ZONE,
+        admin_notes TEXT,
+        rejection_reason TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_payment_claims_claim_id ON manual_payment_claims(claim_id);
+      CREATE INDEX IF NOT EXISTS idx_payment_claims_user ON manual_payment_claims(user_id);
+      CREATE INDEX IF NOT EXISTS idx_payment_claims_course ON manual_payment_claims(course_id);
+      CREATE INDEX IF NOT EXISTS idx_payment_claims_status ON manual_payment_claims(status);
+      CREATE INDEX IF NOT EXISTS idx_payment_claims_created ON manual_payment_claims(created_at DESC);
+    `);
+
+    // 17. Push Subscriptions Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        endpoint TEXT UNIQUE NOT NULL,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        user_agent TEXT,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        notify_motivation BOOLEAN NOT NULL DEFAULT TRUE,
+        notify_courses BOOLEAN NOT NULL DEFAULT TRUE,
+        notify_live_classes BOOLEAN NOT NULL DEFAULT TRUE,
+        notify_announcements BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_push_sub_user ON push_subscriptions(user_id);
+      CREATE INDEX IF NOT EXISTS idx_push_sub_active ON push_subscriptions(is_active);
+    `);
+
+    // 18. Push Campaigns & Admin Management Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS push_campaigns (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        category VARCHAR(100) NOT NULL DEFAULT 'announcements',
+        target_type VARCHAR(50) NOT NULL DEFAULT 'all',
+        target_course_id INTEGER REFERENCES courses(id) ON DELETE SET NULL,
+        icon_url TEXT DEFAULT '/tm-logo.png',
+        action_url TEXT DEFAULT '/',
+        schedule_type VARCHAR(50) NOT NULL DEFAULT 'immediate',
+        scheduled_for TIMESTAMP WITH TIME ZONE,
+        status VARCHAR(50) NOT NULL DEFAULT 'draft',
+        sent_count INTEGER NOT NULL DEFAULT 0,
+        failure_count INTEGER NOT NULL DEFAULT 0,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        sent_at TIMESTAMP WITH TIME ZONE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_push_campaigns_status ON push_campaigns(status);
+      CREATE INDEX IF NOT EXISTS idx_push_campaigns_sched ON push_campaigns(scheduled_for);
+    `);
+
+    // 19. Motivational Quotes Library Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS motivational_quotes (
+        id SERIAL PRIMARY KEY,
+        quote TEXT NOT NULL,
+        author VARCHAR(255) DEFAULT 'TradeMax Mentor',
+        topic VARCHAR(100) DEFAULT 'Discipline',
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        last_sent_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_quotes_active ON motivational_quotes(is_active);
+    `);
+
+    // Seed default motivational trading discipline quotes
+    await client.query(`
+      INSERT INTO motivational_quotes (quote, author, topic)
+      VALUES 
+        ('Discipline beats prediction. Follow your strategy, manage your risk, and trust your process.', 'Patil Trader', 'Discipline'),
+        ('The market is a device for transferring money from the impatient to the patient. Wait for your high-probability setup.', 'TradeMax Mentor', 'Patience'),
+        ('A loss that strictly respected your stop loss is a successful execution. Capital preservation always comes first.', 'Risk Desk', 'Risk Management'),
+        ('Professional traders manage risk; amateurs focus on how much they can win. Protect your downside.', 'Institutional Desk', 'Risk Management'),
+        ('Consistency in trading comes from consistent rule execution, not having a 100% win rate.', 'TradeMax Mentor', 'Consistency'),
+        ('Trade what you see on the charts, not what you hope or fear in your mind.', 'Patil Trader', 'Psychology'),
+        ('Never let a single trade compromise your trading account or your emotional composure.', 'Risk Desk', 'Discipline'),
+        ('Patience in waiting for market confirmation separates profitable traders from gamblers.', 'TradeMax Mentor', 'Patience')
+      ON CONFLICT DO NOTHING;
+    `);
+
+    // 20. Push Delivery Logs
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS push_delivery_logs (
+        id SERIAL PRIMARY KEY,
+        campaign_id INTEGER REFERENCES push_campaigns(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        status VARCHAR(50) NOT NULL,
+        error_message TEXT,
+        delivered_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      ALTER TABLE push_delivery_logs ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
+      CREATE INDEX IF NOT EXISTS idx_push_logs_campaign ON push_delivery_logs(campaign_id);
+    `);
+
     const adminEmail = (process.env.ADMIN_EMAIL || 'admin@trademaxclub.in').trim().toLowerCase();
     const adminPassword = process.env.ADMIN_PASSWORD || 'TradeMax@2026';
 

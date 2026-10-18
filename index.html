@@ -35,20 +35,12 @@
         try {
           var saved = localStorage.getItem('tm_theme') || localStorage.getItem('tm_course_theme') || 'dark';
           document.documentElement.setAttribute('data-theme', saved);
-          // Pre-paint colour: pure black #000000 for dark mode, #FFFFFF for light mode
+          // Pure black #000000 in Night Mode, pure white #FFFFFF in Day Mode
           var color = saved === 'dark' ? '#000000' : '#FFFFFF';
-          var hash = location.hash;
-          var onPublic = /^\/(founder|gallery|courses)/.test(location.pathname);
-          if (!onPublic && (localStorage.getItem('tm_student_session') || hash === '#dashboard')) {
-            var s = null;
-            try { s = JSON.parse(localStorage.getItem('tm_student_session')); } catch (e) {}
-            if (!(s && s.role === 'admin')) color = '#101114';
-            else color = saved === 'dark' ? '#000000' : '#FFFFFF';
-          }
           var meta = document.getElementById('theme-color-meta');
           if (meta) meta.setAttribute('content', color);
           var apple = document.getElementById('apple-status-bar-meta');
-          if (apple && color === '#FFFFFF') apple.setAttribute('content', 'default');
+          if (apple) apple.setAttribute('content', saved === 'dark' ? 'black-translucent' : 'default');
           document.documentElement.style.setProperty('--tm-system-ui-color', color);
         } catch (e) {}
       })();

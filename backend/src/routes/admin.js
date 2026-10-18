@@ -16,6 +16,11 @@ import {
   completeMultipart,
   abortMultipart,
 } from '../services/s3Service.js';
+import {
+  saveAdminQrCode,
+  getPrivateScreenshotFilePath,
+} from '../services/storageService.js';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -143,6 +148,84 @@ adminRouter.get('/dashboard/stats', async (req, res) => {
       success: false,
       error: 'Failed to retrieve dashboard statistics.',
     });
+  }
+});
+
+// Reset Platform Data (Enrollments, Revenue & Student Users - Preserves Courses, Admin Accounts & Settings)
+adminRouter.post('/dashboard/reset-platform-data', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    // Role check confirmation: req.user is verified by adminMiddleware
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized: Only administrators can reset platform data.',
+      });
+    }
+
+    // Clean up all local screenshot files from manual claims
+    try {
+      const claimsRes = await client.query('SELECT screenshot_path FROM manual_payment_claims');
+      for (const claim of claimsRes.rows) {
+        if (claim.screenshot_path) {
+          const filePath = getPrivateScreenshotFilePath(claim.screenshot_path);
+          if (filePath && fs.existsSync(filePath)) {
+            try {
+              fs.unlinkSync(filePath);
+            } catch (fileErr) {
+              // Ignore single file unlink error
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Admin Reset Platform] Screenshot cleanup error:', e.message);
+    }
+
+    await client.query('BEGIN');
+
+    // 1. Delete lesson progress records
+    await client.query('DELETE FROM lesson_progress');
+
+    // 2. Delete course notifications
+    await client.query('DELETE FROM course_notifications');
+
+    // 3. Delete manual payment claims
+    await client.query('DELETE FROM manual_payment_claims');
+
+    // 4. Delete payments (all transaction/order records)
+    await client.query('DELETE FROM payments');
+
+    // 5. Delete legacy course registrations
+    await client.query('DELETE FROM course_registrations');
+
+    // 6. Delete enquiries
+    await client.query('DELETE FROM enquiries');
+
+    // 7. Delete enrollments (resets enrollments and revenue data)
+    await client.query('DELETE FROM enrollments');
+
+    // 8. Delete all non-admin users (preserving admin accounts)
+    const delUsersRes = await client.query("DELETE FROM users WHERE role != 'admin' RETURNING id");
+
+    await client.query('COMMIT');
+
+    console.log(`[Admin Reset Platform Data] Successfully reset platform data. Removed ${delUsersRes.rowCount} student accounts and all enrollment/revenue records.`);
+
+    return res.status(200).json({
+      success: true,
+      message: `Platform data reset successfully. Cleared ${delUsersRes.rowCount} student accounts, all course enrollments, and revenue metrics. Courses and administrator accounts were preserved.`,
+      deletedUsersCount: delUsersRes.rowCount,
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[Admin Reset Platform Data Error]:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to reset platform data safely.',
+    });
+  } finally {
+    client.release();
   }
 });
 
@@ -335,6 +418,131 @@ adminRouter.patch('/users/:id/status', async (req, res) => {
       success: false,
       error: 'Failed to update user status.',
     });
+  }
+});
+
+// Delete User and Associated Data Permanently
+adminRouter.delete('/users/:id', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const userId = parseInt(id, 10);
+    if (isNaN(userId)) {
+      return res.status(400).json({ success: false, error: 'Invalid user ID.' });
+    }
+
+    // Prevent deleting own admin account
+    if (req.user && req.user.id === userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'You cannot delete your own administrator account while logged in.',
+      });
+    }
+
+    // Check if target user exists
+    const userRes = await client.query(
+      'SELECT id, name, email, role FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+
+    const targetUser = userRes.rows[0];
+
+    // Prevent deleting administrators
+    if (targetUser.role === 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Administrator accounts cannot be deleted.',
+      });
+    }
+
+    // Clean up local screenshot evidence if manual payment claims exist
+    try {
+      const claimsRes = await client.query(
+        'SELECT screenshot_path FROM manual_payment_claims WHERE user_id = $1',
+        [userId]
+      );
+      for (const claim of claimsRes.rows) {
+        if (claim.screenshot_path) {
+          const filePath = getPrivateScreenshotFilePath(claim.screenshot_path);
+          if (filePath && fs.existsSync(filePath)) {
+            try {
+              fs.unlinkSync(filePath);
+            } catch (fileErr) {
+              console.warn('[Admin Delete User] Could not remove screenshot file:', fileErr.message);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Admin Delete User] Screenshot cleanup check failed:', e.message);
+    }
+
+    await client.query('BEGIN');
+
+    // 1. Remove lesson progress
+    await client.query('DELETE FROM lesson_progress WHERE user_id = $1', [userId]);
+
+    // 2. Remove in-app course notifications
+    await client.query('DELETE FROM course_notifications WHERE user_id = $1', [userId]);
+
+    // 3. Remove manual payment claims
+    await client.query('DELETE FROM manual_payment_claims WHERE user_id = $1', [userId]);
+
+    // 4. Remove payments (matched by user_id or customer_email)
+    await client.query(
+      'DELETE FROM payments WHERE user_id = $1 OR LOWER(customer_email) = LOWER($2)',
+      [userId, targetUser.email]
+    );
+
+    // 5. Remove course registrations (legacy)
+    await client.query(
+      'DELETE FROM course_registrations WHERE user_id = $1 OR LOWER(email) = LOWER($2)',
+      [userId, targetUser.email]
+    );
+
+    // 6. Remove enquiries
+    await client.query(
+      'DELETE FROM enquiries WHERE user_id = $1 OR LOWER(email) = LOWER($2)',
+      [userId, targetUser.email]
+    );
+
+    // 7. Remove course enrollments
+    await client.query(
+      'DELETE FROM enrollments WHERE user_id = $1 OR LOWER(email) = LOWER($2)',
+      [userId, targetUser.email]
+    );
+
+    // 8. Nullify audit references where this user may have been referenced
+    await client.query('UPDATE manual_payment_claims SET reviewed_by = NULL WHERE reviewed_by = $1', [userId]);
+    await client.query('UPDATE payment_settings SET updated_by = NULL WHERE updated_by = $1', [userId]);
+    await client.query('UPDATE course_lessons SET created_by = NULL WHERE created_by = $1', [userId]);
+    await client.query('UPDATE course_resources SET created_by = NULL WHERE created_by = $1', [userId]);
+
+    // 9. Permanently delete the user record
+    await client.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    await client.query('COMMIT');
+
+    console.log(`[Admin User Delete] Successfully deleted user #${userId} (${targetUser.name} <${targetUser.email}>) and associated data.`);
+
+    return res.status(200).json({
+      success: true,
+      message: `User ${targetUser.name} (${targetUser.email}) and associated records were permanently deleted.`,
+      deletedUserId: userId,
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[Admin User Delete Error]:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to delete user account safely.',
+    });
+  } finally {
+    client.release();
   }
 });
 
@@ -2280,3 +2488,695 @@ adminRouter.post('/courses/:courseId/notifications', async (req, res) => {
     return res.status(500).json({ success: false, error: 'Failed to send notification.' });
   }
 });
+
+// ============================================================================
+// 10. MANUAL PAYMENT CLAIMS VERIFICATION & ADMIN AUDIT
+// ============================================================================
+
+const qrMemoryUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
+
+/**
+ * GET /api/admin/payment-claims
+ * Lists student manual payment claims with search, filters, pagination, and stats summary
+ */
+adminRouter.get('/payment-claims', async (req, res) => {
+  try {
+    const {
+      status = 'all',
+      courseId = 'all',
+      search = '',
+      page = 1,
+      limit = 10,
+      sort = 'newest',
+    } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 10));
+    const offset = (pageNum - 1) * limitNum;
+    const searchPattern = `%${search.trim().toLowerCase()}%`;
+
+    // 1. Fetch Summary Stats for Tabs / Badges
+    const statsRes = await pool.query(`
+      SELECT
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE status = 'PENDING') as pending,
+        COUNT(*) FILTER (WHERE status = 'UNDER_REVIEW') as under_review,
+        COUNT(*) FILTER (WHERE status = 'APPROVED') as approved,
+        COUNT(*) FILTER (WHERE status = 'REJECTED') as rejected
+      FROM manual_payment_claims
+    `);
+    const summaryStats = {
+      total: parseInt(statsRes.rows[0].total, 10) || 0,
+      pending: parseInt(statsRes.rows[0].pending, 10) || 0,
+      under_review: parseInt(statsRes.rows[0].under_review, 10) || 0,
+      approved: parseInt(statsRes.rows[0].approved, 10) || 0,
+      rejected: parseInt(statsRes.rows[0].rejected, 10) || 0,
+    };
+
+    // 2. Build Dynamic Query Filters
+    const whereClauses = [];
+    const values = [];
+    let idx = 1;
+
+    if (status !== 'all') {
+      whereClauses.push(`mpc.status = $${idx++}`);
+      values.push(status.toUpperCase());
+    }
+
+    if (courseId !== 'all') {
+      whereClauses.push(`mpc.course_id = $${idx++}`);
+      values.push(parseInt(courseId, 10));
+    }
+
+    if (search.trim()) {
+      whereClauses.push(`(
+        LOWER(u.name) LIKE $${idx} OR
+        LOWER(u.email) LIKE $${idx} OR
+        COALESCE(u.mobile, '') LIKE $${idx} OR
+        LOWER(mpc.transaction_ref) LIKE $${idx} OR
+        LOWER(mpc.claim_id) LIKE $${idx}
+      )`);
+      values.push(searchPattern);
+      idx++;
+    }
+
+    const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+    const orderDirection = sort === 'oldest' ? 'ASC' : 'DESC';
+
+    // 3. Count Total Matching Rows
+    const countRes = await pool.query(
+      `SELECT COUNT(*) as count
+       FROM manual_payment_claims mpc
+       INNER JOIN users u ON mpc.user_id = u.id
+       INNER JOIN courses c ON mpc.course_id = c.id
+       ${whereStr}`,
+      values
+    );
+    const totalMatching = parseInt(countRes.rows[0].count, 10) || 0;
+
+    // 4. Fetch Paginated Records
+    const queryValues = [...values, limitNum, offset];
+    const claimsRes = await pool.query(
+      `SELECT mpc.id, mpc.claim_id, mpc.amount, mpc.currency, mpc.transaction_ref,
+              mpc.status, mpc.student_notes, mpc.rejection_reason, mpc.admin_notes,
+              mpc.created_at, mpc.reviewed_at, mpc.screenshot_mime_type,
+              u.id as user_id, u.name as student_name, u.email as student_email,
+              u.mobile as student_mobile, u.trading_experience,
+              c.id as course_id, c.title as course_title, c.slug as course_slug,
+              c.price as course_price, c.batch_name as course_batch,
+              admin_u.name as reviewer_name, admin_u.email as reviewer_email
+       FROM manual_payment_claims mpc
+       INNER JOIN users u ON mpc.user_id = u.id
+       INNER JOIN courses c ON mpc.course_id = c.id
+       LEFT JOIN users admin_u ON mpc.reviewed_by = admin_u.id
+       ${whereStr}
+       ORDER BY mpc.created_at ${orderDirection}
+       LIMIT $${idx++} OFFSET $${idx++}`,
+      queryValues
+    );
+
+    const claims = claimsRes.rows.map((row) => ({
+      ...row,
+      screenshot_url: `/api/admin/payment-claims/${row.id}/screenshot`,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      stats: summaryStats,
+      claims,
+      pagination: {
+        total: totalMatching,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(totalMatching / limitNum) || 1,
+      },
+    });
+  } catch (err) {
+    console.error('[Admin Get Payment Claims Error]:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve manual payment claims.',
+    });
+  }
+});
+
+/**
+ * GET /api/admin/payment-claims/:id
+ * Retrieve full details of a specific payment claim
+ */
+adminRouter.get('/payment-claims/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const claimRes = await pool.query(
+      `SELECT mpc.*,
+              u.name as student_name, u.email as student_email, u.mobile as student_mobile,
+              u.trading_experience, u.role as student_role,
+              c.title as course_title, c.slug as course_slug, c.price as course_price,
+              c.batch_name as course_batch, c.thumbnail as course_thumbnail,
+              admin_u.name as reviewer_name, admin_u.email as reviewer_email
+       FROM manual_payment_claims mpc
+       INNER JOIN users u ON mpc.user_id = u.id
+       INNER JOIN courses c ON mpc.course_id = c.id
+       LEFT JOIN users admin_u ON mpc.reviewed_by = admin_u.id
+       WHERE (mpc.id::text = $1 OR mpc.claim_id = $1)
+       LIMIT 1`,
+      [id]
+    );
+
+    if (claimRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Payment claim not found.' });
+    }
+
+    const claim = claimRes.rows[0];
+
+    return res.status(200).json({
+      success: true,
+      claim: {
+        ...claim,
+        screenshot_url: `/api/admin/payment-claims/${claim.id}/screenshot`,
+      },
+    });
+  } catch (err) {
+    console.error('[Admin Single Claim Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to load claim details.' });
+  }
+});
+
+/**
+ * GET /api/admin/payment-claims/:id/screenshot
+ * Securely stream payment screenshot to authorized admin
+ */
+adminRouter.get('/payment-claims/:id/screenshot', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const claimRes = await pool.query(
+      `SELECT screenshot_path, screenshot_mime_type
+       FROM manual_payment_claims
+       WHERE (id::text = $1 OR claim_id = $1)
+       LIMIT 1`,
+      [id]
+    );
+
+    if (claimRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Payment claim not found.' });
+    }
+
+    const claim = claimRes.rows[0];
+    const filePath = getPrivateScreenshotFilePath(claim.screenshot_path);
+
+    if (!filePath || !fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Screenshot image file was not found on server storage.',
+      });
+    }
+
+    res.setHeader('Content-Type', claim.screenshot_mime_type || 'image/jpeg');
+    res.setHeader('Cache-Control', 'private, no-store');
+    return fs.createReadStream(filePath).pipe(res);
+  } catch (err) {
+    console.error('[Admin Stream Screenshot Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to stream screenshot.' });
+  }
+});
+
+/**
+ * PATCH /api/admin/payment-claims/:id/under-review
+ * Transition claim state from PENDING to UNDER_REVIEW
+ */
+adminRouter.patch('/payment-claims/:id/under-review', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.id;
+
+    const updateRes = await pool.query(
+      `UPDATE manual_payment_claims
+       SET status = 'UNDER_REVIEW',
+           reviewed_by = $1,
+           reviewed_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE (id::text = $2 OR claim_id = $2) AND status = 'PENDING'
+       RETURNING *`,
+      [adminId, id]
+    );
+
+    if (updateRes.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Claim must be in PENDING status to mark as under review.',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Payment claim marked as under review.',
+      claim: updateRes.rows[0],
+    });
+  } catch (err) {
+    console.error('[Admin Mark Under Review Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to update claim status.' });
+  }
+});
+
+/**
+ * POST /api/admin/payment-claims/:id/approve
+ * Explicit authenticated administrator approval:
+ * - Atomic PostgreSQL transaction with row-level lock (FOR UPDATE)
+ * - Verifies claim eligibility (PENDING or UNDER_REVIEW)
+ * - Enrolls student in PostgreSQL enrollments table
+ * - Decrements course seat count
+ * - Records audit trail (reviewed_by, reviewed_at, admin_notes)
+ * - Sends student in-app notification
+ */
+adminRouter.post('/payment-claims/:id/approve', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const adminId = req.user.id;
+    const { admin_notes = '' } = req.body;
+
+    await client.query('BEGIN');
+
+    // Lock the claim row to prevent concurrent race condition approvals
+    const claimRes = await client.query(
+      `SELECT mpc.*, u.name as student_name, u.email as student_email, u.mobile as student_mobile,
+              u.trading_experience, c.title as course_title, c.batch_name as course_batch
+       FROM manual_payment_claims mpc
+       INNER JOIN users u ON mpc.user_id = u.id
+       INNER JOIN courses c ON mpc.course_id = c.id
+       WHERE (mpc.id::text = $1 OR mpc.claim_id = $1)
+       FOR UPDATE`,
+      [id]
+    );
+
+    if (claimRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, error: 'Payment claim not found.' });
+    }
+
+    const claim = claimRes.rows[0];
+
+    if (claim.status === 'APPROVED') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        error: 'This payment claim has already been approved and cannot be approved again.',
+      });
+    }
+
+    if (claim.status === 'REJECTED') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        error: 'This claim was rejected. The student must resubmit payment evidence before approval.',
+      });
+    }
+
+    // Check for existing enrollment to prevent double enrollment
+    let enrollmentId = null;
+    const existingEnrollCheck = await client.query(
+      `SELECT id, enrollment_status, payment_status
+       FROM enrollments
+       WHERE user_id = $1 AND course_id = $2
+       LIMIT 1`,
+      [claim.user_id, claim.course_id]
+    );
+
+    if (existingEnrollCheck.rows.length > 0) {
+      enrollmentId = existingEnrollCheck.rows[0].id;
+      // Reactivate or confirm enrollment
+      await client.query(
+        `UPDATE enrollments
+         SET enrollment_status = 'enrolled',
+             payment_status = 'completed',
+             amount_paid = $1,
+             payment_method = 'manual_upi',
+             transaction_id = $2,
+             claim_id = $3,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $4`,
+        [claim.amount, claim.transaction_ref, claim.claim_id, enrollmentId]
+      );
+    } else {
+      // Create new verified enrollment
+      const insertEnrollRes = await client.query(
+        `INSERT INTO enrollments (
+          user_id, course_id, course_name, name, email, mobile,
+          trading_experience, batch_name, enrollment_status,
+          payment_status, amount_paid, payment_method, transaction_id, claim_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'enrolled', 'completed', $9, 'manual_upi', $10, $11)
+        RETURNING id`,
+        [
+          claim.user_id,
+          claim.course_id,
+          claim.course_title,
+          claim.student_name,
+          claim.student_email,
+          claim.student_mobile || '',
+          claim.trading_experience || 'Intermediate',
+          claim.course_batch || 'November',
+          claim.amount,
+          claim.transaction_ref,
+          claim.claim_id,
+        ]
+      );
+      enrollmentId = insertEnrollRes.rows[0].id;
+
+      // Safely decrement available seats in courses table
+      await client.query(
+        `UPDATE courses
+         SET seats_available = GREATEST(0, seats_available - 1),
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1 AND seats_available > 0`,
+        [claim.course_id]
+      );
+    }
+
+    // Update manual_payment_claims row
+    const updateClaimRes = await client.query(
+      `UPDATE manual_payment_claims
+       SET status = 'APPROVED',
+           enrollment_id = $1,
+           reviewed_by = $2,
+           reviewed_at = CURRENT_TIMESTAMP,
+           admin_notes = $3,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4
+       RETURNING *`,
+      [enrollmentId, adminId, admin_notes ? admin_notes.trim() : null, claim.id]
+    );
+
+    // Synchronize to unified payments audit table
+    await client.query(
+      `INSERT INTO payments (
+        user_id, course_id, enrollment_id, order_id, payment_id,
+        amount, currency, status, method, customer_name, customer_email, customer_mobile, notes
+      ) VALUES ($1, $2, $3, $4, $5, $6, 'INR', 'captured', 'manual_upi', $7, $8, $9, $10)
+      ON CONFLICT (order_id) DO UPDATE SET
+        enrollment_id = EXCLUDED.enrollment_id,
+        payment_id = EXCLUDED.payment_id,
+        status = 'captured',
+        updated_at = CURRENT_TIMESTAMP`,
+      [
+        claim.user_id,
+        claim.course_id,
+        enrollmentId,
+        `manual_ord_${claim.claim_id}`,
+        claim.transaction_ref,
+        claim.amount,
+        claim.student_name,
+        claim.student_email,
+        claim.student_mobile || '',
+        JSON.stringify({
+          claim_id: claim.claim_id,
+          verified_by_admin: adminId,
+          approved_at: new Date().toISOString(),
+          admin_notes,
+        }),
+      ]
+    );
+
+    // Notify student in dashboard
+    await client.query(
+      `INSERT INTO course_notifications (course_id, user_id, title, message, type, reference_id)
+       VALUES ($1, $2, $3, $4, 'payment_approved', $5)`,
+      [
+        claim.course_id,
+        claim.user_id,
+        'Payment Verified & Approved',
+        `Your manual payment of ₹${claim.amount} for "${claim.course_title}" has been verified. Your enrollment is active and you now have full access to your course.`,
+        claim.id,
+      ]
+    );
+
+    await client.query('COMMIT');
+
+    console.log(`[Admin Payment Approved]: Claim ${claim.claim_id} approved by admin #${adminId} for user #${claim.user_id}`);
+
+    return res.status(200).json({
+      success: true,
+      message: `Payment claim ${claim.claim_id} approved successfully. Student enrolled in ${claim.course_title}.`,
+      claim: updateClaimRes.rows[0],
+      enrollmentId,
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[Admin Approve Payment Error]:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to approve payment claim and grant course enrollment.',
+    });
+  } finally {
+    client.release();
+  }
+});
+
+/**
+ * POST /api/admin/payment-claims/:id/reject
+ * Explicit authenticated administrator rejection with mandatory reason
+ */
+adminRouter.post('/payment-claims/:id/reject', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const adminId = req.user.id;
+    const { rejection_reason, admin_notes = '' } = req.body;
+
+    if (!rejection_reason || typeof rejection_reason !== 'string' || rejection_reason.trim().length < 5) {
+      return res.status(400).json({
+        success: false,
+        error: 'A clear rejection reason (at least 5 characters) is required when rejecting a payment claim.',
+      });
+    }
+
+    await client.query('BEGIN');
+
+    // Row-level lock
+    const claimRes = await client.query(
+      `SELECT mpc.*, c.title as course_title
+       FROM manual_payment_claims mpc
+       INNER JOIN courses c ON mpc.course_id = c.id
+       WHERE (mpc.id::text = $1 OR mpc.claim_id = $1)
+       FOR UPDATE`,
+      [id]
+    );
+
+    if (claimRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, error: 'Payment claim not found.' });
+    }
+
+    const claim = claimRes.rows[0];
+
+    if (claim.status === 'APPROVED') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot reject an already approved payment claim.',
+      });
+    }
+
+    const cleanReason = rejection_reason.trim();
+
+    const updateClaimRes = await client.query(
+      `UPDATE manual_payment_claims
+       SET status = 'REJECTED',
+           rejection_reason = $1,
+           reviewed_by = $2,
+           reviewed_at = CURRENT_TIMESTAMP,
+           admin_notes = $3,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4
+       RETURNING *`,
+      [cleanReason, adminId, admin_notes ? admin_notes.trim() : null, claim.id]
+    );
+
+    // Notify student in dashboard
+    await client.query(
+      `INSERT INTO course_notifications (course_id, user_id, title, message, type, reference_id)
+       VALUES ($1, $2, $3, $4, 'payment_rejected', $5)`,
+      [
+        claim.course_id,
+        claim.user_id,
+        'Payment Claim Update',
+        `Your payment claim for "${claim.course_title}" could not be verified. Reason: ${cleanReason}. You can review and resubmit your payment evidence from My Payments in your student portal.`,
+        claim.id,
+      ]
+    );
+
+    await client.query('COMMIT');
+
+    console.log(`[Admin Payment Rejected]: Claim ${claim.claim_id} rejected by admin #${adminId}. Reason: ${cleanReason}`);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Payment claim has been rejected.',
+      claim: updateClaimRes.rows[0],
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[Admin Reject Payment Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to reject payment claim.' });
+  } finally {
+    client.release();
+  }
+});
+
+/**
+ * GET /api/admin/payment-settings
+ * Retrieve current payment configuration for admin dashboard
+ */
+adminRouter.get('/payment-settings', async (req, res) => {
+  try {
+    const configRes = await pool.query(
+      `SELECT ps.*, u.name as updated_by_name, u.email as updated_by_email
+       FROM payment_settings ps
+       LEFT JOIN users u ON ps.updated_by = u.id
+       WHERE ps.id = 1
+       LIMIT 1`
+    );
+
+    if (configRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Payment settings not found.' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      settings: configRes.rows[0],
+    });
+  } catch (err) {
+    console.error('[Admin Get Payment Settings Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to fetch payment settings.' });
+  }
+});
+
+/**
+ * PUT /api/admin/payment-settings
+ * Update recipient name, UPI ID, instructions, and toggle manual payments
+ */
+adminRouter.put('/payment-settings', async (req, res) => {
+  try {
+    const adminId = req.user.id;
+    const {
+      is_manual_enabled,
+      is_active,
+      recipient_name,
+      upi_id,
+      instructions,
+      payment_instructions,
+      qr_code_url,
+    } = req.body;
+
+    const manualEnabled = is_manual_enabled !== undefined
+      ? Boolean(is_manual_enabled)
+      : (is_active !== undefined ? Boolean(is_active) : true);
+
+    const finalInstructions = instructions !== undefined ? instructions : (payment_instructions || '');
+
+    if (!recipient_name || !recipient_name.trim()) {
+      return res.status(400).json({ success: false, error: 'Payment recipient name is required.' });
+    }
+
+    if (manualEnabled && (!upi_id || !upi_id.trim())) {
+      return res.status(400).json({
+        success: false,
+        error: 'UPI ID is required to enable manual payments.',
+      });
+    }
+
+    const cleanRecipient = recipient_name.trim();
+    const cleanUpi = upi_id ? upi_id.trim() : '';
+    const cleanInstructions = finalInstructions ? finalInstructions.trim() : '';
+
+    const updateRes = await pool.query(
+      `UPDATE payment_settings
+       SET is_manual_enabled = $1,
+           recipient_name = $2,
+           upi_id = $3,
+           instructions = $4,
+           qr_code_url = COALESCE($5, qr_code_url),
+           updated_by = $6,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = 1
+       RETURNING *`,
+      [
+        Boolean(is_manual_enabled),
+        cleanRecipient,
+        cleanUpi,
+        cleanInstructions,
+        qr_code_url ? qr_code_url.trim() : null,
+        adminId,
+      ]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Payment configuration saved successfully.',
+      settings: updateRes.rows[0],
+    });
+  } catch (err) {
+    console.error('[Admin Update Payment Settings Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to update payment settings.' });
+  }
+});
+
+/**
+ * POST /api/admin/payment-settings/upload-qr
+ * Upload or replace the official payment QR code image
+ */
+adminRouter.post('/payment-settings/upload-qr', (req, res, next) => {
+  qrMemoryUpload.single('qr_image')(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ success: false, error: 'QR image must be under 10MB.' });
+      }
+      return res.status(400).json({ success: false, error: err.message });
+    } else if (err) {
+      return res.status(400).json({ success: false, error: err.message });
+    }
+    next();
+  });
+}, async (req, res) => {
+  try {
+    const adminId = req.user.id;
+
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ success: false, error: 'QR image file is required.' });
+    }
+
+    const saved = await saveAdminQrCode({
+      buffer: req.file.buffer,
+      originalName: req.file.originalname,
+    });
+
+    const updateRes = await pool.query(
+      `UPDATE payment_settings
+       SET qr_code_url = $1,
+           qr_code_storage_key = $2,
+           updated_by = $3,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = 1
+       RETURNING *`,
+      [saved.url, saved.storageKey, adminId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Official QR code image updated successfully.',
+      qr_code_url: saved.url,
+      settings: updateRes.rows[0],
+    });
+  } catch (err) {
+    console.error('[Admin Upload QR Error]:', err);
+    return res.status(400).json({
+      success: false,
+      error: err.message || 'Failed to upload QR code image.',
+    });
+  }
+});
+

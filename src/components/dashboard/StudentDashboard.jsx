@@ -1,7 +1,29 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SUPPORTED_LANGUAGES, getTranslation } from '../../i18n/translations';
-import { loadRazorpay } from '../../utils/loadRazorpay';
+import { CourseRegistrationModal } from '../courses/CourseRegistrationModal';
 import { CourseClassroom } from './CourseClassroom';
+import {
+  LayoutDashboard,
+  GraduationCap,
+  BookOpenCheck,
+  Video,
+  Bell,
+  CreditCard,
+  Settings,
+  Sun,
+  Moon,
+  ExternalLink,
+  LogOut,
+  User,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Eye,
+  ShieldCheck,
+  X,
+  Lock,
+  RefreshCw,
+} from 'lucide-react';
 import './StudentDashboard.css';
 
 export const StudentDashboard = ({
@@ -22,6 +44,7 @@ export const StudentDashboard = ({
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const langDropdownRef = useRef(null);
+  const mainContentRef = useRef(null);
 
   // Synchronize activeTab when parent changes initialTab (e.g. mobile bottom bar clicks)
   useEffect(() => {
@@ -99,6 +122,9 @@ export const StudentDashboard = ({
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTop = 0;
+    }
   }, [activeTab]);
 
   // Fetch Dashboard & Portal Data from PostgreSQL Backend
@@ -170,169 +196,39 @@ export const StudentDashboard = ({
     }, 4500);
   };
 
-  // Instant Enrollment with Razorpay Test Mode
-  const handleEnrollCourse = async (courseToEnroll) => {
+  // State for Manual QR Payment Modal and Student Claims
+  const [enrollModalCourse, setEnrollModalCourse] = useState(null);
+  const [studentClaims, setStudentClaims] = useState([]);
+  const [claimsLoading, setClaimsLoading] = useState(false);
+  const [previewScreenshotClaim, setPreviewScreenshotClaim] = useState(null);
+
+  // Fetch Student Manual Payment Claims History (IDOR protected)
+  const fetchStudentClaims = useCallback(async () => {
     try {
-      setEnrollingCourseId(courseToEnroll.id);
-      const studentName = profileForm.name || user?.name || 'TradeMax Student';
-      const studentEmail = user?.email || dashboardData?.profile?.email || '';
-      const studentMobile = profileForm.mobile || user?.mobile || '8799026206';
-      const studentExperience = profileForm.trading_experience || user?.trading_experience || 'Intermediate';
-
-      // 1. Ensure Razorpay SDK is ready
-      const isSdkLoaded = await loadRazorpay();
-      if (!isSdkLoaded) {
-        showToast('Payment gateway SDK could not be loaded. Check internet.', 'error');
-        setEnrollingCourseId(null);
-        return;
+      setClaimsLoading(true);
+      const token = localStorage.getItem('tm_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch('/api/student/payment-claims', { headers, credentials: 'include' });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.claims)) {
+        setStudentClaims(data.claims);
       }
-
-      // 2. Request backend to create Razorpay Order
-      const res = await fetch('/api/payments/create-order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          course_id: courseToEnroll.id,
-          course_slug: courseToEnroll.slug || 'trading-masterclass',
-          course_name: courseToEnroll.title,
-          batch_name: courseToEnroll.batch_name || 'November',
-          name: studentName,
-          email: studentEmail,
-          mobile: studentMobile,
-          trading_experience: studentExperience,
-          interest: 'Both',
-          reference: 'Student Portal',
-        }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok || !data.success) {
-        if (data.isDuplicate) {
-          showToast(data.error || 'Already enrolled in this course.', 'error');
-          return;
-        }
-        showToast(data.error || 'Could not initiate payment order.', 'error');
-        return;
-      }
-
-      // If free course or zero price
-      if (data.requires_payment === false) {
-        showToast(`${t.courses.enrollSuccess} (${courseToEnroll.title})`, 'success');
-        await fetchPortalData();
-        return;
-      }
-
-      const { order, key_id, currency } = data;
-
-      // 3. Open Razorpay Checkout Modal
-      const options = {
-        key: key_id || 'rzp_test_Toeh6O3nccqAo0',
-        amount: order.amount,
-        currency: currency || 'INR',
-        name: 'TRADEMAX',
-        description: `Enrollment: ${courseToEnroll.title}`,
-        image: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
-        order_id: order.id,
-        prefill: {
-          name: studentName,
-          email: studentEmail,
-          contact: studentMobile,
-        },
-        notes: {
-          course_id: String(courseToEnroll.id),
-          course_slug: courseToEnroll.slug || 'trading-masterclass',
-          environment: 'test_mode',
-        },
-        theme: {
-          color: '#DC2626',
-        },
-        handler: async function (response) {
-          try {
-            showToast('Verifying payment signature...', 'info');
-
-            const verifyRes = await fetch('/api/payments/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                course_id: courseToEnroll.id,
-                course_slug: courseToEnroll.slug || 'trading-masterclass',
-                course_name: courseToEnroll.title,
-                name: studentName,
-                email: studentEmail,
-                mobile: studentMobile,
-                trading_experience: studentExperience,
-                batch_name: courseToEnroll.batch_name || 'November',
-              }),
-            });
-
-            const verifyData = await verifyRes.json().catch(() => ({}));
-
-            if (verifyRes.ok && verifyData.success) {
-              showToast(`Payment Confirmed! Enrolled in ${courseToEnroll.title} (Ref: ${response.razorpay_payment_id})`, 'success');
-              await fetchPortalData();
-            } else {
-              showToast(verifyData.error || 'Payment signature verification failed.', 'error');
-            }
-          } catch (verifyErr) {
-            console.error('Verify error:', verifyErr);
-            showToast('Payment verification error. Contact support.', 'error');
-          } finally {
-            setEnrollingCourseId(null);
-          }
-        },
-        modal: {
-          ondismiss: function () {
-            setEnrollingCourseId(null);
-            showToast('Payment was cancelled.', 'info');
-            fetch('/api/payments/failed', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({
-                order_id: order.id,
-                reason: 'USER_CANCELLED',
-                description: 'User dismissed checkout window.',
-              }),
-            }).catch(() => {});
-          },
-        },
-      };
-
-      const rzpInstance = new window.Razorpay(options);
-
-      rzpInstance.on('payment.failed', function (failedResponse) {
-        setEnrollingCourseId(null);
-        const reason = failedResponse.error?.description || 'Payment was declined.';
-        showToast(`Payment Failed: ${reason}`, 'error');
-        fetch('/api/payments/failed', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            order_id: order.id,
-            payment_id: failedResponse.error?.metadata?.payment_id,
-            code: failedResponse.error?.code,
-            reason: failedResponse.error?.reason,
-            description: failedResponse.error?.description,
-          }),
-        }).catch(() => {});
-      });
-
-      rzpInstance.open();
     } catch (err) {
-      console.error('Enrollment error:', err);
-      showToast('Connection error. Please try again.', 'error');
-      setEnrollingCourseId(null);
+      console.warn('Could not fetch student payment claims:', err);
+    } finally {
+      setClaimsLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    fetchStudentClaims();
+  }, [fetchStudentClaims, activeTab]);
+
+  // Open manual QR payment checkout modal
+  const handleEnrollCourse = (courseToEnroll) => {
+    setEnrollModalCourse(courseToEnroll);
   };
+
 
 
 
@@ -367,6 +263,7 @@ export const StudentDashboard = ({
     { id: 'dashboard', label: t.nav.dashboard, group: 'MAIN' },
     { id: 'my-courses', label: t.nav.myCourses || 'My Courses', group: 'LEARNING' },
     { id: 'courses', label: t.nav.courses || 'All Courses', group: 'LEARNING' },
+    { id: 'payments', label: 'My Payments', group: 'ACCOUNT' },
     { id: 'announcements', label: t.nav.announcements, group: 'LEARNING' },
   ];
 
@@ -374,329 +271,287 @@ export const StudentDashboard = ({
 
   return (
     <div className={`tm-portal-layout tm-theme-${theme}`}>
-      {/* ------------------------------------------------------------------
-          1. RED & BLACK TOP NAVBAR (Clean, Sleek, No collapse btn, No logo, No welcome text, No logout btn)
-          ------------------------------------------------------------------ */}
-      <header className="tm-portal-header">
-        <div className="tm-portal-header-left">
-          {/* Mobile Drawer Trigger (Single clean menu button, no duplicate text or brackets) */}
-          <button
-            type="button"
-            className="tm-portal-mobile-menu-btn"
-            onClick={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
-            aria-label={isMobileDrawerOpen ? 'Close Navigation' : 'Open Navigation'}
-            title={isMobileDrawerOpen ? 'Close' : 'Menu'}
-          >
-            {isMobileDrawerOpen ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
-            )}
-          </button>
-
-          {/* Desktop Sidebar Open Button (Shown on desktop only when sidebar is closed) */}
-          {!isSidebarOpen && (
-            <button
-              type="button"
-              className="tm-portal-sidebar-open-btn tm-desktop-sidebar-open"
-              onClick={() => setIsSidebarOpen(true)}
-              title="Open Sidebar"
-              aria-label="Open Sidebar"
-            >
-              [ MENU ]
-            </button>
-          )}
-
-          {/* Current Page Title */}
-          <div className="tm-portal-header-page-title">
-            <span className="tm-header-title-text">{currentTabLabel}</span>
-          </div>
-        </div>
-
-        <div className="tm-portal-header-right">
-          {/* Desktop 4-Language Selector (Shown on desktop only) */}
-          <div className="tm-portal-lang-selector tm-desktop-lang-selector">
-            <div className="tm-portal-lang-pills">
-              {SUPPORTED_LANGUAGES.map((lang) => (
-                <button
-                  key={lang.code}
-                  type="button"
-                  className={`tm-lang-btn ${currentLang === lang.code ? 'is-active' : ''}`}
-                  onClick={() => handleLanguageChange(lang.code)}
-                  title={lang.label}
-                >
-                  {lang.short}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Mobile Compact Language Dropdown (Shown on mobile only) */}
-          <div className="tm-portal-mobile-lang-dropdown" ref={langDropdownRef}>
-            <button
-              type="button"
-              className={`tm-mobile-lang-trigger ${isLangDropdownOpen ? 'is-open' : ''}`}
-              onClick={() => setIsLangDropdownOpen((prev) => !prev)}
-              aria-expanded={isLangDropdownOpen}
-              aria-label="Select Language"
-            >
-              <span className="tm-mobile-lang-current">
-                {currentLang === 'en' ? 'EN' : currentLang === 'hi' ? 'हिंदी' : currentLang === 'mr' ? 'मराठी' : 'ગુજરાતી'}
-              </span>
-              <svg
-                width="11"
-                height="11"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`tm-mobile-lang-caret ${isLangDropdownOpen ? 'is-rotated' : ''}`}
-                aria-hidden="true"
-              >
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
-            </button>
-
-            {isLangDropdownOpen && (
-              <div className="tm-mobile-lang-menu" role="menu">
-                {SUPPORTED_LANGUAGES.map((lang) => {
-                  const isSelected = currentLang === lang.code;
-                  return (
-                    <button
-                      key={lang.code}
-                      type="button"
-                      className={`tm-mobile-lang-item ${isSelected ? 'is-selected' : ''}`}
-                      onClick={() => {
-                        handleLanguageChange(lang.code);
-                        setIsLangDropdownOpen(false);
-                      }}
-                      role="menuitem"
-                    >
-                      <span className="tm-mobile-lang-item-short">{lang.short}</span>
-                      <span className="tm-mobile-lang-item-label">{lang.label}</span>
-                      {isSelected && (
-                        <svg
-                          width="13"
-                          height="13"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.6"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="tm-mobile-lang-check"
-                          aria-hidden="true"
-                        >
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Functional Day/Night Theme Toggle */}
-          {onToggleTheme && (
-            <button
-              type="button"
-              className="tm-portal-theme-btn"
-              onClick={() => onToggleTheme()}
-              title={theme === 'dark' ? 'Switch to Day Mode' : 'Switch to Night Mode'}
-              aria-label={theme === 'dark' ? 'Switch to Day Mode' : 'Switch to Night Mode'}
-            >
-              <span className="tm-theme-btn-text-desktop">
-                {theme === 'dark' ? t.common.themeLight : t.common.themeDark}
-              </span>
-              <span className="tm-theme-btn-icon-mobile" aria-hidden="true">
-                {theme === 'dark' ? (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="5"></circle>
-                    <line x1="12" y1="1" x2="12" y2="3"></line>
-                    <line x1="12" y1="21" x2="12" y2="23"></line>
-                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                    <line x1="1" y1="12" x2="3" y2="12"></line>
-                    <line x1="21" y1="12" x2="23" y2="12"></line>
-                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                  </svg>
-                ) : (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                  </svg>
-                )}
-              </span>
-            </button>
-          )}
-        </div>
-      </header>
-
-      {/* Global Status Message Toast */}
-      {actionMessage && (
-        <div className={`tm-portal-toast tm-toast-${actionMessage.type}`} role="alert">
-          <span className="tm-toast-badge">
-            {actionMessage.type === 'success' ? `[ ${t.common.success.toUpperCase()} ]` : `[ ${t.common.error.toUpperCase()} ]`}
-          </span>
-          <span className="tm-toast-text">{actionMessage.text}</span>
-          <button
-            type="button"
-            className="tm-toast-close"
-            onClick={() => setActionMessage(null)}
-          >
-            {t.common.close}
-          </button>
-        </div>
+      {/* Mobile Slide-out Drawer Backdrop */}
+      {isMobileDrawerOpen && (
+        <div
+          className="tm-portal-drawer-backdrop"
+          onClick={() => setIsMobileDrawerOpen(false)}
+          aria-hidden="true"
+        />
       )}
 
       {/* ------------------------------------------------------------------
-          2. BODY CONTAINER: REFERENCE-STYLED SIDEBAR + MAIN CONTENT AREA
+          1. PROFESSIONAL SIDEBAR (Admin Panel Layout & Styling)
           ------------------------------------------------------------------ */}
-      <div className="tm-portal-body">
-        {/* Mobile Slide-out Drawer Backdrop */}
-        {isMobileDrawerOpen && (
-          <div
-            className="tm-portal-drawer-backdrop"
+      <aside className={`tm-portal-sidebar ${isMobileDrawerOpen ? 'is-drawer-open' : ''}`}>
+        <div className="tm-portal-sidebar-header">
+          <div className="tm-portal-brand" onClick={() => handleTabSwitch('dashboard')}>
+            <span className="tm-portal-logo-text">TRADE<span className="tm-red">MAX</span></span>
+            <span className="tm-portal-badge">STUDENT</span>
+          </div>
+          <button
+            type="button"
+            className="tm-portal-close-sidebar-btn"
             onClick={() => setIsMobileDrawerOpen(false)}
-            aria-hidden="true"
-          />
-        )}
+            aria-label="Close navigation"
+          >
+            <X size={18} />
+          </button>
+        </div>
 
-        {/* Sidebar Navigation Styled Exactly Like Reference Screenshot */}
-        <aside
-          className={`tm-portal-sidebar ${!isSidebarOpen ? 'is-closed' : ''} ${
-            isMobileDrawerOpen ? 'is-drawer-open' : ''
-          }`}
-        >
-          {/* TradeMax Brand Logo & Title In Sidebar Top + Close Button */}
-          <div className="tm-sidebar-brand-box">
-            <div className="tm-sidebar-brand-main" onClick={() => setActiveTab('dashboard')}>
-              <img src="/tm-logo.png" alt="TradeMax" className="tm-sidebar-logo" />
-              <div className="tm-sidebar-brand-info">
-                <span className="tm-sidebar-brand-name">
-                  TRADE<span className="tm-sidebar-brand-red">MAX</span>
-                </span>
-                <span className="tm-sidebar-brand-sub">BY PATIL TRADER</span>
-              </div>
-            </div>
+        <nav className="tm-portal-nav" aria-label="Student Navigation">
+          <button
+            type="button"
+            className={`tm-portal-nav-item ${activeTab === 'dashboard' && !activeCourseClassroom ? 'active' : ''}`}
+            onClick={() => handleTabSwitch('dashboard')}
+          >
+            <LayoutDashboard size={18} />
+            <span>{t.nav.dashboard}</span>
+          </button>
 
-            {/* Sidebar Close Button */}
+          <button
+            type="button"
+            className={`tm-portal-nav-item ${activeTab === 'my-courses' && !activeCourseClassroom ? 'active' : ''}`}
+            onClick={() => handleTabSwitch('my-courses')}
+          >
+            <BookOpenCheck size={18} />
+            <span>{t.nav.myCourses || 'My Courses'}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`tm-portal-nav-item ${activeTab === 'courses' && !activeCourseClassroom ? 'active' : ''}`}
+            onClick={() => handleTabSwitch('courses')}
+          >
+            <GraduationCap size={18} />
+            <span>{t.nav.courses || 'Available Courses'}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`tm-portal-nav-item ${activeTab === 'live-classes' && !activeCourseClassroom ? 'active' : ''}`}
+            onClick={() => handleTabSwitch('live-classes')}
+          >
+            <Video size={18} />
+            <span>{t.liveClasses?.title || 'Live Classes'}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`tm-portal-nav-item ${activeTab === 'announcements' && !activeCourseClassroom ? 'active' : ''}`}
+            onClick={() => handleTabSwitch('announcements')}
+          >
+            <Bell size={18} />
+            <span>{t.nav.announcements}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`tm-portal-nav-item ${activeTab === 'payments' && !activeCourseClassroom ? 'active' : ''}`}
+            onClick={() => handleTabSwitch('payments')}
+          >
+            <CreditCard size={18} />
+            <span>My Payments</span>
+          </button>
+
+          <button
+            type="button"
+            className={`tm-portal-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+            onClick={() => {
+              if (onNavigate) {
+                onNavigate('settings');
+              } else {
+                window.location.hash = '#settings';
+              }
+              setIsMobileDrawerOpen(false);
+            }}
+          >
+            <Settings size={18} />
+            <span>{t.nav.settings}</span>
+          </button>
+        </nav>
+
+        <div className="tm-portal-sidebar-footer">
+          {/* Day / Night Theme Toggle */}
+          {onToggleTheme && (
             <button
               type="button"
-              className="tm-sidebar-close-btn"
-              onClick={() => {
-                setIsSidebarOpen(false);
-                setIsMobileDrawerOpen(false);
-              }}
-              title="Close Sidebar"
-              aria-label="Close Sidebar"
+              className="tm-portal-sidebar-theme-btn"
+              onClick={onToggleTheme}
+              title="Toggle color theme"
             >
-              &larr;
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              <span>{theme === 'dark' ? 'Day Mode' : 'Night Mode'}</span>
             </button>
-          </div>
+          )}
 
-          {/* Navigation Menu Groups (MAIN, LEARNING, ACCOUNT) */}
-          <div className="tm-sidebar-menu-scroll">
-            {/* GROUP: MAIN */}
-            <div className="tm-nav-group">
-              <span className="tm-group-title">MAIN</span>
-              <button
-                type="button"
-                className={`tm-sidebar-nav-item ${activeTab === 'dashboard' ? 'is-active' : ''}`}
-                onClick={() => handleTabSwitch('dashboard')}
-              >
-                <span className="tm-nav-text">{t.nav.dashboard}</span>
-              </button>
+          {/* Quick Return to Public Site */}
+          <button
+            type="button"
+            className="tm-portal-sidebar-exit-btn"
+            onClick={onExit || (() => { window.location.href = '/'; })}
+            title="View live website"
+          >
+            <ExternalLink size={16} />
+            <span>View Public Site</span>
+          </button>
+
+          {/* Student User Info & Logout */}
+          <div className="tm-portal-user-card">
+            <div className="tm-portal-avatar">
+              <User size={16} />
             </div>
-
-            <div className="tm-nav-divider" />
-
-            {/* GROUP: LEARNING / ACADEMICS */}
-            <div className="tm-nav-group">
-              <span className="tm-group-title">ACADEMICS</span>
-              <button
-                type="button"
-                className={`tm-sidebar-nav-item ${activeTab === 'my-courses' && !activeCourseClassroom ? 'is-active' : ''}`}
-                onClick={() => handleTabSwitch('my-courses')}
-              >
-                <span className="tm-nav-text">{t.nav.myCourses || 'My Courses'}</span>
-              </button>
-              <button
-                type="button"
-                className={`tm-sidebar-nav-item ${activeTab === 'courses' && !activeCourseClassroom ? 'is-active' : ''}`}
-                onClick={() => handleTabSwitch('courses')}
-              >
-                <span className="tm-nav-text">{t.nav.courses}</span>
-              </button>
-              <button
-                type="button"
-                className={`tm-sidebar-nav-item ${activeTab === 'announcements' && !activeCourseClassroom ? 'is-active' : ''}`}
-                onClick={() => handleTabSwitch('announcements')}
-              >
-                <span className="tm-nav-text">{t.nav.announcements}</span>
-              </button>
+            <div className="tm-portal-user-meta">
+              <span className="tm-portal-user-name">{displayName}</span>
+              <span className="tm-portal-user-role">Student</span>
             </div>
-
-            <div className="tm-nav-divider" />
-
-            {/* GROUP: ACCOUNT - Directs to Unified Settings Page */}
-            <div className="tm-nav-group">
-              <span className="tm-group-title">ACCOUNT</span>
-              <button
-                type="button"
-                className="tm-sidebar-nav-item"
-                onClick={() => {
-                  if (onNavigate) {
-                    onNavigate('settings');
-                  } else {
-                    window.location.hash = '#settings';
-                  }
-                  setIsMobileDrawerOpen(false);
-                }}
-              >
-                <span className="tm-nav-text">{t.nav.settings}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Reference-Styled Sidebar Footer: User Card + Sign Out Button */}
-          <div className="tm-sidebar-footer">
-            <div className="tm-sidebar-user-card">
-              <div className="tm-user-avatar-circle" title={displayName}>
-                {getInitials(displayName)}
-              </div>
-              <div className="tm-user-info-text">
-                <span className="tm-user-name-text">{displayName}</span>
-                <span className="tm-user-role-text">{userEmail}</span>
-              </div>
-            </div>
-
             <button
               type="button"
-              className="tm-sidebar-logout-btn"
+              className="tm-portal-logout-btn"
               onClick={onLogout}
               title={t.nav.logout}
             >
-              <span className="tm-logout-arrow" aria-hidden="true">&rarr;</span>
-              <span>{t.nav.logout}</span>
+              <LogOut size={16} />
             </button>
           </div>
-        </aside>
+        </div>
+      </aside>
+
+      {/* ------------------------------------------------------------------
+          2. MAIN CONTENT AREA & TOPBAR
+          ------------------------------------------------------------------ */}
+      <div className="tm-portal-main-wrapper">
+        {/* Top Navbar Header (Solid Red, Height 58px, Exactly matching Admin Panel) */}
+        <header className="tm-portal-topbar">
+          <div className="tm-portal-topbar-left">
+            <button
+              type="button"
+              className="tm-portal-menu-toggle"
+              onClick={() => setIsMobileDrawerOpen(true)}
+              aria-label="Open menu"
+            >
+              <span className="bar"></span>
+              <span className="bar"></span>
+              <span className="bar"></span>
+            </button>
+          </div>
+
+          <div className="tm-portal-topbar-right">
+            {/* Desktop 4-Language Selector */}
+            <div className="tm-portal-lang-selector tm-desktop-lang-selector">
+              <div className="tm-portal-lang-pills">
+                {SUPPORTED_LANGUAGES.map((lang) => (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    className={`tm-lang-btn ${currentLang === lang.code ? 'is-active' : ''}`}
+                    onClick={() => handleLanguageChange(lang.code)}
+                    title={lang.label}
+                  >
+                    {lang.short}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Mobile Compact Language Dropdown */}
+            <div className="tm-portal-mobile-lang-dropdown" ref={langDropdownRef}>
+              <button
+                type="button"
+                className={`tm-mobile-lang-trigger ${isLangDropdownOpen ? 'is-open' : ''}`}
+                onClick={() => setIsLangDropdownOpen((prev) => !prev)}
+                aria-expanded={isLangDropdownOpen}
+                aria-label="Select Language"
+              >
+                <span className="tm-mobile-lang-current">
+                  {currentLang === 'en' ? 'EN' : currentLang === 'hi' ? 'हिंदी' : currentLang === 'mr' ? 'मराठी' : 'ગુજરાતી'}
+                </span>
+                <svg
+                  width="11"
+                  height="11"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className={`tm-mobile-lang-caret ${isLangDropdownOpen ? 'is-rotated' : ''}`}
+                  aria-hidden="true"
+                >
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+
+              {isLangDropdownOpen && (
+                <div className="tm-mobile-lang-menu" role="menu">
+                  {SUPPORTED_LANGUAGES.map((lang) => {
+                    const isSelected = currentLang === lang.code;
+                    return (
+                      <button
+                        key={lang.code}
+                        type="button"
+                        className={`tm-mobile-lang-item ${isSelected ? 'is-selected' : ''}`}
+                        onClick={() => {
+                          handleLanguageChange(lang.code);
+                          setIsLangDropdownOpen(false);
+                        }}
+                        role="menuitem"
+                      >
+                        <span className="tm-mobile-lang-item-short">{lang.short}</span>
+                        <span className="tm-mobile-lang-item-label">{lang.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Topbar Day/Night Theme Toggle (Identical to Admin Panel) */}
+            {onToggleTheme && (
+              <button
+                type="button"
+                className="tm-portal-topbar-theme-btn"
+                onClick={onToggleTheme}
+                title={`Switch to ${theme === 'dark' ? 'Day' : 'Night'} Mode`}
+                aria-label="Toggle Theme"
+              >
+                {theme === 'dark' ? (
+                  <>
+                    <Sun size={15} className="tm-portal-theme-icon" />
+                    <span className="tm-portal-theme-label">Day Mode</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon size={15} className="tm-portal-theme-icon" />
+                    <span className="tm-portal-theme-label">Night Mode</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* Global Status Message Toast */}
+        {actionMessage && (
+          <div className={`tm-portal-toast tm-toast-${actionMessage.type}`} role="alert">
+            <span className="tm-toast-badge">
+              {actionMessage.type === 'success' ? `[ ${t.common.success.toUpperCase()} ]` : `[ ${t.common.error.toUpperCase()} ]`}
+            </span>
+            <span className="tm-toast-text">{actionMessage.text}</span>
+            <button
+              type="button"
+              className="tm-toast-close"
+              onClick={() => setActionMessage(null)}
+            >
+              {t.common.close}
+            </button>
+          </div>
+        )}
 
         {/* ------------------------------------------------------------------
             3. MAIN CONTENT VIEWS
             ------------------------------------------------------------------ */}
-        <main className="tm-portal-main">
+        <main ref={mainContentRef} className="tm-portal-main">
           {activeCourseClassroom ? (
             <CourseClassroom
               courseId={activeCourseClassroom}
@@ -762,6 +617,29 @@ export const StudentDashboard = ({
                         {t.dashboard.viewAll} &rarr;
                       </button>
                     </div>
+
+                    {dashboardData?.pendingCourses?.length > 0 && (
+                      <div className="tm-dashboard-pending-banner">
+                        <div className="tm-pending-banner-left">
+                          <Clock size={20} className="tm-banner-clock" />
+                          <div className="tm-banner-text-block">
+                            <strong className="tm-banner-course-title">
+                              {dashboardData.pendingCourses[0].course_title} — Payment In Process
+                            </strong>
+                            <p className="tm-banner-note-text">
+                              Your payment is in process. Your course access will be activated after admin verification.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="tm-btn-banner-action"
+                          onClick={() => setActiveTab('my-courses')}
+                        >
+                          View Status in My Courses &rarr;
+                        </button>
+                      </div>
+                    )}
 
                     {enrolledCourses.length === 0 ? (
                       /* Clean Empty State */
@@ -945,47 +823,121 @@ export const StudentDashboard = ({
                     </div>
                   ) : (
                     <div className="tm-mycourses-grid">
-                      {myCoursesList.map((course) => (
-                        <div key={course.enrollment_id || course.course_id} className="tm-mycourse-card">
-                          <div className="tm-mycourse-thumb-box">
-                            <img
-                              src={course.thumbnail || '/1-c.jpeg'}
-                              alt={course.title}
-                              className="tm-mycourse-thumb-img"
-                              onError={(e) => {
-                                e.target.src = '/1-c.jpeg';
-                              }}
-                            />
-                            <span className="tm-mycourse-badge">[ ENROLLED ]</span>
+                      {myCoursesList.map((course) => {
+                        const isInProcess = Boolean(course.is_in_process || course.status === 'IN PROCESS');
+                        const isRejected = Boolean(course.is_rejected || course.status === 'PAYMENT REJECTED');
+                        const isEnrolled = Boolean(course.access_granted || (!isInProcess && !isRejected && course.enrollment_status === 'enrolled'));
+
+                        return (
+                          <div
+                            key={course.enrollment_id || course.course_id || course.id}
+                            className={`tm-mycourse-card ${isInProcess ? 'is-in-process' : ''} ${isRejected ? 'is-rejected' : ''}`}
+                          >
+                            <div className="tm-mycourse-thumb-box">
+                              <img
+                                src={course.thumbnail || '/1-c.jpeg'}
+                                alt={course.title}
+                                className="tm-mycourse-thumb-img"
+                                onError={(e) => {
+                                  e.target.src = '/1-c.jpeg';
+                                }}
+                              />
+                              {isInProcess ? (
+                                <span className="tm-mycourse-badge tm-badge-in-process">[ IN PROCESS ]</span>
+                              ) : isRejected ? (
+                                <span className="tm-mycourse-badge tm-badge-rejected">[ PAYMENT REJECTED ]</span>
+                              ) : (
+                                <span className="tm-mycourse-badge">[ ENROLLED ]</span>
+                              )}
+                            </div>
+
+                            <div className="tm-mycourse-card-content">
+                              <div className="tm-mycourse-meta-top">
+                                <span>{course.batch_name || 'November'} Cohort</span>
+                                <span>{course.learning_mode || 'Live Online'}</span>
+                              </div>
+
+                              <h3 className="tm-mycourse-title">{course.title}</h3>
+
+                              {/* STATUS NOTE */}
+                              {isInProcess && (
+                                <div className="tm-mycourse-status-note tm-note-in-process">
+                                  <Clock size={13} className="tm-note-icon" />
+                                  <span>Your payment is in process. Your course access will be activated after admin verification.</span>
+                                </div>
+                              )}
+                              {isRejected && (
+                                <div className="tm-mycourse-status-note tm-note-rejected">
+                                  <AlertCircle size={13} className="tm-note-icon" />
+                                  <span>{course.rejection_reason ? `Rejection reason: ${course.rejection_reason}` : 'Your payment could not be verified by admissions.'}</span>
+                                </div>
+                              )}
+                              {!isInProcess && !isRejected && (
+                                <p className="tm-mycourse-desc">{course.subtitle || course.description}</p>
+                              )}
+
+                              <div className="tm-mycourse-specs">
+                                <span>⏱ Duration: {course.duration || '30 Days'}</span>
+                                {course.transaction_ref ? (
+                                  <span>💳 UTR: {course.transaction_ref.length > 4 ? `••••${course.transaction_ref.slice(-4)}` : course.transaction_ref}</span>
+                                ) : (
+                                  <span>📊 Level: {course.level || 'Institutional'}</span>
+                                )}
+                              </div>
+
+                              <div className="tm-mycourse-actions">
+                                {isInProcess ? (
+                                  <div className="tm-in-process-actions-block">
+                                    <button
+                                      type="button"
+                                      className="tm-mycourse-btn-locked"
+                                      disabled
+                                      title="Course content is protected until your payment is verified by an admin."
+                                    >
+                                      <Lock size={14} />
+                                      <span>Access Locked (Verification Pending)</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="tm-mycourse-link-payments"
+                                      onClick={() => setActiveTab('payments')}
+                                    >
+                                      View Payment Status #{course.claim_id || 'Claim'} &rarr;
+                                    </button>
+                                  </div>
+                                ) : isRejected ? (
+                                  <div className="tm-in-process-actions-block">
+                                    <button
+                                      type="button"
+                                      className="tm-mycourse-btn-resubmit"
+                                      onClick={() => handleEnrollCourse(course)}
+                                    >
+                                      <RefreshCw size={14} />
+                                      <span>Resubmit Payment Proof</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="tm-mycourse-link-payments"
+                                      onClick={() => setActiveTab('payments')}
+                                    >
+                                      View Rejection Details &rarr;
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="tm-mycourse-btn-primary tm-btn-view-course"
+                                    onClick={() => setActiveCourseClassroom(course.course_id || course.id)}
+                                  >
+                                    <span>View Course</span>
+                                    <span>&rarr;</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                           </div>
-
-                          <div className="tm-mycourse-card-content">
-                            <div className="tm-mycourse-meta-top">
-                              <span>{course.batch_name || 'November'} Cohort</span>
-                              <span>{course.learning_mode || 'Live Online'}</span>
-                            </div>
-
-                            <h3 className="tm-mycourse-title">{course.title}</h3>
-                            <p className="tm-mycourse-desc">{course.subtitle || course.description}</p>
-
-                            <div className="tm-mycourse-specs">
-                              <span>⏱ Duration: {course.duration || '30 Days'}</span>
-                              <span>📊 Level: {course.level || 'Institutional'}</span>
-                            </div>
-
-                            <div className="tm-mycourse-actions">
-                              <button
-                                type="button"
-                                className="tm-mycourse-btn-primary tm-btn-view-course"
-                                onClick={() => setActiveCourseClassroom(course.course_id || course.id)}
-                              >
-                                <span>View Course</span>
-                                <span>&rarr;</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1012,6 +964,8 @@ export const StudentDashboard = ({
                         const originalPrice = parseFloat(c.original_price) || 24999;
                         const savings = originalPrice > price ? originalPrice - price : 0;
                         const isEnrolled = Boolean(c.is_enrolled);
+                        const isInProcess = Boolean(c.is_in_process);
+                        const isRejected = Boolean(c.is_rejected);
 
                         return (
                           <div key={c.id} className="tm-catalog-course-card">
@@ -1032,9 +986,13 @@ export const StudentDashboard = ({
                             <div className="tm-catalog-card-body-col">
                               <div className="tm-catalog-eyebrow-row">
                                 <span className="tm-catalog-brand-label">TRADEMAX INSTITUTIONAL</span>
-                                {isEnrolled && (
+                                {isEnrolled ? (
                                   <span className="tm-badge-enrolled">[ {t.common.enrolled.toUpperCase()} ]</span>
-                                )}
+                                ) : isInProcess ? (
+                                  <span className="tm-badge-in-process">[ IN PROCESS ]</span>
+                                ) : isRejected ? (
+                                  <span className="tm-badge-rejected">[ REJECTED ]</span>
+                                ) : null}
                               </div>
 
                               <h2 className="tm-catalog-course-title">{c.title}</h2>
@@ -1087,9 +1045,25 @@ export const StudentDashboard = ({
                                       <button
                                         type="button"
                                         className="tm-btn-solid-primary tm-btn-view-course"
-                                        onClick={() => setActiveCourseClassroom(c.id)}
+                                        onClick={() => {
+                                          setActiveTab('my-courses');
+                                          setActiveCourseClassroom(c.id);
+                                        }}
                                       >
                                         View Course &rarr;
+                                      </button>
+                                    </>
+                                  ) : isInProcess ? (
+                                    <>
+                                      <span className="tm-catalog-badge-in-process">
+                                        IN PROCESS
+                                      </span>
+                                      <button
+                                        type="button"
+                                        className="tm-btn-solid-secondary tm-btn-track-status"
+                                        onClick={() => setActiveTab('my-courses')}
+                                      >
+                                        Track Status &rarr;
                                       </button>
                                     </>
                                   ) : (
@@ -1243,12 +1217,250 @@ export const StudentDashboard = ({
                   )}
                 </div>
               )}
+
+              {/* ==============================================================
+                  TAB 5: MY PAYMENTS & VERIFICATION STATUS
+                  ============================================================== */}
+              {activeTab === 'payments' && (
+                <div className="tm-tab-pane tm-payments-view">
+                  <div className="tm-pane-header">
+                    <span className="tm-pane-eyebrow">TRANSACTION EVIDENCE &amp; VERIFICATION AUDIT</span>
+                    <h1 className="tm-pane-title">My Payments &amp; Verification</h1>
+                    <p className="tm-pane-desc">
+                      Track the verification status of your course fee submissions. Payments are checked against our official bank statement before enrollment is confirmed.
+                    </p>
+                  </div>
+
+                  {claimsLoading ? (
+                    <div className="tm-claims-loading-card">
+                      <div className="tm-spinner"></div>
+                      <span>Loading payment verification records...</span>
+                    </div>
+                  ) : studentClaims.length === 0 ? (
+                    <div className="tm-empty-state-card">
+                      <span className="tm-empty-state-tag">[ NO PAYMENT RECORDS ]</span>
+                      <h3 className="tm-empty-state-title">No Payment Claims Found</h3>
+                      <p className="tm-empty-state-desc">
+                        When you enroll in a course and submit your UPI transaction reference and payment screenshot, your claims and verification status will appear here.
+                      </p>
+                      <button
+                        type="button"
+                        className="tm-btn-solid-primary"
+                        onClick={() => setActiveTab('courses')}
+                      >
+                        Browse Courses &rarr;
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="tm-claims-list">
+                      {studentClaims.map((claim) => {
+                        const isPending = claim.status === 'PENDING';
+                        const isUnderReview = claim.status === 'UNDER_REVIEW';
+                        const isApproved = claim.status === 'APPROVED';
+                        const isRejected = claim.status === 'REJECTED';
+
+                        return (
+                          <div
+                            key={claim.id}
+                            className={`tm-claim-card tm-claim-card-${claim.status.toLowerCase()}`}
+                          >
+                            <div className="tm-claim-header-row">
+                              <div className="tm-claim-title-group">
+                                <span className="tm-claim-id-tag">{claim.claim_id}</span>
+                                <h3 className="tm-claim-course-title">{claim.course_title}</h3>
+                                <span className="tm-claim-batch">{claim.batch_name || 'November'} Cohort</span>
+                              </div>
+
+                              <div className="tm-claim-status-badge-wrap">
+                                {isPending && (
+                                  <span className="tm-status-pill tm-status-pending">
+                                    <Clock size={13} /> Awaiting Verification
+                                  </span>
+                                )}
+                                {isUnderReview && (
+                                  <span className="tm-status-pill tm-status-under-review">
+                                    <Clock size={13} /> Under Review
+                                  </span>
+                                )}
+                                {isApproved && (
+                                  <span className="tm-status-pill tm-status-approved">
+                                    <CheckCircle2 size={13} /> Payment Approved
+                                  </span>
+                                )}
+                                {isRejected && (
+                                  <span className="tm-status-pill tm-status-rejected">
+                                    <AlertCircle size={13} /> Payment Rejected
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="tm-claim-details-grid">
+                              <div className="tm-claim-detail-item">
+                                <span className="tm-detail-label">Amount Claimed</span>
+                                <strong className="tm-detail-val tm-amount-val">
+                                  ₹{parseFloat(claim.amount).toLocaleString('en-IN')}
+                                </strong>
+                              </div>
+                              <div className="tm-claim-detail-item">
+                                <span className="tm-detail-label">UPI Reference / UTR</span>
+                                <strong className="tm-detail-val tm-utr-mono">
+                                  {claim.masked_transaction_ref || claim.transaction_ref}
+                                </strong>
+                              </div>
+                              <div className="tm-claim-detail-item">
+                                <span className="tm-detail-label">Submission Date</span>
+                                <span className="tm-detail-val">
+                                  {new Date(claim.created_at).toLocaleString('en-IN', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Rejection Reason Alert if applicable */}
+                            {isRejected && claim.rejection_reason && (
+                              <div className="tm-claim-rejection-box">
+                                <AlertCircle size={16} className="tm-rejection-icon" />
+                                <div>
+                                  <strong>Admissions Review Note:</strong>
+                                  <p>{claim.rejection_reason}</p>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Next Action Strip */}
+                            <div className="tm-claim-next-action-strip">
+                              <div className="tm-next-action-info">
+                                <span className="tm-next-action-label">Next Action:</span>
+                                <span className="tm-next-action-text">{claim.next_action}</span>
+                              </div>
+
+                              <div className="tm-claim-actions-group">
+                                <button
+                                  type="button"
+                                  className="tm-btn-view-evidence"
+                                  onClick={() => setPreviewScreenshotClaim(claim)}
+                                >
+                                  <Eye size={13} />
+                                  <span>View Screenshot</span>
+                                </button>
+
+                                {isApproved && (
+                                  <button
+                                    type="button"
+                                    className="tm-btn-access-classroom"
+                                    onClick={() => setActiveCourseClassroom(claim.course_id)}
+                                  >
+                                    Access Course &rarr;
+                                  </button>
+                                )}
+
+                                {isRejected && (
+                                  <button
+                                    type="button"
+                                    className="tm-btn-resubmit-claim"
+                                    onClick={() => {
+                                      setEnrollModalCourse({
+                                        id: claim.course_id,
+                                        slug: claim.course_slug,
+                                        title: claim.course_title,
+                                        price: claim.amount,
+                                      });
+                                    }}
+                                  >
+                                    Resubmit Evidence
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </main>
       </div>
+
+      {/* Manual Payment Modal Triggered From Courses / Resubmissions */}
+      {enrollModalCourse && (
+        <CourseRegistrationModal
+          isOpen={Boolean(enrollModalCourse)}
+          onClose={() => {
+            setEnrollModalCourse(null);
+            fetchPortalData();
+            fetchStudentClaims();
+          }}
+          course={enrollModalCourse}
+          user={user || dashboardData?.profile}
+          onNavigate={(tab) => {
+            setEnrollModalCourse(null);
+            handleTabSwitch(tab);
+            fetchPortalData();
+            fetchStudentClaims();
+          }}
+        />
+      )}
+
+      {/* Screenshot Preview Modal (IDOR Protected secure endpoint) */}
+      {previewScreenshotClaim && (
+        <div
+          className="tm-course-modal-backdrop tm-screenshot-modal-backdrop"
+          onClick={() => setPreviewScreenshotClaim(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="tm-course-modal-card tm-screenshot-modal-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="tm-course-modal-close"
+              onClick={() => setPreviewScreenshotClaim(null)}
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+            <div className="tm-screenshot-modal-header">
+              <span className="tm-modal-eyebrow">SUBMITTED EVIDENCE</span>
+              <h3 className="tm-course-modal-title">
+                Payment Screenshot &middot; {previewScreenshotClaim.claim_id}
+              </h3>
+              <p className="tm-course-modal-sub">
+                UTR: {previewScreenshotClaim.masked_transaction_ref || previewScreenshotClaim.transaction_ref}
+              </p>
+            </div>
+            <div className="tm-screenshot-modal-img-wrap">
+              <img
+                src={`/api/student/payment-claims/${previewScreenshotClaim.id}/screenshot`}
+                alt="Submitted payment evidence"
+                className="tm-screenshot-modal-img"
+              />
+            </div>
+            <div className="tm-screenshot-modal-footer">
+              <button
+                type="button"
+                className="tm-reg-btn-secondary"
+                onClick={() => setPreviewScreenshotClaim(null)}
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default StudentDashboard;
+

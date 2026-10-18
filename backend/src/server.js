@@ -10,6 +10,9 @@ import { coursesRouter } from './routes/courses.js';
 import { adminRouter } from './routes/admin.js';
 import { studentRouter } from './routes/student.js';
 import { paymentsRouter } from './routes/payments.js';
+import { manualPaymentsRouter } from './routes/manualPayments.js';
+import pushRouter from './routes/push.js';
+import { startPushScheduler } from './services/pushService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,7 +72,10 @@ app.use('/api/auth', authRouter);
 // Courses & Registrations Routes
 app.use('/api/courses', coursesRouter);
 
-// Razorpay Payment Gateway Routes
+// Manual UPI QR Payment Gateway Routes
+app.use('/api/payments', manualPaymentsRouter);
+
+// Razorpay Payment Gateway Routes (Isolated & preserved for backwards compatibility)
 app.use('/api/payments', paymentsRouter);
 
 // Administrator Routes (Protected with RBAC)
@@ -77,6 +83,9 @@ app.use('/api/admin', adminRouter);
 
 // Student Portal Routes (Protected)
 app.use('/api/student', studentRouter);
+
+// Push Notification Routes (PWA Web Push)
+app.use('/api/push', pushRouter);
 
 // 404 Handler
 app.use((req, res) => {
@@ -96,6 +105,7 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await initDb();
+    startPushScheduler();
     const server = app.listen(PORT, () => {
       console.log(`[TRADEMAX Server] Running on http://localhost:${PORT}`);
       console.log(`[TRADEMAX Server] Database target: ${process.env.DB_NAME || 'trademax_db'}`);

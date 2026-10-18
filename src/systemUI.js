@@ -8,9 +8,7 @@
 export function getTopBarColor(view, theme, authOpen = false) {
   const dark = theme === 'dark';
   if (authOpen) return '#000000'; // Auth overlay is always pure black
-  if (view === 'dashboard' || view === 'stocks' || view === 'settings') return dark ? '#000000' : '#FFFFFF';
-  if (view === 'admin') return dark ? '#000000' : '#FFFFFF';
-  return dark ? '#000000' : '#FFFFFF'; // Navbar on landing/course/founder/gallery
+  return dark ? '#000000' : '#FFFFFF';
 }
 
 function isLight(hex) {
@@ -24,18 +22,23 @@ function isLight(hex) {
 export function applySystemUI(color) {
   if (typeof document === 'undefined') return;
   const meta = document.getElementById('theme-color-meta');
-  if (meta && meta.getAttribute('content') !== color) {
-    // Replace node (not just attribute) so Chrome/Safari reliably repaint the bar
-    const next = meta.cloneNode();
+  if (meta) {
+    meta.setAttribute('content', color);
+    const next = meta.cloneNode(true);
     next.setAttribute('content', color);
     meta.replaceWith(next);
+  } else {
+    const next = document.createElement('meta');
+    next.name = 'theme-color';
+    next.id = 'theme-color-meta';
+    next.content = color;
+    document.head.appendChild(next);
   }
   // Paint the root with the top colour's counterpart so overscroll / gaps never flash
   document.documentElement.style.setProperty('--tm-system-ui-color', color);
 
   // iOS: black-translucent = full-bleed page under a white-text bar (dark pages);
-  // default = dark text (light pages). iOS only reads this at launch on most
-  // versions, so the index.html bootstrap sets the same value before first paint.
+  // default = dark text (light pages).
   const apple = document.getElementById('apple-status-bar-meta');
   if (apple) {
     apple.setAttribute('content', isLight(color) ? 'default' : 'black-translucent');

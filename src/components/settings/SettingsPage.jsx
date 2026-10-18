@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { LogOut, Bell, BellOff, Sparkles, Video, BookOpen, AlertCircle, Check } from 'lucide-react';
 import './SettingsPage.css';
 
 import { authService } from '../../services/auth';
+import {
+  isPushNotificationSupported,
+  getSubscriptionStatus,
+  subscribeToPush,
+  unsubscribeFromPush,
+  fetchNotificationPreferences,
+  saveNotificationPreferences
+} from '../../utils/pushNotifications';
 
 export const SettingsPage = ({
   user,
@@ -9,6 +18,7 @@ export const SettingsPage = ({
   onNavigate,
   theme = 'dark',
   onToggleTheme,
+  onLogout,
   onOpenAuth,
 }) => {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -19,6 +29,16 @@ export const SettingsPage = ({
   const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState(null); // { type: 'success' | 'error', text: '' }
 
+  // Web Push Notification State
+  const [pushStatus, setPushStatus] = useState({ supported: false, permission: 'default', isSubscribed: false });
+  const [pushPreferences, setPushPreferences] = useState({
+    notify_motivation: true,
+    notify_courses: true,
+    notify_live_classes: true,
+    notify_announcements: true,
+  });
+  const [pushLoading, setPushLoading] = useState(false);
+
   // Student Profile details
   const [profileForm, setProfileForm] = useState({
     name: user?.name || '',
@@ -27,6 +47,57 @@ export const SettingsPage = ({
     trading_experience: user?.trading_experience || 'Intermediate',
   });
   const [profileSaving, setProfileSaving] = useState(false);
+
+  useEffect(() => {
+    // Check push status and preferences
+    getSubscriptionStatus().then((status) => {
+      setPushStatus(status);
+      if (status.isSubscribed) {
+        fetchNotificationPreferences().then((prefs) => {
+          if (prefs) setPushPreferences(prefs);
+        });
+      }
+    });
+  }, [user]);
+
+  const handleTogglePushSubscription = async () => {
+    setPushLoading(true);
+    try {
+      if (pushStatus.isSubscribed) {
+        const res = await unsubscribeFromPush();
+        if (res.success) {
+          setPushStatus((prev) => ({ ...prev, isSubscribed: false }));
+          showNotification('Push notifications disabled on this device.', 'success');
+        } else {
+          showNotification('Failed to disable notifications.', 'error');
+        }
+      } else {
+        const res = await subscribeToPush(null, pushPreferences);
+        if (res.success) {
+          setPushStatus((prev) => ({ ...prev, isSubscribed: true, permission: 'granted' }));
+          showNotification('Push notifications enabled successfully!', 'success');
+        } else if (res.denied) {
+          showNotification('Notification permission was blocked in your browser settings.', 'error');
+          setPushStatus((prev) => ({ ...prev, permission: 'denied' }));
+        } else {
+          showNotification(res.error || 'Failed to enable notifications.', 'error');
+        }
+      }
+    } catch {
+      showNotification('Error updating notification subscription.', 'error');
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  const handlePreferenceChange = async (key) => {
+    const updated = { ...pushPreferences, [key]: !pushPreferences[key] };
+    setPushPreferences(updated);
+    if (pushStatus.isSubscribed) {
+      await saveNotificationPreferences(updated);
+      showNotification('Notification preferences updated.', 'success');
+    }
+  };
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -222,6 +293,17 @@ export const SettingsPage = ({
               <span className="tm-settings-user-name">{user.name || 'TradeMax Student'}</span>
               <span className="tm-settings-user-email">{user.email}</span>
             </div>
+            {onLogout && (
+              <button
+                type="button"
+                className="tm-settings-strip-logout-btn"
+                onClick={onLogout}
+                title="Sign Out of TradeMax"
+              >
+                <LogOut size={14} />
+                <span>Sign Out</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="tm-settings-guest-strip">
@@ -445,6 +527,140 @@ export const SettingsPage = ({
             )}
           </div>
         </div>
+
+        {/* PUSH NOTIFICATIONS CARD */}
+        <div className="tm-settings-card">
+          <div className="tm-settings-card-header">
+            <span className="tm-settings-card-eyebrow">PWA WEB PUSH NOTIFICATIONS</span>
+            <h3 className="tm-settings-card-title">Alerts &amp; Direct Notifications</h3>
+            <p className="tm-settings-card-desc">
+              Receive timely trading discipline quotes, class reminders, and administrative updates directly on your device.
+            </p>
+          </div>
+
+          <div className="tm-push-settings-box">
+            <div className="tm-push-status-row">
+              <div className="tm-push-status-info">
+                <span className="tm-theme-status-label">Notification Status:</span>
+                <span className={`tm-push-status-badge ${pushStatus.isSubscribed ? 'active' : 'inactive'}`}>
+                  {pushStatus.isSubscribed ? (
+                    <>
+                      <Bell size={13} />
+                      <span>Active (Subscribed)</span>
+                    </>
+                  ) : pushStatus.permission === 'denied' ? (
+                    <>
+                      <AlertCircle size={13} />
+                      <span>Blocked in Browser</span>
+                    </>
+                  ) : (
+                    <>
+                      <BellOff size={13} />
+                      <span>Disabled</span>
+                    </>
+                  )}
+                </span>
+              </div>
+
+              {pushStatus.permission === 'denied' ? (
+                <span className="tm-push-hint-text">
+                  Notifications were blocked. Please allow notifications in your browser's site settings.
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className={`tm-btn-push-toggle ${pushStatus.isSubscribed ? 'danger' : 'primary'}`}
+                  onClick={handleTogglePushSubscription}
+                  disabled={pushLoading}
+                >
+                  {pushLoading
+                    ? 'Updating...'
+                    : pushStatus.isSubscribed
+                    ? 'Disable Notifications'
+                    : 'Enable Push Notifications'}
+                </button>
+              )}
+            </div>
+
+            {pushStatus.isSubscribed && (
+              <div className="tm-push-preferences-grid">
+                <h4 className="tm-pref-section-title">Notification Categories</h4>
+
+                <label className="tm-pref-toggle-item">
+                  <div className="tm-pref-item-text">
+                    <strong>Daily Trading Discipline</strong>
+                    <span>Motivational quotes and psychology reminders during market sessions.</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={pushPreferences.notify_motivation}
+                    onChange={() => handlePreferenceChange('notify_motivation')}
+                  />
+                </label>
+
+                <label className="tm-pref-toggle-item">
+                  <div className="tm-pref-item-text">
+                    <strong>Live Classes &amp; Google Meet</strong>
+                    <span>Reminders 15 minutes before scheduled institutional live sessions.</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={pushPreferences.notify_live_classes}
+                    onChange={() => handlePreferenceChange('notify_live_classes')}
+                  />
+                </label>
+
+                <label className="tm-pref-toggle-item">
+                  <div className="tm-pref-item-text">
+                    <strong>Course &amp; Enrollment Updates</strong>
+                    <span>Payment approvals, curriculum releases, and course material additions.</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={pushPreferences.notify_courses}
+                    onChange={() => handlePreferenceChange('notify_courses')}
+                  />
+                </label>
+
+                <label className="tm-pref-toggle-item">
+                  <div className="tm-pref-item-text">
+                    <strong>General Announcements</strong>
+                    <span>Institutional broadcasts, cohort schedules, and platform updates.</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={pushPreferences.notify_announcements}
+                    onChange={() => handlePreferenceChange('notify_announcements')}
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* TERTIARY CARD: Session & Sign Out */}
+        {user && onLogout && (
+          <div className="tm-settings-card tm-settings-signout-card">
+            <div className="tm-settings-card-header">
+              <span className="tm-settings-card-eyebrow" style={{ color: '#EF4444' }}>SESSION MANAGEMENT</span>
+              <h3 className="tm-settings-card-title">Sign Out of Account</h3>
+              <p className="tm-settings-card-desc">
+                Log out of your active student session on this device. You will need to sign in again to access course materials, live classes, and trading simulations.
+              </p>
+            </div>
+
+            <div className="tm-settings-signout-box">
+              <button
+                type="button"
+                className="tm-settings-danger-signout-btn"
+                onClick={onLogout}
+              >
+                <LogOut size={16} />
+                <span>Sign Out of TradeMax</span>
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

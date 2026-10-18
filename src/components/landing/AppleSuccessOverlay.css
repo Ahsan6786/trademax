@@ -196,3 +196,36 @@
     padding: 13px 20px;
   }
 }
+
+.tm-welcome-backdrop.tm-welcome-fade-out {
+  opacity: 0;
+  transition: opacity 0.28s ease-out;
+  pointer-events: none;
+}
+
+.welcome-skip-btn {
+  margin-top: 36px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 13px;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+  padding: 8px 22px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.welcome-skip-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+.welcome-skip-btn:active {
+  transform: scale(0.97);
+}

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { authService } from '../../services/auth';
+import { AppleSuccessOverlay } from './AppleSuccessOverlay';
+import { NotificationPermissionModal } from '../common/NotificationPermissionModal';
 import './AuthOverlay.css';
 
 export const AuthOverlay = forwardRef((props, ref) => {
@@ -18,8 +20,16 @@ export const AuthOverlay = forwardRef((props, ref) => {
   const [errors, setErrors] = useState({});
   const [backendError, setBackendError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [registeredUser, setRegisteredUser] = useState(null);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [showPushPrompt, setShowPushPrompt] = useState(false);
+  const [pendingUser, setPendingUser] = useState(null);
 
   const handleClose = () => {
+    setShowWelcome(false);
+    setShowPushPrompt(false);
+    setRegisteredUser(null);
+    setPendingUser(null);
     const btn = originBtnRef.current;
     const overlay = overlayRef.current;
     if (!overlay) return;
@@ -181,24 +191,20 @@ export const AuthOverlay = forwardRef((props, ref) => {
           password: formData.password,
         });
 
-        if (data.user) {
-          authService.markWelcomeSeen(data.user).catch(() => {});
-        }
-
-        handleClose();
-        if (props.onRegisterSuccess) {
-          props.onRegisterSuccess(data.user);
-        } else if (props.onLoginSuccess) {
-          props.onLoginSuccess(data.user);
-        }
+        // Immediately trigger Welcome.json Lottie animation on first-time signup
+        setRegisteredUser(data.user);
+        setShowWelcome(true);
       } else {
         const data = await authService.login({
           email: formData.email.trim(),
           password: formData.password,
         });
 
-        if (data.user) {
-          authService.markWelcomeSeen(data.user).catch(() => {});
+        // If student account has never seen the welcome animation, show it upon first sign-in
+        if (data.user && data.user.role !== 'admin' && !authService.hasSeenWelcome(data.user)) {
+          setRegisteredUser(data.user);
+          setShowWelcome(true);
+          return;
         }
 
         handleClose();
@@ -210,6 +216,31 @@ export const AuthOverlay = forwardRef((props, ref) => {
       setBackendError(err.message || 'Authentication failed. Please verify your details.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const finishAuthFlow = (user) => {
+    setShowPushPrompt(false);
+    setPendingUser(null);
+    setRegisteredUser(null);
+    handleClose();
+    if (props.onRegisterSuccess) {
+      props.onRegisterSuccess(user);
+    } else if (props.onLoginSuccess) {
+      props.onLoginSuccess(user);
+    }
+  };
+
+  const handleWelcomeComplete = () => {
+    setShowWelcome(false);
+    const completedUser = registeredUser;
+
+    // Check if push notifications are supported and user has not made a decision yet
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      setPendingUser(completedUser);
+      setShowPushPrompt(true);
+    } else {
+      finishAuthFlow(completedUser);
     }
   };
 
@@ -507,6 +538,24 @@ export const AuthOverlay = forwardRef((props, ref) => {
           </div>
         </div>
       </div>
+
+      {/* Welcome.json Lottie Animation Overlay on First-Time Registration */}
+      {showWelcome && registeredUser && (
+        <AppleSuccessOverlay
+          user={registeredUser}
+          onContinue={handleWelcomeComplete}
+        />
+      )}
+
+      {/* Clean, Non-Blocking Web Push Notification Permission Prompt */}
+      {showPushPrompt && (
+        <NotificationPermissionModal
+          isOpen={showPushPrompt}
+          onClose={() => finishAuthFlow(pendingUser)}
+          onComplete={() => finishAuthFlow(pendingUser)}
+          userToken={localStorage.getItem('tm_token')}
+        />
+      )}
     </div>
   );
 });

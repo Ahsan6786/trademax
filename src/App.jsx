@@ -12,6 +12,7 @@ import { StocksPage } from './components/stocks/StocksPage';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { MobileBottomNav } from './components/common/MobileBottomNav';
 import { Footer } from './components/common/Footer';
+import { AppleSuccessOverlay } from './components/landing/AppleSuccessOverlay';
 import { authService } from './services/auth';
 import { applySystemUI, getTopBarColor } from './systemUI';
 
@@ -125,6 +126,7 @@ function App() {
       localStorage.setItem('tm_theme', val);
       localStorage.setItem('tm_course_theme', val);
       document.documentElement.setAttribute('data-theme', val);
+      applySystemUI(val === 'dark' ? '#000000' : '#FFFFFF');
     }
   };
 
@@ -607,6 +609,7 @@ function App() {
           onNavigate={handleNavigate}
           theme={theme}
           onToggleTheme={toggleTheme}
+          onLogout={handleLogout}
           onOpenAuth={(mode) => {
             if (authRef.current) authRef.current.openFrom(null, mode);
           }}
@@ -698,7 +701,9 @@ function App() {
         batchName={(selectedCourseForEnroll || primaryCourse)?.batch_name || courseSettings.batchName}
         user={user}
         onNavigate={handleNavigate}
+        onOpenAuth={(mode) => authRef.current?.openAuth(mode)}
       />
+
 
       {/* Mobile Sticky Bottom Navigation — Displayed ONLY when user is authenticated/logged in */}
       {showBottomNav && (
@@ -708,6 +713,17 @@ function App() {
           onNavigate={handleNavigate}
           theme={theme}
           onToggleTheme={toggleTheme}
+        />
+      )}
+
+      {/* Welcome.json Lottie Animation for new student accounts */}
+      {user && user.role !== 'admin' && !authService.hasSeenWelcome(user) && (
+        <AppleSuccessOverlay
+          user={user}
+          onContinue={() => {
+            authService.markWelcomeSeen(user);
+            setUser((prev) => (prev ? { ...prev, has_seen_welcome: true } : prev));
+          }}
         />
       )}
     </div>

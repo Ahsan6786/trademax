@@ -422,9 +422,11 @@ coursesRouter.get('/:idOrSlug', async (req, res) => {
 
     const course = result.rows[0];
 
-    // Check optional authenticated user enrollment
+    // Check optional authenticated user enrollment & in-process payment claims
     const decodedUser = getOptionalUser(req);
     let isEnrolled = false;
+    let isInProcess = false;
+    let pendingClaim = null;
     let enrollment = null;
 
     if (decodedUser) {
@@ -434,12 +436,25 @@ coursesRouter.get('/:idOrSlug', async (req, res) => {
          WHERE (course_id = $1 OR LOWER(course_name) = LOWER($2))
            AND (user_id = $3 OR LOWER(email) = LOWER($4))
            AND enrollment_status = 'enrolled'
+           AND (payment_status = 'completed' OR payment_status = 'paid' OR amount_paid > 0)
          LIMIT 1`,
         [course.id, course.title, decodedUser.id, decodedUser.email || '']
       );
       if (enrollCheck.rows.length > 0) {
         isEnrolled = true;
         enrollment = enrollCheck.rows[0];
+      } else {
+        const claimCheck = await pool.query(
+          `SELECT id, claim_id, status, transaction_ref, created_at
+           FROM manual_payment_claims
+           WHERE user_id = $1 AND course_id = $2 AND status IN ('PENDING', 'UNDER_REVIEW')
+           LIMIT 1`,
+          [decodedUser.id, course.id]
+        );
+        if (claimCheck.rows.length > 0) {
+          isInProcess = true;
+          pendingClaim = claimCheck.rows[0];
+        }
       }
     }
 
@@ -448,8 +463,11 @@ coursesRouter.get('/:idOrSlug', async (req, res) => {
       course: {
         ...course,
         is_enrolled: isEnrolled,
+        is_in_process: isInProcess,
       },
       isEnrolled,
+      isInProcess,
+      pendingClaim,
       enrollment,
     });
   } catch (err) {

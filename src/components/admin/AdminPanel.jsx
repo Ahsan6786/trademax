@@ -13,6 +13,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  AlertTriangle,
+  RotateCcw,
   TrendingUp,
   LogOut,
   Sun,
@@ -32,9 +34,14 @@ import {
   Image as ImageIcon,
   Copy,
   Check,
+  CreditCard,
+  QrCode,
+  Filter,
+  Bell,
 } from 'lucide-react';
 import './AdminPanel.css';
 import { IndividualCourseWorkspace } from './IndividualCourseWorkspace';
+import { AdminPushNotifications } from './AdminPushNotifications';
 
 export const AdminPanel = ({
   user,
@@ -63,6 +70,11 @@ export const AdminPanel = ({
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedUserDetailsLoading, setSelectedUserDetailsLoading] = useState(false);
   const [exportingUsers, setExportingUsers] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [deletingUser, setDeletingUser] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resettingPlatform, setResettingPlatform] = useState(false);
+  const [resetConfirmInput, setResetConfirmInput] = useState('');
 
   // Courses State
   const [courses, setCourses] = useState([]);
@@ -91,6 +103,8 @@ export const AdminPanel = ({
   const [editingLiveClass, setEditingLiveClass] = useState(null);
   const [savingLiveClass, setSavingLiveClass] = useState(false);
   const [copiedMeetId, setCopiedMeetId] = useState(null);
+  const [liveClassSearch, setLiveClassSearch] = useState('');
+  const [liveClassStatusFilter, setLiveClassStatusFilter] = useState('all');
 
   // Settings State
   const [settingsForm, setSettingsForm] = useState({
@@ -109,6 +123,50 @@ export const AdminPanel = ({
     newPassword: '',
   });
   const [profileSaving, setProfileSaving] = useState(false);
+
+  // Payment Verification & QR Settings State
+  const [paymentSubTab, setPaymentSubTab] = useState('claims'); // 'claims' | 'qr_settings'
+  const [paymentClaims, setPaymentClaims] = useState([]);
+  const [paymentClaimsLoading, setPaymentClaimsLoading] = useState(false);
+  const [paymentStats, setPaymentStats] = useState({ pending: 0, under_review: 0, approved: 0, rejected: 0, total: 0 });
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
+  const [paymentCourseFilter, setPaymentCourseFilter] = useState('all');
+  const [paymentSearch, setPaymentSearch] = useState('');
+  const [paymentPage, setPaymentPage] = useState(1);
+  const [paymentPagination, setPaymentPagination] = useState({ total: 0, totalPages: 1 });
+  const [paymentSort, setPaymentSort] = useState('newest');
+
+  // Selected Claim for Review Modal & Full Screenshot Preview
+  const [selectedClaim, setSelectedClaim] = useState(null);
+  const [selectedClaimLoading, setSelectedClaimLoading] = useState(false);
+  const [previewScreenshotClaim, setPreviewScreenshotClaim] = useState(null);
+
+  // Approve Modal State
+  const [claimToApprove, setClaimToApprove] = useState(null);
+  const [approveNotes, setApproveNotes] = useState('');
+  const [approvingClaim, setApprovingClaim] = useState(false);
+
+  // Reject Modal State
+  const [claimToReject, setClaimToReject] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [rejectNotes, setRejectNotes] = useState('');
+  const [rejectingClaim, setRejectingClaim] = useState(false);
+
+  // QR & Payment Settings State
+  const [paymentSettings, setPaymentSettings] = useState({
+    qr_code_url: '/qr.jpg',
+    recipient_name: 'PATIL TANISHQ DEEPAK',
+    upi_id: '',
+    payment_instructions: '',
+    is_active: true,
+    is_configured: false,
+  });
+  const [paymentSettingsLoading, setPaymentSettingsLoading] = useState(false);
+  const [savingPaymentSettings, setSavingPaymentSettings] = useState(false);
+  const [qrUploadFile, setQrUploadFile] = useState(null);
+  const [qrUploadPreview, setQrUploadPreview] = useState(null);
+  const [uploadingQr, setUploadingQr] = useState(false);
+  const qrFileInputRef = useRef(null);
 
   // Helper for auth headers
   const getAuthHeaders = () => {
@@ -136,6 +194,19 @@ export const AdminPanel = ({
         setStats(data.stats);
       } else {
         showNotification(data.error || 'Failed to load statistics.', 'error');
+      }
+
+      // Fetch payment claims stats for the sidebar badge
+      try {
+        const payRes = await fetch('/api/admin/payment-claims?limit=1', {
+          headers: getAuthHeaders(),
+        });
+        const payData = await payRes.json();
+        if (payData.success && payData.stats) {
+          setPaymentStats(payData.stats);
+        }
+      } catch (e) {
+        // Silent fail for stats badge
       }
     } catch (err) {
       console.error('Error fetching dashboard stats:', err);
@@ -251,8 +322,22 @@ export const AdminPanel = ({
       fetchCourses(); // for course filter dropdown
     } else if (activeTab === 'settings') {
       fetchSettings();
+    } else if (activeTab === 'payments') {
+      fetchPaymentClaims(1);
+      fetchPaymentSettings();
+      fetchCourses();
     }
   }, [activeTab]);
+
+  // Debounced search for payment claims
+  useEffect(() => {
+    if (activeTab === 'payments' && paymentSubTab === 'claims') {
+      const timer = setTimeout(() => {
+        fetchPaymentClaims(paymentPage);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [paymentSearch, paymentStatusFilter, paymentCourseFilter, paymentSort, paymentPage]);
 
   // Debounced search for users
   useEffect(() => {
@@ -319,6 +404,102 @@ export const AdminPanel = ({
       }
     } catch {
       showNotification('Error updating user status.', 'error');
+    }
+  };
+
+  // Permanently Delete User and Associated Data
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    const deletedId = userToDelete.id;
+    setDeletingUser(true);
+    try {
+      const res = await fetch(`/api/admin/users/${deletedId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showNotification(data.message || 'User account deleted successfully.');
+        setUserToDelete(null);
+        if (selectedUser?.user?.id === deletedId) {
+          setSelectedUser(null);
+        }
+        // 1. Immediately remove the user from the UI without requiring a page refresh
+        setUsers((prev) => prev.filter((u) => u.id !== deletedId));
+        // 2. Automatically update total user count
+        setUserPagination((prev) => {
+          const newTotal = Math.max(0, (prev?.total || 1) - 1);
+          const limit = prev?.limit || 10;
+          return {
+            ...prev,
+            total: newTotal,
+            totalPages: Math.max(1, Math.ceil(newTotal / limit)),
+          };
+        });
+        // 3. Immediately update dashboard user statistics
+        setStats((prev) => (prev ? {
+          ...prev,
+          totalUsers: Math.max(0, (prev.totalUsers || 1) - 1),
+        } : prev));
+        // 4. Background re-fetch to ensure complete synchronization with backend
+        fetchUsers();
+        fetchDashboardStats();
+      } else {
+        showNotification(data.error || 'Failed to delete user.', 'error');
+      }
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      showNotification('Network error while deleting user.', 'error');
+    } finally {
+      setDeletingUser(false);
+    }
+  };
+
+  // Reset Platform Data (Enrollments, Revenue & Student Users - Preserves Courses, Admin & Settings)
+  const handleResetPlatformData = async () => {
+    setResettingPlatform(true);
+    try {
+      const res = await fetch('/api/admin/dashboard/reset-platform-data', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showNotification(data.message || 'Platform data reset successfully.');
+        setShowResetModal(false);
+        setResetConfirmInput('');
+        // Immediately reset dashboard stats in UI
+        setStats((prev) => ({
+          ...prev,
+          totalUsers: 0,
+          totalEnrollments: 0,
+          totalRevenue: 0,
+          recentUsers: [],
+          recentEnrollments: [],
+          trends: [],
+          popularCourses: (prev?.popularCourses || []).map((c) => ({
+            ...c,
+            enrollment_count: 0,
+          })),
+        }));
+        // Immediately clear user list and enrollments
+        setUsers([]);
+        setUserPagination({ total: 0, totalPages: 1 });
+        setEnrollments([]);
+        // Re-fetch from server to confirm complete synchronization
+        await Promise.all([
+          fetchDashboardStats(),
+          fetchUsers(),
+          fetchEnrollments ? fetchEnrollments() : Promise.resolve(),
+        ]);
+      } else {
+        showNotification(data.error || 'Failed to reset platform data.', 'error');
+      }
+    } catch (err) {
+      console.error('Error resetting platform data:', err);
+      showNotification('Network error while resetting platform data.', 'error');
+    } finally {
+      setResettingPlatform(false);
     }
   };
 
@@ -759,6 +940,243 @@ export const AdminPanel = ({
     setTimeout(() => setCopiedMeetId(null), 2500);
   };
 
+  // ---------------------------------------------------------------------------
+  // PAYMENT CLAIMS & VERIFICATION HANDLERS
+  // ---------------------------------------------------------------------------
+  const fetchPaymentClaims = async (page = paymentPage) => {
+    setPaymentClaimsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '15',
+        status: paymentStatusFilter,
+        course_id: paymentCourseFilter,
+        search: paymentSearch.trim(),
+        sort: paymentSort,
+      });
+      const res = await fetch(`/api/admin/payment-claims?${params.toString()}`, {
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPaymentClaims(data.claims || []);
+        setPaymentPagination({
+          total: data.pagination?.total || 0,
+          totalPages: data.pagination?.totalPages || 1,
+          page: data.pagination?.page || 1,
+        });
+        if (data.stats) {
+          setPaymentStats(data.stats);
+        }
+      } else {
+        showNotification(data.error || 'Failed to load payment claims.', 'error');
+      }
+    } catch (err) {
+      console.error('Error fetching payment claims:', err);
+      showNotification('Network error loading payment claims.', 'error');
+    } finally {
+      setPaymentClaimsLoading(false);
+    }
+  };
+
+  const fetchPaymentSettings = async () => {
+    setPaymentSettingsLoading(true);
+    try {
+      const res = await fetch('/api/admin/payment-settings', {
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (data.success && data.settings) {
+        setPaymentSettings(data.settings);
+      }
+    } catch (err) {
+      console.error('Error fetching payment settings:', err);
+    } finally {
+      setPaymentSettingsLoading(false);
+    }
+  };
+
+  const handleOpenClaimDetails = async (claimId) => {
+    setSelectedClaimLoading(true);
+    try {
+      const res = await fetch(`/api/admin/payment-claims/${claimId}`, {
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (data.success && data.claim) {
+        setSelectedClaim(data.claim);
+      } else {
+        showNotification(data.error || 'Failed to load claim details.', 'error');
+      }
+    } catch (err) {
+      console.error('Error loading claim details:', err);
+      showNotification('Network error loading claim details.', 'error');
+    } finally {
+      setSelectedClaimLoading(false);
+    }
+  };
+
+  const handleMarkUnderReview = async (claimId) => {
+    try {
+      const res = await fetch(`/api/admin/payment-claims/${claimId}/under-review`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotification('Claim status marked as UNDER REVIEW.', 'success');
+        fetchPaymentClaims(paymentPage);
+        if (selectedClaim && (selectedClaim.claim_id === claimId || selectedClaim.id === claimId)) {
+          setSelectedClaim(data.claim);
+        }
+      } else {
+        showNotification(data.error || 'Failed to update claim status.', 'error');
+      }
+    } catch (err) {
+      showNotification('Network error updating claim status.', 'error');
+    }
+  };
+
+  const handleApproveClaim = async () => {
+    if (!claimToApprove) return;
+    setApprovingClaim(true);
+    try {
+      const id = claimToApprove.claim_id || claimToApprove.id;
+      const res = await fetch(`/api/admin/payment-claims/${id}/approve`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ admin_notes: approveNotes }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotification(`Payment approved! ${claimToApprove.student_name || 'Student'} enrolled successfully.`, 'success');
+        setClaimToApprove(null);
+        setApproveNotes('');
+        setSelectedClaim(null);
+        fetchPaymentClaims(paymentPage);
+      } else {
+        showNotification(data.error || 'Failed to approve payment claim.', 'error');
+      }
+    } catch (err) {
+      showNotification('Network error approving payment claim.', 'error');
+    } finally {
+      setApprovingClaim(false);
+    }
+  };
+
+  const handleRejectClaim = async () => {
+    if (!claimToReject) return;
+    if (!rejectionReason.trim()) {
+      showNotification('A rejection reason is mandatory.', 'error');
+      return;
+    }
+    setRejectingClaim(true);
+    try {
+      const id = claimToReject.claim_id || claimToReject.id;
+      const res = await fetch(`/api/admin/payment-claims/${id}/reject`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          rejection_reason: rejectionReason.trim(),
+          admin_notes: rejectNotes.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotification('Payment claim rejected and student notified.', 'info');
+        setClaimToReject(null);
+        setRejectionReason('');
+        setRejectNotes('');
+        setSelectedClaim(null);
+        fetchPaymentClaims(paymentPage);
+      } else {
+        showNotification(data.error || 'Failed to reject payment claim.', 'error');
+      }
+    } catch (err) {
+      showNotification('Network error rejecting payment claim.', 'error');
+    } finally {
+      setRejectingClaim(false);
+    }
+  };
+
+  const handleSavePaymentSettings = async (e) => {
+    e.preventDefault();
+    setSavingPaymentSettings(true);
+    try {
+      const res = await fetch('/api/admin/payment-settings', {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          recipient_name: paymentSettings.recipient_name,
+          upi_id: paymentSettings.upi_id,
+          payment_instructions: paymentSettings.payment_instructions,
+          is_active: paymentSettings.is_active,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPaymentSettings(data.settings);
+        showNotification('Payment configuration saved successfully!', 'success');
+      } else {
+        showNotification(data.error || 'Failed to save payment settings.', 'error');
+      }
+    } catch (err) {
+      showNotification('Network error saving payment settings.', 'error');
+    } finally {
+      setSavingPaymentSettings(false);
+    }
+  };
+
+  const handleQrFileSelected = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      showNotification('Only JPEG, PNG, and WebP images are allowed.', 'error');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showNotification('QR image cannot exceed 5MB.', 'error');
+      return;
+    }
+    setQrUploadFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setQrUploadPreview(ev.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadQr = async () => {
+    if (!qrUploadFile) return;
+    setUploadingQr(true);
+    try {
+      const formData = new FormData();
+      formData.append('qrImage', qrUploadFile);
+      const token = localStorage.getItem('tm_token');
+      const res = await fetch('/api/admin/payment-settings/upload-qr', {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPaymentSettings(data.settings);
+        setQrUploadFile(null);
+        setQrUploadPreview(null);
+        if (qrFileInputRef.current) qrFileInputRef.current.value = '';
+        showNotification('New official QR Code uploaded and set active!', 'success');
+      } else {
+        showNotification(data.error || 'Failed to upload QR code image.', 'error');
+      }
+    } catch (err) {
+      showNotification('Network error uploading QR code.', 'error');
+    } finally {
+      setUploadingQr(false);
+    }
+  };
+
   return (
     <div className={`tm-admin-root tm-theme-${theme || 'dark'}`}>
       {/* Toast Notification */}
@@ -864,6 +1282,33 @@ export const AdminPanel = ({
 
           <button
             type="button"
+            className={`tm-admin-nav-item ${activeTab === 'payments' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('payments');
+              setMobileSidebarOpen(false);
+            }}
+          >
+            <CreditCard size={18} />
+            <span>Payment Verification</span>
+            {paymentStats && paymentStats.pending > 0 && (
+              <span className="tm-admin-nav-badge">{paymentStats.pending}</span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            className={`tm-admin-nav-item ${activeTab === 'push' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('push');
+              setMobileSidebarOpen(false);
+            }}
+          >
+            <Bell size={18} />
+            <span>Push Notifications</span>
+          </button>
+
+          <button
+            type="button"
             className={`tm-admin-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
             onClick={() => {
               setActiveTab('settings');
@@ -936,7 +1381,6 @@ export const AdminPanel = ({
               <span className="bar"></span>
               <span className="bar"></span>
             </button>
-            <span className="tm-admin-topbar-brand">TRADEMAX ADMIN</span>
           </div>
 
           <div className="tm-admin-topbar-right">
@@ -971,6 +1415,41 @@ export const AdminPanel = ({
               ============================================================== */}
           {activeTab === 'dashboard' && (
             <div className="tm-admin-dashboard-page">
+              <div className="tm-admin-dashboard-header">
+                <div className="tm-admin-dashboard-title-box">
+                  <h2 className="tm-admin-dashboard-title">Institutional Overview</h2>
+                  <p className="tm-admin-dashboard-subtitle">
+                    Real-time platform performance, admissions & revenue statistics
+                  </p>
+                </div>
+                <div className="tm-admin-dashboard-actions">
+                  <button
+                    type="button"
+                    className="tm-btn-outline tm-btn-refresh-dash"
+                    onClick={() => {
+                      fetchDashboardStats();
+                      showNotification('Dashboard statistics updated.');
+                    }}
+                    title="Refresh Dashboard Statistics"
+                  >
+                    <RefreshCw size={14} className={statsLoading ? 'spin' : ''} />
+                    <span>Refresh</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="tm-btn-primary tm-btn-danger tm-btn-reset-data"
+                    onClick={() => {
+                      setResetConfirmInput('');
+                      setShowResetModal(true);
+                    }}
+                    title="Reset Platform Data (Enrollments, Revenue & Students)"
+                  >
+                    <RotateCcw size={14} />
+                    <span>Reset Platform Data</span>
+                  </button>
+                </div>
+              </div>
+
               {statsLoading ? (
                 <div className="tm-admin-loading-state">
                   <RefreshCw size={24} className="spin" />
@@ -1293,6 +1772,16 @@ export const AdminPanel = ({
                                     {u.status === 'active' ? 'Suspend' : 'Activate'}
                                   </button>
                                 )}
+                                {u.role !== 'admin' && (
+                                  <button
+                                    type="button"
+                                    className="tm-btn-outline-xs danger"
+                                    onClick={() => setUserToDelete(u)}
+                                    title="Delete User Permanently"
+                                  >
+                                    <Trash2 size={13} /> Delete
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -1445,8 +1934,7 @@ export const AdminPanel = ({
                         <div className="tm-admin-course-card-actions" style={{ flexDirection: 'column' }}>
                           <button
                             type="button"
-                            className="tm-btn-primary"
-                            style={{ width: '100%', marginBottom: '0.4rem', justifyContent: 'center' }}
+                            className="tm-admin-open-course-btn"
                             onClick={() => setManagingCourseId(course.id)}
                             title="Open dedicated Course Management Workspace"
                           >
@@ -1508,13 +1996,14 @@ export const AdminPanel = ({
               ============================================================== */}
           {activeTab === 'live-classes' && (
             <div className="tm-admin-live-page">
+              {/* Header Title & Action */}
               <div className="tm-admin-page-actions-header">
                 <div>
-                  <h2 className="tm-section-heading">Scheduled Live Classes & Google Meet</h2>
+                  <h2 className="tm-section-heading">Scheduled Live Classes &amp; Google Meet</h2>
                 </div>
                 <button
                   type="button"
-                  className="tm-btn-primary"
+                  className="tm-btn-primary tm-btn-schedule-live"
                   onClick={handleOpenCreateLiveClass}
                 >
                   <Plus size={16} />
@@ -1522,136 +2011,259 @@ export const AdminPanel = ({
                 </button>
               </div>
 
-              {liveClassesLoading ? (
-                <div className="tm-admin-loading-state">
-                  <RefreshCw size={22} className="spin" />
-                  <span>Loading scheduled sessions...</span>
+              {/* Quick Live Stats Row */}
+              <div className="tm-live-stats-grid">
+                <div className="tm-live-stat-card">
+                  <div className="tm-live-stat-icon-wrap blue">
+                    <Video size={18} />
+                  </div>
+                  <div className="tm-live-stat-info">
+                    <span className="label">Total Sessions</span>
+                    <span className="val">{liveClasses.length}</span>
+                  </div>
                 </div>
-              ) : liveClasses.length === 0 ? (
-                <div className="tm-admin-empty-card">
-                  <Video size={40} className="tm-empty-icon" />
-                  <h3>No Scheduled Live Classes Yet</h3>
-                  <p>Create a live session and add your Google Meet link so enrolled students can join from their portals.</p>
-                  <button
-                    type="button"
-                    className="tm-btn-primary"
-                    style={{ marginTop: '14px' }}
-                    onClick={handleOpenCreateLiveClass}
+
+                <div className="tm-live-stat-card">
+                  <div className="tm-live-stat-icon-wrap amber">
+                    <Calendar size={18} />
+                  </div>
+                  <div className="tm-live-stat-info">
+                    <span className="label">Upcoming</span>
+                    <span className="val">{liveClasses.filter((c) => c.status === 'upcoming').length}</span>
+                  </div>
+                </div>
+
+                <div className="tm-live-stat-card">
+                  <div className="tm-live-stat-icon-wrap red">
+                    <Flame size={18} />
+                  </div>
+                  <div className="tm-live-stat-info">
+                    <span className="label">Live Now</span>
+                    <span className="val">{liveClasses.filter((c) => c.status === 'live').length}</span>
+                  </div>
+                </div>
+
+                <div className="tm-live-stat-card">
+                  <div className="tm-live-stat-icon-wrap green">
+                    <CheckCircle size={18} />
+                  </div>
+                  <div className="tm-live-stat-info">
+                    <span className="label">Completed</span>
+                    <span className="val">{liveClasses.filter((c) => c.status === 'completed').length}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filters Bar: Search & Status Filter */}
+              <div className="tm-admin-filters-bar">
+                <div className="tm-search-input-wrap">
+                  <Search size={16} className="tm-search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search by class title, instructor, or cohort..."
+                    value={liveClassSearch}
+                    onChange={(e) => setLiveClassSearch(e.target.value)}
+                    className="tm-admin-input search"
+                  />
+                  {liveClassSearch && (
+                    <button
+                      type="button"
+                      className="tm-clear-btn"
+                      onClick={() => setLiveClassSearch('')}
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                <div className="tm-filter-select-wrap">
+                  <select
+                    value={liveClassStatusFilter}
+                    onChange={(e) => setLiveClassStatusFilter(e.target.value)}
+                    className="tm-admin-select"
                   >
-                    <Plus size={16} />
-                    <span>Schedule First Live Class</span>
-                  </button>
+                    <option value="all">All Statuses ({liveClasses.length})</option>
+                    <option value="upcoming">Upcoming Sessions</option>
+                    <option value="live">Live Now</option>
+                    <option value="completed">Completed Sessions</option>
+                  </select>
                 </div>
-              ) : (
-                <div className="tm-admin-table-container">
-                  <table className="tm-admin-table">
-                    <thead>
-                      <tr>
-                        <th>Class Details</th>
-                        <th>Cohort / Course</th>
-                        <th>Scheduled Date & Time</th>
-                        <th>Duration</th>
-                        <th>Meeting Link (Google Meet)</th>
-                        <th>Status</th>
-                        <th style={{ textAlign: 'right' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {liveClasses.map((item) => (
-                        <tr key={item.id}>
-                          <td>
-                            <div className="tm-user-info-cell">
-                              <span className="font-semibold">{item.title}</span>
-                              <span className="text-muted text-xs">Instructor: {item.instructor || 'Patil Trader'}</span>
-                              {item.description && (
-                                <span className="text-muted text-xs tm-class-desc-snippet">{item.description}</span>
-                              )}
-                            </div>
-                          </td>
-                          <td>
-                            <span className="tm-status-pill enrolled" style={{ whiteSpace: 'nowrap' }}>
-                              {item.course_name || 'All Programs'} ({item.batch_name || 'November'})
-                            </span>
-                          </td>
-                          <td>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                              <span className="font-semibold">
-                                {new Date(item.scheduled_at).toLocaleDateString(undefined, {
-                                  weekday: 'short',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric',
-                                })}
-                              </span>
-                              <span className="text-muted text-xs">
-                                {new Date(item.scheduled_at).toLocaleTimeString(undefined, {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </span>
-                            </div>
-                          </td>
-                          <td>
-                            <span>{item.duration_minutes || 75} mins</span>
-                          </td>
-                          <td>
-                            {item.meeting_link ? (
-                              <div className="tm-meet-link-group">
-                                <a
-                                  href={item.meeting_link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="tm-meet-link-badge"
-                                  title="Open Google Meet in new tab"
-                                >
-                                  <Video size={13} />
-                                  <span className="tm-meet-link-text">{item.meeting_link.replace(/^https?:\/\//, '')}</span>
-                                  <ExternalLink size={12} />
-                                </a>
-                                <button
-                                  type="button"
-                                  className="tm-btn-icon-subtle"
-                                  title="Copy meeting link"
-                                  onClick={() => handleCopyMeetLink(item.meeting_link, item.id)}
-                                >
-                                  {copiedMeetId === item.id ? <Check size={14} color="#10B981" /> : <Copy size={14} />}
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="tm-status-pill pending text-xs">No Link Added</span>
-                            )}
-                          </td>
-                          <td>
-                            <span className={`tm-status-pill ${item.status || 'upcoming'}`}>
-                              {item.status || 'upcoming'}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="tm-table-actions" style={{ justifyContent: 'flex-end' }}>
-                              <button
-                                type="button"
-                                className="tm-btn-icon"
-                                title="Edit Live Class & Link"
-                                onClick={() => handleOpenEditLiveClass(item)}
-                              >
-                                <Edit size={16} />
-                              </button>
-                              <button
-                                type="button"
-                                className="tm-btn-icon danger"
-                                title="Delete Scheduled Class"
-                                onClick={() => handleDeleteLiveClass(item.id, item.title)}
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
+              </div>
+
+              {/* Sessions Table Card */}
+              <div className="tm-admin-card">
+                <div className="tm-admin-table-wrap">
+                  {liveClassesLoading ? (
+                    <div className="tm-admin-loading-state">
+                      <RefreshCw size={22} className="spin" />
+                      <span>Loading scheduled sessions...</span>
+                    </div>
+                  ) : liveClasses.filter((item) => {
+                      if (liveClassStatusFilter !== 'all' && item.status !== liveClassStatusFilter) return false;
+                      if (liveClassSearch.trim()) {
+                        const q = liveClassSearch.toLowerCase();
+                        const matchTitle = (item.title || '').toLowerCase().includes(q);
+                        const matchInstructor = (item.instructor || '').toLowerCase().includes(q);
+                        const matchCourse = (item.course_name || '').toLowerCase().includes(q);
+                        const matchBatch = (item.batch_name || '').toLowerCase().includes(q);
+                        if (!matchTitle && !matchInstructor && !matchCourse && !matchBatch) return false;
+                      }
+                      return true;
+                    }).length === 0 ? (
+                    <div className="tm-admin-empty-state">
+                      <Video size={36} className="text-muted" style={{ marginBottom: '10px' }} />
+                      <div className="font-semibold">No scheduled live classes found.</div>
+                      <p className="text-muted text-xs" style={{ marginTop: '4px' }}>
+                        Click &quot;Schedule Live Class&quot; to configure a Google Meet session for enrolled students.
+                      </p>
+                    </div>
+                  ) : (
+                    <table className="tm-admin-table tm-live-classes-table">
+                      <thead>
+                        <tr>
+                          <th>Session Details</th>
+                          <th>Target Program &amp; Batch</th>
+                          <th>Scheduled Date &amp; Time</th>
+                          <th>Duration</th>
+                          <th>Google Meet Link</th>
+                          <th>Status</th>
+                          <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {liveClasses
+                          .filter((item) => {
+                            if (liveClassStatusFilter !== 'all' && item.status !== liveClassStatusFilter) return false;
+                            if (liveClassSearch.trim()) {
+                              const q = liveClassSearch.toLowerCase();
+                              const matchTitle = (item.title || '').toLowerCase().includes(q);
+                              const matchInstructor = (item.instructor || '').toLowerCase().includes(q);
+                              const matchCourse = (item.course_name || '').toLowerCase().includes(q);
+                              const matchBatch = (item.batch_name || '').toLowerCase().includes(q);
+                              if (!matchTitle && !matchInstructor && !matchCourse && !matchBatch) return false;
+                            }
+                            return true;
+                          })
+                          .map((item) => (
+                            <tr key={item.id}>
+                              <td>
+                                <div className="tm-live-title-cell">
+                                  <div className="font-semibold tm-live-class-title">{item.title}</div>
+                                  <div className="tm-live-instructor-row">
+                                    <span className="text-muted text-xs">Instructor:</span>
+                                    <span className="tm-instructor-tag">{item.instructor || 'Patil Trader'}</span>
+                                  </div>
+                                  {item.description && (
+                                    <div className="text-muted text-xs tm-class-desc-snippet" title={item.description}>
+                                      {item.description}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td>
+                                <div className="tm-live-cohort-cell">
+                                  <span className="tm-course-badge-pill">
+                                    {item.course_name || 'All Programs'}
+                                  </span>
+                                  <span className="tm-batch-sub-badge">
+                                    Cohort: {item.batch_name || 'November'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td>
+                                <div className="tm-live-datetime-cell">
+                                  <div className="tm-datetime-primary">
+                                    <Calendar size={13} className="text-muted" />
+                                    <span>
+                                      {new Date(item.scheduled_at).toLocaleDateString(undefined, {
+                                        weekday: 'short',
+                                        month: 'short',
+                                        day: 'numeric',
+                                        year: 'numeric',
+                                      })}
+                                    </span>
+                                  </div>
+                                  <div className="tm-datetime-secondary text-muted text-xs">
+                                    <Clock size={12} />
+                                    <span>
+                                      {new Date(item.scheduled_at).toLocaleTimeString(undefined, {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>
+                                <span className="tm-duration-pill">
+                                  {item.duration_minutes || 75} mins
+                                </span>
+                              </td>
+                              <td>
+                                {item.meeting_link ? (
+                                  <div className="tm-meet-link-group">
+                                    <a
+                                      href={item.meeting_link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="tm-meet-link-badge"
+                                      title="Open Google Meet in new tab"
+                                    >
+                                      <Video size={13} />
+                                      <span className="tm-meet-link-text">
+                                        {item.meeting_link.replace(/^https?:\/\//, '')}
+                                      </span>
+                                      <ExternalLink size={12} />
+                                    </a>
+                                    <button
+                                      type="button"
+                                      className="tm-btn-icon-subtle"
+                                      title="Copy meeting link"
+                                      onClick={() => handleCopyMeetLink(item.meeting_link, item.id)}
+                                    >
+                                      {copiedMeetId === item.id ? (
+                                        <Check size={14} color="#10B981" />
+                                      ) : (
+                                        <Copy size={14} />
+                                      )}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="tm-status-pill pending text-xs">No Link Added</span>
+                                )}
+                              </td>
+                              <td>
+                                <span className={`tm-status-pill ${item.status || 'upcoming'}`}>
+                                  {item.status === 'live' ? '● LIVE NOW' : item.status || 'upcoming'}
+                                </span>
+                              </td>
+                              <td>
+                                <div className="tm-actions-flex" style={{ justifyContent: 'flex-end' }}>
+                                  <button
+                                    type="button"
+                                    className="tm-btn-outline-xs"
+                                    title="Edit Live Class & Link"
+                                    onClick={() => handleOpenEditLiveClass(item)}
+                                  >
+                                    <Edit size={13} /> Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="tm-btn-outline-xs danger"
+                                    title="Delete Scheduled Class"
+                                    onClick={() => handleDeleteLiveClass(item.id, item.title)}
+                                  >
+                                    <Trash2 size={13} /> Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           )}
 
@@ -1976,6 +2588,755 @@ export const AdminPanel = ({
               </div>
             </div>
           )}
+
+          {/* ==============================================================
+              TAB 7: PAYMENT VERIFICATION & QR SETTINGS
+              ============================================================== */}
+          {activeTab === 'payments' && (
+            <div className="tm-admin-payments-page">
+              {/* Header with Sub-Tabs */}
+              <div className="tm-admin-section-header tm-payments-section-header">
+                <div className="tm-admin-subtabs">
+                  <button
+                    type="button"
+                    className={`tm-admin-subtab-btn ${paymentSubTab === 'claims' ? 'active' : ''}`}
+                    onClick={() => setPaymentSubTab('claims')}
+                  >
+                    <CreditCard size={15} />
+                    <span>Payment Claims</span>
+                    {paymentStats && paymentStats.pending > 0 && (
+                      <span className="tm-subtab-badge warning">{paymentStats.pending}</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className={`tm-admin-subtab-btn ${paymentSubTab === 'qr_settings' ? 'active' : ''}`}
+                    onClick={() => {
+                      setPaymentSubTab('qr_settings');
+                      fetchPaymentSettings();
+                    }}
+                  >
+                    <QrCode size={15} />
+                    <span>QR &amp; Payment Settings</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* SUBTAB 1: CLAIMS VERIFICATION */}
+              {paymentSubTab === 'claims' && (
+                <>
+                  {/* Summary Metric Cards */}
+                  <div className="tm-admin-stats-grid">
+                    <div
+                      className={`tm-stat-card ${paymentStatusFilter === 'PENDING' ? 'active-filter' : ''}`}
+                      onClick={() => setPaymentStatusFilter(paymentStatusFilter === 'PENDING' ? 'all' : 'PENDING')}
+                      title="Filter by Pending"
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="tm-stat-icon-wrap amber">
+                        <Clock size={20} />
+                      </div>
+                      <div className="tm-stat-data">
+                        <span className="tm-stat-label">Pending Verification</span>
+                        <div className="tm-stat-number">{paymentStats.pending}</div>
+                        <span className="tm-stat-hint">Needs administrator review</span>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`tm-stat-card ${paymentStatusFilter === 'UNDER_REVIEW' ? 'active-filter' : ''}`}
+                      onClick={() => setPaymentStatusFilter(paymentStatusFilter === 'UNDER_REVIEW' ? 'all' : 'UNDER_REVIEW')}
+                      title="Filter by Under Review"
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="tm-stat-icon-wrap blue">
+                        <AlertCircle size={20} />
+                      </div>
+                      <div className="tm-stat-data">
+                        <span className="tm-stat-label">Under Review</span>
+                        <div className="tm-stat-number">{paymentStats.under_review}</div>
+                        <span className="tm-stat-hint">In-progress checks</span>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`tm-stat-card ${paymentStatusFilter === 'APPROVED' ? 'active-filter' : ''}`}
+                      onClick={() => setPaymentStatusFilter(paymentStatusFilter === 'APPROVED' ? 'all' : 'APPROVED')}
+                      title="Filter by Approved"
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="tm-stat-icon-wrap green">
+                        <CheckCircle size={20} />
+                      </div>
+                      <div className="tm-stat-data">
+                        <span className="tm-stat-label">Approved Payments</span>
+                        <div className="tm-stat-number">{paymentStats.approved}</div>
+                        <span className="tm-stat-hint">Enrollments granted</span>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`tm-stat-card ${paymentStatusFilter === 'REJECTED' ? 'active-filter' : ''}`}
+                      onClick={() => setPaymentStatusFilter(paymentStatusFilter === 'REJECTED' ? 'all' : 'REJECTED')}
+                      title="Filter by Rejected"
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="tm-stat-icon-wrap red">
+                        <XCircle size={20} />
+                      </div>
+                      <div className="tm-stat-data">
+                        <span className="tm-stat-label">Rejected Claims</span>
+                        <div className="tm-stat-number">{paymentStats.rejected}</div>
+                        <span className="tm-stat-hint">Declined / Resubmission allowed</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Filter & Search Bar */}
+                  <div className="tm-admin-controls-card">
+                    <div className="tm-admin-search-wrap">
+                      <Search size={16} className="search-icon" />
+                      <input
+                        type="text"
+                        placeholder="Search student, email, or UTR / reference..."
+                        value={paymentSearch}
+                        onChange={(e) => {
+                          setPaymentSearch(e.target.value);
+                          setPaymentPage(1);
+                        }}
+                        className="tm-admin-search-input"
+                      />
+                      {paymentSearch && (
+                        <button
+                          type="button"
+                          className="tm-search-clear"
+                          onClick={() => {
+                            setPaymentSearch('');
+                            setPaymentPage(1);
+                          }}
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="tm-admin-filters-row">
+                      <div className="tm-filter-group">
+                        <span className="tm-filter-label">Status:</span>
+                        <select
+                          value={paymentStatusFilter}
+                          onChange={(e) => {
+                            setPaymentStatusFilter(e.target.value);
+                            setPaymentPage(1);
+                          }}
+                          className="tm-admin-select"
+                        >
+                          <option value="all">All Statuses ({paymentStats.total})</option>
+                          <option value="PENDING">Pending ({paymentStats.pending})</option>
+                          <option value="UNDER_REVIEW">Under Review ({paymentStats.under_review})</option>
+                          <option value="APPROVED">Approved ({paymentStats.approved})</option>
+                          <option value="REJECTED">Rejected ({paymentStats.rejected})</option>
+                        </select>
+                      </div>
+
+                      <div className="tm-filter-group">
+                        <span className="tm-filter-label">Course:</span>
+                        <select
+                          value={paymentCourseFilter}
+                          onChange={(e) => {
+                            setPaymentCourseFilter(e.target.value);
+                            setPaymentPage(1);
+                          }}
+                          className="tm-admin-select"
+                        >
+                          <option value="all">All Courses</option>
+                          {courses.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="tm-filter-group">
+                        <span className="tm-filter-label">Sort:</span>
+                        <select
+                          value={paymentSort}
+                          onChange={(e) => {
+                            setPaymentSort(e.target.value);
+                            setPaymentPage(1);
+                          }}
+                          className="tm-admin-select"
+                        >
+                          <option value="newest">Newest First</option>
+                          <option value="oldest">Oldest First</option>
+                        </select>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="tm-btn-refresh"
+                        onClick={() => fetchPaymentClaims(paymentPage)}
+                        title="Refresh payment claims list"
+                        disabled={paymentClaimsLoading}
+                      >
+                        <RefreshCw size={14} className={paymentClaimsLoading ? 'spin' : ''} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Payment Claims Table */}
+                  <div className="tm-admin-table-card">
+                    <div className="tm-admin-table-responsive tm-desktop-claims-table">
+                      <table className="tm-admin-table">
+                        <thead>
+                          <tr>
+                            <th>Student</th>
+                            <th>Course</th>
+                            <th>Claimed Amount</th>
+                            <th>Transaction Ref / UTR</th>
+                            <th>Submitted</th>
+                            <th>Screenshot</th>
+                            <th>Status</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paymentClaimsLoading ? (
+                            <tr>
+                              <td colSpan="8" className="tm-table-loading">
+                                <RefreshCw size={20} className="spin" />
+                                <span>Loading payment claims...</span>
+                              </td>
+                            </tr>
+                          ) : paymentClaims.length === 0 ? (
+                            <tr>
+                              <td colSpan="8" className="tm-table-empty">
+                                <AlertCircle size={28} />
+                                <p>No payment claims found matching your criteria.</p>
+                              </td>
+                            </tr>
+                          ) : (
+                            paymentClaims.map((claim) => {
+                              const claimId = claim.claim_id || claim.id;
+                              const token = localStorage.getItem('tm_token');
+                              const screenshotUrl = `/api/admin/payment-claims/${claimId}/screenshot?token=${token}`;
+
+                              return (
+                                <tr key={claimId} className={`tm-payment-row ${claim.status?.toLowerCase()}`}>
+                                  <td>
+                                    <div className="tm-student-cell">
+                                      <div className="tm-student-avatar">
+                                        {(claim.student_name || 'S').charAt(0).toUpperCase()}
+                                      </div>
+                                      <div>
+                                        <div className="tm-student-name">{claim.student_name || 'Student'}</div>
+                                        <div className="tm-student-email">{claim.student_email || claim.user_id}</div>
+                                        {claim.student_mobile && (
+                                          <div className="tm-student-mobile">📞 {claim.student_mobile}</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <div className="tm-course-cell">
+                                      <span className="tm-course-title-cell">{claim.course_title || `Course #${claim.course_id}`}</span>
+                                      {claim.course_tier && (
+                                        <span className="tm-course-tier-tag">{claim.course_tier}</span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <span className="tm-amount-cell">₹{Number(claim.amount || 0).toLocaleString('en-IN')}</span>
+                                  </td>
+                                  <td>
+                                    <div className="tm-utr-cell">
+                                      <code className="tm-utr-code">{claim.transaction_ref}</code>
+                                      <button
+                                        type="button"
+                                        className="tm-btn-icon-tiny"
+                                        title="Copy UTR"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(claim.transaction_ref);
+                                          showNotification('UTR copied to clipboard!');
+                                        }}
+                                      >
+                                        <Copy size={12} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <span className="tm-date-cell">
+                                      {new Date(claim.submitted_at || claim.created_at).toLocaleDateString('en-IN', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <button
+                                      type="button"
+                                      className="tm-screenshot-thumbnail-btn"
+                                      onClick={() => setPreviewScreenshotClaim(claim)}
+                                      title="Click to view full screenshot"
+                                    >
+                                      <img
+                                        src={screenshotUrl}
+                                        alt="Proof"
+                                        className="tm-screenshot-thumbnail-img"
+                                        onError={(e) => {
+                                          e.target.style.display = 'none';
+                                        }}
+                                      />
+                                      <Eye size={12} className="tm-thumb-eye-icon" />
+                                    </button>
+                                  </td>
+                                  <td>
+                                    <span className={`tm-status-pill ${claim.status?.toLowerCase()}`}>
+                                      {claim.status === 'UNDER_REVIEW'
+                                        ? 'Under Review'
+                                        : claim.status === 'PENDING'
+                                        ? 'Pending'
+                                        : claim.status === 'APPROVED'
+                                        ? 'Approved'
+                                        : 'Rejected'}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <div className="tm-actions-cell" style={{ justifyContent: 'flex-end', gap: '6px' }}>
+                                      {/* View Details */}
+                                      <button
+                                        type="button"
+                                        className="tm-btn-table-action"
+                                        onClick={() => handleOpenClaimDetails(claimId)}
+                                        title="Review full claim details"
+                                      >
+                                        <Eye size={14} />
+                                      </button>
+
+                                      {/* Mark Under Review (if PENDING) */}
+                                      {claim.status === 'PENDING' && (
+                                        <button
+                                          type="button"
+                                          className="tm-btn-table-action"
+                                          onClick={() => handleMarkUnderReview(claimId)}
+                                          title="Mark Under Review"
+                                        >
+                                          <Clock size={14} />
+                                        </button>
+                                      )}
+
+                                      {/* Approve Button */}
+                                      {(claim.status === 'PENDING' || claim.status === 'UNDER_REVIEW') && (
+                                        <button
+                                          type="button"
+                                          className="tm-btn-table-action success"
+                                          onClick={() => {
+                                            setClaimToApprove(claim);
+                                            setApproveNotes('');
+                                          }}
+                                          title="Verify & Approve Payment"
+                                        >
+                                          <CheckCircle size={14} />
+                                        </button>
+                                      )}
+
+                                      {/* Reject Button */}
+                                      {(claim.status === 'PENDING' || claim.status === 'UNDER_REVIEW') && (
+                                        <button
+                                          type="button"
+                                          className="tm-btn-table-action danger"
+                                          onClick={() => {
+                                            setClaimToReject(claim);
+                                            setRejectionReason('');
+                                            setRejectNotes('');
+                                          }}
+                                          title="Reject Payment Claim"
+                                        >
+                                          <XCircle size={14} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Claims Cards View */}
+                    <div className="tm-mobile-claims-list">
+                      {paymentClaimsLoading ? (
+                        <div className="tm-table-loading">
+                          <RefreshCw size={24} className="spin" />
+                          <span>Loading payment claims...</span>
+                        </div>
+                      ) : paymentClaims.length === 0 ? (
+                        <div className="tm-table-empty">
+                          <AlertCircle size={28} />
+                          <p>No payment claims found matching your criteria.</p>
+                        </div>
+                      ) : (
+                        paymentClaims.map((claim) => {
+                          const claimId = claim.claim_id || claim.id;
+                          const token = localStorage.getItem('tm_token');
+                          const screenshotUrl = `/api/admin/payment-claims/${claimId}/screenshot?token=${token}`;
+
+                          return (
+                            <div key={`mob-${claimId}`} className={`tm-mobile-claim-card ${claim.status?.toLowerCase()}`}>
+                              {/* Header */}
+                              <div className="tm-mobile-claim-header">
+                                <div className="tm-mobile-claim-student">
+                                  <div className="tm-student-avatar">
+                                    {(claim.student_name || 'S').charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="tm-mobile-claim-student-info">
+                                    <span className="tm-student-name">{claim.student_name || 'Student'}</span>
+                                    <span className="tm-student-email">{claim.student_email || claim.user_id}</span>
+                                  </div>
+                                </div>
+                                <span className={`tm-status-pill ${claim.status?.toLowerCase()}`}>
+                                  {claim.status === 'UNDER_REVIEW'
+                                    ? 'Under Review'
+                                    : claim.status === 'PENDING'
+                                    ? 'Pending'
+                                    : claim.status === 'APPROVED'
+                                    ? 'Approved'
+                                    : 'Rejected'}
+                                </span>
+                              </div>
+
+                              {/* Details Grid */}
+                              <div className="tm-mobile-claim-info-grid">
+                                <div className="tm-mobile-claim-info-item">
+                                  <span className="label">Course</span>
+                                  <span className="val font-semibold">{claim.course_title || `Course #${claim.course_id}`}</span>
+                                </div>
+                                <div className="tm-mobile-claim-info-item">
+                                  <span className="label">Amount</span>
+                                  <span className="val tm-amount-cell">₹{Number(claim.amount || 0).toLocaleString('en-IN')}</span>
+                                </div>
+                                <div className="tm-mobile-claim-info-item">
+                                  <span className="label">Submitted</span>
+                                  <span className="val text-muted text-xs">
+                                    {new Date(claim.submitted_at || claim.created_at).toLocaleDateString('en-IN', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                                  </span>
+                                </div>
+                                <div className="tm-mobile-claim-info-item">
+                                  <span className="label">Transaction UTR</span>
+                                  <div className="tm-utr-cell">
+                                    <code className="tm-utr-code">{claim.transaction_ref}</code>
+                                    <button
+                                      type="button"
+                                      className="tm-btn-icon-tiny"
+                                      title="Copy UTR"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(claim.transaction_ref);
+                                        showNotification('UTR copied to clipboard!');
+                                      }}
+                                    >
+                                      <Copy size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Screenshot Proof Preview */}
+                              <div className="tm-mobile-claim-proof-row">
+                                <span className="text-muted text-xs">Payment Screenshot:</span>
+                                <button
+                                  type="button"
+                                  className="tm-btn-table-action"
+                                  onClick={() => setPreviewScreenshotClaim(claim)}
+                                  title="Click to view full screenshot"
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 8px', fontSize: '11.5px' }}
+                                >
+                                  <img
+                                    src={screenshotUrl}
+                                    alt="Proof"
+                                    style={{ width: '20px', height: '20px', objectFit: 'cover', borderRadius: '3px' }}
+                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                  />
+                                  <Eye size={12} />
+                                  <span>View Proof</span>
+                                </button>
+                              </div>
+
+                              {/* Action Buttons */}
+                              <div className="tm-mobile-claim-actions">
+                                <button
+                                  type="button"
+                                  className="tm-mobile-btn-action details"
+                                  onClick={() => handleOpenClaimDetails(claimId)}
+                                >
+                                  <Eye size={13} />
+                                  <span>Details</span>
+                                </button>
+
+                                {claim.status === 'PENDING' && (
+                                  <button
+                                    type="button"
+                                    className="tm-mobile-btn-action review"
+                                    onClick={() => handleMarkUnderReview(claimId)}
+                                  >
+                                    <Clock size={13} />
+                                    <span>Review</span>
+                                  </button>
+                                )}
+
+                                {(claim.status === 'PENDING' || claim.status === 'UNDER_REVIEW') && (
+                                  <button
+                                    type="button"
+                                    className="tm-mobile-btn-action approve"
+                                    onClick={() => {
+                                      setClaimToApprove(claim);
+                                      setApproveNotes('');
+                                    }}
+                                  >
+                                    <CheckCircle size={13} />
+                                    <span>Approve</span>
+                                  </button>
+                                )}
+
+                                {(claim.status === 'PENDING' || claim.status === 'UNDER_REVIEW') && (
+                                  <button
+                                    type="button"
+                                    className="tm-mobile-btn-action reject"
+                                    onClick={() => {
+                                      setClaimToReject(claim);
+                                      setRejectionReason('');
+                                      setRejectNotes('');
+                                    }}
+                                  >
+                                    <XCircle size={13} />
+                                    <span>Reject</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Pagination */}
+                    {paymentPagination.totalPages > 1 && (
+                      <div className="tm-admin-pagination">
+                        <span className="tm-pagination-info">
+                          Showing {paymentClaims.length} of {paymentPagination.total} claims
+                        </span>
+                        <div className="tm-pagination-btns">
+                          <button
+                            type="button"
+                            className="tm-page-btn"
+                            disabled={paymentPage <= 1}
+                            onClick={() => {
+                              const p = paymentPage - 1;
+                              setPaymentPage(p);
+                              fetchPaymentClaims(p);
+                            }}
+                          >
+                            <ChevronLeft size={16} />
+                          </button>
+                          <span className="tm-page-current">
+                            Page {paymentPage} of {paymentPagination.totalPages}
+                          </span>
+                          <button
+                            type="button"
+                            className="tm-page-btn"
+                            disabled={paymentPage >= paymentPagination.totalPages}
+                            onClick={() => {
+                              const p = paymentPage + 1;
+                              setPaymentPage(p);
+                              fetchPaymentClaims(p);
+                            }}
+                          >
+                            <ChevronRight size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* SUBTAB 2: QR & PAYMENT SETTINGS */}
+              {paymentSubTab === 'qr_settings' && (
+                <div className="tm-admin-dual-grid">
+                  {/* Left Card: Official Payment QR Code */}
+                  <div className="tm-admin-card">
+                    <div className="tm-admin-card-header">
+                      <h2 className="tm-admin-card-title">Official Payment QR Code</h2>
+                      <span className="tm-admin-card-sub">Displayed to students during course checkout</span>
+                    </div>
+
+                    <div className="tm-qr-display-container">
+                      <div className="tm-qr-image-frame">
+                        <img
+                          src={qrUploadPreview || paymentSettings.qr_code_url || '/qr.jpg'}
+                          alt="Official Payment QR"
+                          className="tm-official-qr-image"
+                        />
+                      </div>
+                      <div className="tm-qr-info-meta">
+                        <div className="tm-qr-meta-item">
+                          <span className="label">Current Asset Path:</span>
+                          <code>{paymentSettings.qr_code_url || '/qr.jpg'}</code>
+                        </div>
+                        <div className="tm-qr-meta-item">
+                          <span className="label">Recipient Name:</span>
+                          <strong>{paymentSettings.recipient_name || 'Not Configured'}</strong>
+                        </div>
+                        <div className="tm-qr-meta-item">
+                          <span className="label">UPI ID:</span>
+                          <strong>{paymentSettings.upi_id || 'Not Configured'}</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="tm-qr-upload-section">
+                      <label className="tm-admin-label">Replace Official QR Code</label>
+                      <p className="tm-admin-sub">
+                        Upload a crisp, uncropped payment QR code image (JPEG, PNG, WebP up to 5MB).
+                      </p>
+
+                      <div className="tm-qr-file-input-row">
+                        <input
+                          ref={qrFileInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={handleQrFileSelected}
+                          className="tm-file-input-hidden"
+                          id="qr-upload-input"
+                        />
+                        <label htmlFor="qr-upload-input" className="tm-btn-outline tm-upload-trigger-btn">
+                          <Upload size={14} />
+                          <span>{qrUploadFile ? qrUploadFile.name : 'Select New QR Image...'}</span>
+                        </label>
+
+                        {qrUploadFile && (
+                          <button
+                            type="button"
+                            className="tm-btn-primary"
+                            onClick={handleUploadQr}
+                            disabled={uploadingQr}
+                          >
+                            {uploadingQr ? (
+                              <>
+                                <RefreshCw size={14} className="spin" />
+                                <span>Uploading...</span>
+                              </>
+                            ) : (
+                              'Upload & Replace QR'
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Card: UPI & Instruction Configuration */}
+                  <div className="tm-admin-card">
+                    <div className="tm-admin-card-header">
+                      <h2 className="tm-admin-card-title">Payment Account &amp; Instructions</h2>
+                      <span className="tm-admin-card-sub">Admin configuration used across student checkout</span>
+                    </div>
+
+                    {!paymentSettings.upi_id && (
+                      <div className="tm-alert-notice warning">
+                        <AlertCircle size={18} />
+                        <div>
+                          <strong>Configuration Incomplete:</strong> Student checkout is currently disabled because the official UPI ID is not configured. Enter the UPI ID below to enable checkout.
+                        </div>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleSavePaymentSettings} className="tm-admin-form">
+                      <div className="tm-form-group">
+                        <label>Official Recipient Name *</label>
+                        <input
+                          type="text"
+                          value={paymentSettings.recipient_name}
+                          onChange={(e) => setPaymentSettings({ ...paymentSettings, recipient_name: e.target.value })}
+                          className="tm-admin-input"
+                          placeholder="e.g., PATIL TANISHQ DEEPAK"
+                          required
+                        />
+                        <span className="tm-input-hint">The account holder name verified by UPI apps upon scanning.</span>
+                      </div>
+
+                      <div className="tm-form-group">
+                        <label>Official UPI ID / VPA *</label>
+                        <input
+                          type="text"
+                          value={paymentSettings.upi_id}
+                          onChange={(e) => setPaymentSettings({ ...paymentSettings, upi_id: e.target.value.trim() })}
+                          className="tm-admin-input"
+                          placeholder="e.g. 8799026206@ybl or trademax@icici"
+                          required
+                        />
+                        <span className="tm-input-hint">Displayed to students for copy-paste and payment validation.</span>
+                      </div>
+
+                      <div className="tm-form-group">
+                        <label>Payment Instructions for Students</label>
+                        <textarea
+                          rows="4"
+                          value={paymentSettings.payment_instructions}
+                          onChange={(e) =>
+                            setPaymentSettings({ ...paymentSettings, payment_instructions: e.target.value })
+                          }
+                          className="tm-admin-input"
+                          placeholder="Instructions displayed under the QR code during course checkout..."
+                        />
+                      </div>
+
+                      <div className="tm-form-checkbox-group">
+                        <label className="tm-checkbox-label">
+                          <input
+                            type="checkbox"
+                            checked={paymentSettings.is_active}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, is_active: e.target.checked })}
+                          />
+                          <span><strong>Enable Manual Payments:</strong> When checked, students can pay via UPI QR code.</span>
+                        </label>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={savingPaymentSettings}
+                        className="tm-btn-primary"
+                        style={{ marginTop: '12px' }}
+                      >
+                        {savingPaymentSettings ? 'Saving Configuration...' : 'Save Payment Configuration'}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ==============================================================
+              TAB 8: PUSH NOTIFICATIONS
+              ============================================================== */}
+          {activeTab === 'push' && (
+            <AdminPushNotifications
+              courses={courses}
+              showNotification={showNotification}
+            />
+          )}
         </div>
       </main>
 
@@ -2060,6 +3421,26 @@ export const AdminPanel = ({
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {selectedUser.user.role !== 'admin' && (
+                <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--adm-border)', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="tm-btn-primary tm-btn-danger"
+                    onClick={() => {
+                      const u = selectedUser.user;
+                      setUserToDelete({
+                        ...u,
+                        enrollments_count: selectedUser.enrollments ? selectedUser.enrollments.length : 0,
+                      });
+                    }}
+                    title="Permanently Delete User Account"
+                  >
+                    <Trash2 size={14} />
+                    <span>Delete User Account</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -2512,155 +3893,213 @@ export const AdminPanel = ({
 
       {/* ------------------------------------------------------------------
           MODAL: SCHEDULE / EDIT LIVE CLASS & GOOGLE MEET
+          Matches Student Panel Payment Popup (Blue Top Strip, Thick Border,
+          Clean Cards, & Green Action Button)
           ------------------------------------------------------------------ */}
       {isLiveClassModalOpen && editingLiveClass && (
-        <div className="tm-admin-modal-overlay" onClick={() => setIsLiveClassModalOpen(false)}>
-          <div className="tm-admin-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="tm-admin-modal-header">
-              <h3>{editingLiveClass.id ? 'Edit Scheduled Live Class' : 'Schedule New Live Class'}</h3>
+        <div className="tm-course-modal-backdrop tm-live-modal-backdrop" onClick={() => setIsLiveClassModalOpen(false)}>
+          <div
+            className="tm-course-modal-card tm-clean-modal-layout tm-live-modal-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* SOLID BLUE TOP STRIP */}
+            <div className="tm-modal-header-blue">
+              <div className="tm-modal-header-text">
+                <h3 className="tm-modal-header-title">
+                  {editingLiveClass.id ? 'Edit Scheduled Live Class' : 'Schedule Live Class'}
+                </h3>
+                <p className="tm-modal-header-subtitle">
+                  Configure Google Meet session, cohort schedule &amp; student instructions
+                </p>
+              </div>
               <button
                 type="button"
-                className="tm-admin-modal-close"
+                className="tm-modal-header-close"
                 onClick={() => setIsLiveClassModalOpen(false)}
+                aria-label="Close"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveLiveClass} className="tm-admin-modal-body">
-              <div className="tm-form-group">
-                <label>Meeting Title *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Forex & Crypto Masterclass — Live Session"
-                  value={editingLiveClass.title}
-                  onChange={(e) => setEditingLiveClass({ ...editingLiveClass, title: e.target.value })}
-                  required
-                />
+            {/* SCROLLABLE MODAL BODY - CLEAN WHITE CARDS */}
+            <form onSubmit={handleSaveLiveClass} className="tm-live-modal-form">
+              <div className="tm-modal-body-scroll">
+                <div className="tm-clean-cards-stack">
+                  {/* Card 1: Session Information */}
+                  <div className="tm-clean-card">
+                    <label className="tm-input-card-label">
+                      Meeting Title <span className="tm-req">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="tm-clean-text-input"
+                      placeholder="e.g. Forex & Crypto Masterclass — Live Session"
+                      value={editingLiveClass.title}
+                      onChange={(e) => setEditingLiveClass({ ...editingLiveClass, title: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  {/* Card 2: Course & Cohort Target */}
+                  <div className="tm-clean-card">
+                    <div className="tm-modal-card-grid-2">
+                      <div>
+                        <label className="tm-input-card-label">Target Program / Course</label>
+                        <select
+                          className="tm-clean-text-input"
+                          value={editingLiveClass.course_id || ''}
+                          onChange={(e) => setEditingLiveClass({ ...editingLiveClass, course_id: e.target.value || null })}
+                        >
+                          <option value="">All Programs / General Cohort</option>
+                          {courses.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="tm-input-card-label">Cohort Batch Name</label>
+                        <input
+                          type="text"
+                          className="tm-clean-text-input"
+                          placeholder="November"
+                          value={editingLiveClass.batch_name}
+                          onChange={(e) => setEditingLiveClass({ ...editingLiveClass, batch_name: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Google Meet & Platform Integration */}
+                  <div className="tm-clean-card">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <label className="tm-input-card-label" style={{ marginBottom: 0 }}>
+                        Google Meet / Meeting URL
+                      </label>
+                      <span className="text-muted text-xs">e.g. https://meet.google.com/xxx-yyyy-zzz</span>
+                    </div>
+                    <div className="tm-meet-input-wrap">
+                      <Video size={16} className="tm-meet-input-icon" />
+                      <input
+                        type="url"
+                        className="tm-clean-text-input tm-input-with-icon"
+                        placeholder="https://meet.google.com/..."
+                        value={editingLiveClass.meeting_link}
+                        onChange={(e) => setEditingLiveClass({ ...editingLiveClass, meeting_link: e.target.value })}
+                      />
+                    </div>
+                    <div className="tm-clean-notice-card" style={{ marginTop: '10px' }}>
+                      <CheckCircle size={15} className="tm-notice-shield" />
+                      <div>
+                        This Google Meet link will appear immediately on enrolled students&apos; portals with a 1-click &quot;Join Meeting&quot; broadcast button.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 4: Schedule, Duration & Instructor */}
+                  <div className="tm-clean-card">
+                    <div className="tm-modal-card-grid-2">
+                      <div>
+                        <label className="tm-input-card-label">
+                          Scheduled Date &amp; Time <span className="tm-req">*</span>
+                        </label>
+                        <input
+                          type="datetime-local"
+                          className="tm-clean-text-input"
+                          value={editingLiveClass.scheduled_at}
+                          onChange={(e) => setEditingLiveClass({ ...editingLiveClass, scheduled_at: e.target.value })}
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="tm-input-card-label">Duration (Minutes)</label>
+                        <input
+                          type="number"
+                          min="15"
+                          step="5"
+                          className="tm-clean-text-input"
+                          value={editingLiveClass.duration_minutes}
+                          onChange={(e) => setEditingLiveClass({ ...editingLiveClass, duration_minutes: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="tm-modal-card-grid-3" style={{ marginTop: '12px' }}>
+                      <div>
+                        <label className="tm-input-card-label">Platform</label>
+                        <select
+                          className="tm-clean-text-input"
+                          value={editingLiveClass.platform}
+                          onChange={(e) => setEditingLiveClass({ ...editingLiveClass, platform: e.target.value })}
+                        >
+                          <option value="Google Meet">Google Meet</option>
+                          <option value="Zoom">Zoom</option>
+                          <option value="YouTube Live">YouTube Live</option>
+                          <option value="Live Stream">Live Stream</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="tm-input-card-label">Instructor</label>
+                        <input
+                          type="text"
+                          className="tm-clean-text-input"
+                          value={editingLiveClass.instructor}
+                          onChange={(e) => setEditingLiveClass({ ...editingLiveClass, instructor: e.target.value })}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="tm-input-card-label">Session Status</label>
+                        <select
+                          className="tm-clean-text-input"
+                          value={editingLiveClass.status}
+                          onChange={(e) => setEditingLiveClass({ ...editingLiveClass, status: e.target.value })}
+                        >
+                          <option value="upcoming">Upcoming</option>
+                          <option value="live">Live Now</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 5: Agenda & Description */}
+                  <div className="tm-clean-card">
+                    <label className="tm-input-card-label">
+                      Session Agenda / Description <span className="text-muted text-xs">(Optional)</span>
+                    </label>
+                    <textarea
+                      rows="3"
+                      className="tm-clean-text-input"
+                      style={{ resize: 'vertical' }}
+                      placeholder="Key topics: Risk management, institutional liquidity zones, live market structure..."
+                      value={editingLiveClass.description}
+                      onChange={(e) => setEditingLiveClass({ ...editingLiveClass, description: e.target.value })}
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="tm-form-group">
-                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span>Google Meet / Meeting Link</span>
-                  <span className="text-muted text-xs">e.g. https://meet.google.com/xxx-yyyy-zzz</span>
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://meet.google.com/..."
-                  value={editingLiveClass.meeting_link}
-                  onChange={(e) => setEditingLiveClass({ ...editingLiveClass, meeting_link: e.target.value })}
-                />
-                <small className="tm-form-hint">
-                  This Google Meet link will appear immediately on enrolled students&apos; dashboards with a one-click &quot;Join Meeting&quot; button.
-                </small>
-              </div>
-
-              <div className="tm-form-row">
-                <div className="tm-form-group">
-                  <label>Associated Course</label>
-                  <select
-                    value={editingLiveClass.course_id || ''}
-                    onChange={(e) => setEditingLiveClass({ ...editingLiveClass, course_id: e.target.value || null })}
-                  >
-                    <option value="">All Programs / General Cohort</option>
-                    {courses.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="tm-form-group">
-                  <label>Cohort Batch Name</label>
-                  <input
-                    type="text"
-                    placeholder="November"
-                    value={editingLiveClass.batch_name}
-                    onChange={(e) => setEditingLiveClass({ ...editingLiveClass, batch_name: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="tm-form-row">
-                <div className="tm-form-group">
-                  <label>Scheduled Date & Time *</label>
-                  <input
-                    type="datetime-local"
-                    value={editingLiveClass.scheduled_at}
-                    onChange={(e) => setEditingLiveClass({ ...editingLiveClass, scheduled_at: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="tm-form-group">
-                  <label>Duration (Minutes)</label>
-                  <input
-                    type="number"
-                    min="15"
-                    step="5"
-                    value={editingLiveClass.duration_minutes}
-                    onChange={(e) => setEditingLiveClass({ ...editingLiveClass, duration_minutes: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="tm-form-row">
-                <div className="tm-form-group">
-                  <label>Platform</label>
-                  <select
-                    value={editingLiveClass.platform}
-                    onChange={(e) => setEditingLiveClass({ ...editingLiveClass, platform: e.target.value })}
-                  >
-                    <option value="Google Meet">Google Meet</option>
-                    <option value="Zoom">Zoom</option>
-                    <option value="YouTube Live">YouTube Live</option>
-                    <option value="Live Stream">Live Stream</option>
-                  </select>
-                </div>
-
-                <div className="tm-form-group">
-                  <label>Instructor</label>
-                  <input
-                    type="text"
-                    value={editingLiveClass.instructor}
-                    onChange={(e) => setEditingLiveClass({ ...editingLiveClass, instructor: e.target.value })}
-                  />
-                </div>
-
-                <div className="tm-form-group">
-                  <label>Status</label>
-                  <select
-                    value={editingLiveClass.status}
-                    onChange={(e) => setEditingLiveClass({ ...editingLiveClass, status: e.target.value })}
-                  >
-                    <option value="upcoming">Upcoming</option>
-                    <option value="live">Live Now</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="tm-form-group">
-                <label>Session Agenda / Description (Optional)</label>
-                <textarea
-                  rows="3"
-                  placeholder="Key topics covered: Risk management, institutional liquidity zones, live charting..."
-                  value={editingLiveClass.description}
-                  onChange={(e) => setEditingLiveClass({ ...editingLiveClass, description: e.target.value })}
-                />
-              </div>
-
-              <div className="tm-modal-actions-footer">
+              {/* FOOTER ACTION BAR WITH PROMINENT GREEN ACTION BUTTON */}
+              <div className="tm-modal-footer-clean">
                 <button
                   type="button"
-                  className="tm-btn-outline"
+                  className="tm-btn-cancel-clean"
                   onClick={() => setIsLiveClassModalOpen(false)}
                   disabled={savingLiveClass}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="tm-btn-primary" disabled={savingLiveClass}>
+                <button
+                  type="submit"
+                  className="tm-btn-primary-green"
+                  disabled={savingLiveClass}
+                >
                   {savingLiveClass ? (
                     <>
                       <RefreshCw size={14} className="spin" />
@@ -2677,6 +4116,614 @@ export const AdminPanel = ({
           </div>
         </div>
       )}
+
+      {/* ------------------------------------------------------------------
+          MODAL 4: PAYMENT CLAIM DETAILS REVIEW MODAL
+          ------------------------------------------------------------------ */}
+      {selectedClaim && (
+        <div className="tm-admin-modal-overlay" onClick={() => setSelectedClaim(null)}>
+          <div className="tm-admin-modal tm-claim-details-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="tm-admin-modal-header">
+              <div className="tm-claim-modal-title-row">
+                <CreditCard size={18} />
+                <h3>Manual Payment Claim Details</h3>
+              </div>
+              <button
+                type="button"
+                className="tm-admin-modal-close"
+                onClick={() => setSelectedClaim(null)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="tm-admin-modal-body tm-claim-details-body">
+              <div className="tm-claim-dual-grid">
+                {/* Left Column: Claim Information & Evidence */}
+                <div className="tm-claim-info-col">
+                  <div className="tm-claim-section-title">Student &amp; Course</div>
+                  <div className="tm-claim-meta-list">
+                    <div className="tm-claim-meta-row">
+                      <span className="label">Student Name:</span>
+                      <strong>{selectedClaim.student_name || 'N/A'}</strong>
+                    </div>
+                    <div className="tm-claim-meta-row">
+                      <span className="label">Student Email:</span>
+                      <span>{selectedClaim.student_email || selectedClaim.user_id}</span>
+                    </div>
+                    {selectedClaim.student_mobile && (
+                      <div className="tm-claim-meta-row">
+                        <span className="label">Phone:</span>
+                        <span>{selectedClaim.student_mobile}</span>
+                      </div>
+                    )}
+                    <div className="tm-claim-meta-row">
+                      <span className="label">Course:</span>
+                      <strong>{selectedClaim.course_title || `Course #${selectedClaim.course_id}`}</strong>
+                    </div>
+                    <div className="tm-claim-meta-row">
+                      <span className="label">Course Fee:</span>
+                      <strong className="tm-amount-highlight">₹{Number(selectedClaim.amount || 0).toLocaleString('en-IN')}</strong>
+                    </div>
+                  </div>
+
+                  <div className="tm-claim-section-title" style={{ marginTop: '16px' }}>Transaction Evidence</div>
+                  <div className="tm-claim-meta-list">
+                    <div className="tm-claim-meta-row">
+                      <span className="label">Transaction Ref / UTR:</span>
+                      <div className="tm-utr-code-wrap">
+                        <code className="tm-utr-code-large">{selectedClaim.transaction_ref}</code>
+                        <button
+                          type="button"
+                          className="tm-btn-icon-tiny"
+                          title="Copy UTR"
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedClaim.transaction_ref);
+                            showNotification('UTR copied to clipboard!');
+                          }}
+                        >
+                          <Copy size={13} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="tm-claim-meta-row">
+                      <span className="label">Submitted At:</span>
+                      <span>
+                        {new Date(selectedClaim.submitted_at || selectedClaim.created_at).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="tm-claim-meta-row">
+                      <span className="label">Status:</span>
+                      <span className={`tm-status-pill ${selectedClaim.status?.toLowerCase()}`}>
+                        {selectedClaim.status}
+                      </span>
+                    </div>
+                    {selectedClaim.reviewed_at && (
+                      <div className="tm-claim-meta-row">
+                        <span className="label">Reviewed At:</span>
+                        <span>{new Date(selectedClaim.reviewed_at).toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
+                    {selectedClaim.rejection_reason && (
+                      <div className="tm-claim-rejection-box">
+                        <span className="label">Rejection Reason:</span>
+                        <p>{selectedClaim.rejection_reason}</p>
+                      </div>
+                    )}
+                    {selectedClaim.admin_notes && (
+                      <div className="tm-claim-notes-box">
+                        <span className="label">Admin Notes:</span>
+                        <p>{selectedClaim.admin_notes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Column: Screenshot Preview */}
+                <div className="tm-claim-screenshot-col">
+                  <div className="tm-claim-section-title">Payment Screenshot</div>
+                  <div
+                    className="tm-claim-screenshot-container"
+                    onClick={() => setPreviewScreenshotClaim(selectedClaim)}
+                    title="Click to view full image"
+                  >
+                    <img
+                      src={`/api/admin/payment-claims/${selectedClaim.claim_id || selectedClaim.id}/screenshot?token=${localStorage.getItem('tm_token')}`}
+                      alt="Payment Receipt"
+                      className="tm-claim-screenshot-preview-img"
+                    />
+                    <div className="tm-claim-screenshot-overlay">
+                      <Eye size={18} />
+                      <span>Click to enlarge screenshot</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="tm-modal-actions-footer">
+              <button
+                type="button"
+                className="tm-btn-outline"
+                onClick={() => setSelectedClaim(null)}
+              >
+                Close
+              </button>
+
+              {selectedClaim.status === 'PENDING' && (
+                <button
+                  type="button"
+                  className="tm-btn-secondary"
+                  onClick={() => handleMarkUnderReview(selectedClaim.claim_id || selectedClaim.id)}
+                >
+                  Mark Under Review
+                </button>
+              )}
+
+              {(selectedClaim.status === 'PENDING' || selectedClaim.status === 'UNDER_REVIEW') && (
+                <>
+                  <button
+                    type="button"
+                    className="tm-btn-danger"
+                    onClick={() => {
+                      setClaimToReject(selectedClaim);
+                      setRejectionReason('');
+                      setRejectNotes('');
+                    }}
+                  >
+                    Reject Claim...
+                  </button>
+                  <button
+                    type="button"
+                    className="tm-btn-primary tm-btn-success"
+                    onClick={() => {
+                      setClaimToApprove(selectedClaim);
+                      setApproveNotes('');
+                    }}
+                  >
+                    Approve Payment &amp; Enroll
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------
+          MODAL 5: APPROVE PAYMENT CLAIM CONFIRMATION MODAL
+          ------------------------------------------------------------------ */}
+      {claimToApprove && (
+        <div className="tm-admin-modal-overlay" onClick={() => !approvingClaim && setClaimToApprove(null)}>
+          <div className="tm-admin-modal tm-confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="tm-admin-modal-header">
+              <div className="tm-confirm-header-icon success">
+                <CheckCircle size={22} />
+              </div>
+              <div>
+                <h3>Confirm Payment Approval</h3>
+                <span className="tm-admin-card-sub">Explicit authenticated verification required</span>
+              </div>
+              <button
+                type="button"
+                className="tm-admin-modal-close"
+                onClick={() => !approvingClaim && setClaimToApprove(null)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="tm-admin-modal-body">
+              <div className="tm-confirm-details-card">
+                <div className="tm-confirm-item">
+                  <span className="label">Student:</span>
+                  <strong>{claimToApprove.student_name}</strong> ({claimToApprove.student_email || claimToApprove.user_id})
+                </div>
+                <div className="tm-confirm-item">
+                  <span className="label">Course:</span>
+                  <strong>{claimToApprove.course_title || `Course #${claimToApprove.course_id}`}</strong>
+                </div>
+                <div className="tm-confirm-item">
+                  <span className="label">Verified Amount:</span>
+                  <strong className="tm-amount-highlight">₹{Number(claimToApprove.amount || 0).toLocaleString('en-IN')}</strong>
+                </div>
+                <div className="tm-confirm-item">
+                  <span className="label">Transaction Reference / UTR:</span>
+                  <code>{claimToApprove.transaction_ref}</code>
+                </div>
+              </div>
+
+              <div className="tm-alert-notice info" style={{ margin: '14px 0' }}>
+                <CheckCircle size={16} />
+                <div>
+                  Confirming this payment will atomically transition the claim to <strong>APPROVED</strong>, record your administrator ID and review timestamp, create the student's active enrollment, and unlock the course in their dashboard.
+                </div>
+              </div>
+
+              <div className="tm-form-group">
+                <label>Admin Review Notes (Optional / Internal)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Verified in ICICI / PhonePe merchant statement"
+                  value={approveNotes}
+                  onChange={(e) => setApproveNotes(e.target.value)}
+                  className="tm-admin-input"
+                />
+              </div>
+            </div>
+
+            <div className="tm-modal-actions-footer">
+              <button
+                type="button"
+                className="tm-btn-outline"
+                onClick={() => setClaimToApprove(null)}
+                disabled={approvingClaim}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="tm-btn-primary tm-btn-success"
+                onClick={handleApproveClaim}
+                disabled={approvingClaim}
+              >
+                {approvingClaim ? (
+                  <>
+                    <RefreshCw size={14} className="spin" />
+                    <span>Approving &amp; Enrolling...</span>
+                  </>
+                ) : (
+                  'Confirm & Grant Course Access'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------
+          MODAL 6: REJECT PAYMENT CLAIM MODAL
+          ------------------------------------------------------------------ */}
+      {claimToReject && (
+        <div className="tm-admin-modal-overlay" onClick={() => !rejectingClaim && setClaimToReject(null)}>
+          <div className="tm-admin-modal tm-confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="tm-admin-modal-header">
+              <div className="tm-confirm-header-icon danger">
+                <XCircle size={22} />
+              </div>
+              <div>
+                <h3>Reject Payment Claim</h3>
+                <span className="tm-admin-card-sub">Mandatory reason will be visible to the student</span>
+              </div>
+              <button
+                type="button"
+                className="tm-admin-modal-close"
+                onClick={() => !rejectingClaim && setClaimToReject(null)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="tm-admin-modal-body">
+              <div className="tm-confirm-details-card" style={{ marginBottom: '14px' }}>
+                <div className="tm-confirm-item">
+                  <span className="label">Student:</span>
+                  <strong>{claimToReject.student_name}</strong>
+                </div>
+                <div className="tm-confirm-item">
+                  <span className="label">Course:</span>
+                  <strong>{claimToReject.course_title || `Course #${claimToReject.course_id}`}</strong>
+                </div>
+                <div className="tm-confirm-item">
+                  <span className="label">UTR:</span>
+                  <code>{claimToReject.transaction_ref}</code>
+                </div>
+              </div>
+
+              <div className="tm-form-group">
+                <label>Rejection Reason * (Student will see this in their dashboard)</label>
+                <textarea
+                  rows="3"
+                  className="tm-admin-input"
+                  placeholder="e.g. UTR number not found in bank statement, screenshot illegible, or incorrect amount paid."
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="tm-form-group">
+                <label>Internal Admin Notes (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Checked with bank at 2:30 PM, no credit received."
+                  value={rejectNotes}
+                  onChange={(e) => setRejectNotes(e.target.value)}
+                  className="tm-admin-input"
+                />
+              </div>
+
+              <div className="tm-alert-notice warning">
+                <AlertCircle size={16} />
+                <div>
+                  Rejecting will decline course enrollment. The student will be notified and given the option to resubmit valid evidence with a corrected UTR and screenshot.
+                </div>
+              </div>
+            </div>
+
+            <div className="tm-modal-actions-footer">
+              <button
+                type="button"
+                className="tm-btn-outline"
+                onClick={() => setClaimToReject(null)}
+                disabled={rejectingClaim}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="tm-btn-danger"
+                onClick={handleRejectClaim}
+                disabled={rejectingClaim || !rejectionReason.trim()}
+              >
+                {rejectingClaim ? (
+                  <>
+                    <RefreshCw size={14} className="spin" />
+                    <span>Rejecting Claim...</span>
+                  </>
+                ) : (
+                  'Confirm Rejection'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------
+          MODAL 7: FULL-SCREEN PAYMENT SCREENSHOT PREVIEW MODAL
+          ------------------------------------------------------------------ */}
+      {previewScreenshotClaim && (
+        <div className="tm-admin-modal-overlay tm-screenshot-modal-overlay" onClick={() => setPreviewScreenshotClaim(null)}>
+          <div className="tm-screenshot-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="tm-screenshot-modal-header">
+              <div>
+                <h4>Payment Screenshot Evidence</h4>
+                <span className="text-muted">
+                  UTR: <code>{previewScreenshotClaim.transaction_ref}</code> • {previewScreenshotClaim.student_name || 'Student'}
+                </span>
+              </div>
+              <div className="tm-screenshot-modal-header-actions">
+                <a
+                  href={`/api/admin/payment-claims/${previewScreenshotClaim.claim_id || previewScreenshotClaim.id}/screenshot?token=${localStorage.getItem('tm_token')}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="tm-btn-icon-tiny"
+                  title="Open full size in new tab"
+                >
+                  <ExternalLink size={16} />
+                </a>
+                <button
+                  type="button"
+                  className="tm-admin-modal-close"
+                  onClick={() => setPreviewScreenshotClaim(null)}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="tm-screenshot-modal-img-wrap">
+              <img
+                src={`/api/admin/payment-claims/${previewScreenshotClaim.claim_id || previewScreenshotClaim.id}/screenshot?token=${localStorage.getItem('tm_token')}`}
+                alt="Full Payment Screenshot"
+                className="tm-screenshot-modal-img"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------
+          MODAL 8: DELETE USER CONFIRMATION MODAL
+          ------------------------------------------------------------------ */}
+      {userToDelete && (
+        <div className="tm-admin-modal-overlay" onClick={() => !deletingUser && setUserToDelete(null)}>
+          <div className="tm-admin-modal tm-confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="tm-admin-modal-header">
+              <div className="tm-confirm-header-icon danger">
+                <Trash2 size={22} />
+              </div>
+              <div>
+                <h3>Delete User Account</h3>
+                <span className="tm-admin-card-sub">Permanent and irreversible action</span>
+              </div>
+              <button
+                type="button"
+                className="tm-admin-modal-close"
+                onClick={() => !deletingUser && setUserToDelete(null)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="tm-admin-modal-body">
+              <div className="tm-confirm-details-card" style={{ marginBottom: '14px' }}>
+                <div className="tm-confirm-item">
+                  <span className="label">User Name:</span>
+                  <strong>{userToDelete.name}</strong>
+                </div>
+                <div className="tm-confirm-item">
+                  <span className="label">Email Address:</span>
+                  <code>{userToDelete.email}</code>
+                </div>
+                {userToDelete.mobile && (
+                  <div className="tm-confirm-item">
+                    <span className="label">Mobile:</span>
+                    <span>{userToDelete.mobile}</span>
+                  </div>
+                )}
+                <div className="tm-confirm-item">
+                  <span className="label">Role / Status:</span>
+                  <span>{userToDelete.role} • {userToDelete.status || 'active'}</span>
+                </div>
+                {userToDelete.enrollments_count !== undefined && (
+                  <div className="tm-confirm-item">
+                    <span className="label">Enrolled Courses:</span>
+                    <span>{userToDelete.enrollments_count}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="tm-alert-notice danger">
+                <AlertCircle size={18} style={{ flexShrink: 0 }} />
+                <div>
+                  <strong>Warning:</strong> This will permanently delete <strong>{userToDelete.name}</strong>’s account and all associated data (enrollments, payments, lesson progress, and payment claims) safely from the database. This action cannot be undone.
+                </div>
+              </div>
+            </div>
+
+            <div className="tm-modal-actions-footer">
+              <button
+                type="button"
+                className="tm-btn-outline"
+                onClick={() => setUserToDelete(null)}
+                disabled={deletingUser}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="tm-btn-primary tm-btn-danger"
+                onClick={handleDeleteUser}
+                disabled={deletingUser}
+              >
+                {deletingUser ? (
+                  <>
+                    <RefreshCw size={14} className="spin" />
+                    <span>Deleting Account...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    <span>Permanently Delete User</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------
+          MODAL 9: RESET PLATFORM DATA CONFIRMATION MODAL
+          ------------------------------------------------------------------ */}
+      {showResetModal && (
+        <div className="tm-admin-modal-overlay" onClick={() => !resettingPlatform && setShowResetModal(false)}>
+          <div className="tm-admin-modal tm-confirm-modal tm-reset-platform-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="tm-admin-modal-header" style={{ borderBottom: '1px solid rgba(239, 68, 68, 0.25)' }}>
+              <div className="tm-confirm-header-icon danger">
+                <AlertTriangle size={22} />
+              </div>
+              <div>
+                <h3 style={{ color: '#DC2626' }}>Reset Platform Data</h3>
+                <span className="tm-admin-card-sub">Irreversible institutional data reset</span>
+              </div>
+              <button
+                type="button"
+                className="tm-admin-modal-close"
+                onClick={() => !resettingPlatform && setShowResetModal(false)}
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="tm-admin-modal-body">
+              <div className="tm-alert-notice danger" style={{ marginBottom: '16px' }}>
+                <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong>Critical Warning:</strong> This operation will permanently wipe all student admission records, course enrollments, and revenue metrics.
+                </div>
+              </div>
+
+              <div className="tm-reset-scope-grid">
+                <div className="tm-reset-scope-card reset-card">
+                  <div className="tm-reset-scope-title">
+                    <XCircle size={15} />
+                    <span>Data to be Reset (Wiped):</span>
+                  </div>
+                  <ul className="tm-reset-scope-list">
+                    <li><strong>Total Users:</strong> All student accounts (excluding Admin)</li>
+                    <li><strong>Total Enrollments:</strong> Reset to 0 (all enrollments removed)</li>
+                    <li><strong>Total Revenue:</strong> Reset to ₹0 (all payment history wiped)</li>
+                    <li><strong>Payment Claims:</strong> All UPI receipts & claims</li>
+                    <li><strong>Progress:</strong> All student lesson completion records</li>
+                  </ul>
+                </div>
+
+                <div className="tm-reset-scope-card preserve-card">
+                  <div className="tm-reset-scope-title">
+                    <CheckCircle size={15} />
+                    <span>Safely Preserved (Untouched):</span>
+                  </div>
+                  <ul className="tm-reset-scope-list">
+                    <li><strong>Courses & Modules:</strong> All course content & videos</li>
+                    <li><strong>Admin Accounts:</strong> Administrator access preserved</li>
+                    <li><strong>Live Classes:</strong> Scheduled classes & Meet links</li>
+                    <li><strong>Platform Settings:</strong> UPI QR code & configurations</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '16px' }}>
+                <label className="tm-input-label" style={{ fontSize: '13px', fontWeight: 600 }}>
+                  Type <code style={{ color: '#DC2626', background: 'rgba(220, 38, 38, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>RESET</code> below to confirm:
+                </label>
+                <input
+                  type="text"
+                  className="tm-admin-input"
+                  placeholder="Type RESET here..."
+                  value={resetConfirmInput}
+                  onChange={(e) => setResetConfirmInput(e.target.value)}
+                  disabled={resettingPlatform}
+                  style={{ marginTop: '6px' }}
+                />
+              </div>
+            </div>
+
+            <div className="tm-modal-actions-footer">
+              <button
+                type="button"
+                className="tm-btn-outline"
+                onClick={() => setShowResetModal(false)}
+                disabled={resettingPlatform}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="tm-btn-primary tm-btn-danger"
+                onClick={handleResetPlatformData}
+                disabled={resettingPlatform || resetConfirmInput.trim().toUpperCase() !== 'RESET'}
+              >
+                {resettingPlatform ? (
+                  <>
+                    <RefreshCw size={14} className="spin" />
+                    <span>Resetting Platform Data...</span>
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw size={14} />
+                    <span>Confirm & Reset Platform Data</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

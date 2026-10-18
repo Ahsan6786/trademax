@@ -84,3 +84,59 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// ==========================================================================
+// WEB PUSH NOTIFICATIONS (STANDARDIZED WEB PUSH API)
+// ==========================================================================
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch {
+      data = { title: 'TradeMax', body: event.data.text() };
+    }
+  } else {
+    data = { title: 'TradeMax', body: 'New notification from TradeMax' };
+  }
+
+  const title = data.title || 'TradeMax';
+  const options = {
+    body: data.body || '',
+    icon: data.icon || '/tm-logo.png',
+    badge: data.badge || '/tm-logo.png',
+    data: data.data || { url: '/' },
+    vibrate: [100, 50, 100],
+    tag: data.tag || `tm-push-${Date.now()}`,
+    renotify: true,
+    requireInteraction: false
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const targetUrl = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Check if there is already an open TradeMax window
+      for (const client of clientList) {
+        if (client.url && 'focus' in client) {
+          if (targetUrl && targetUrl !== '/') {
+            client.navigate(targetUrl);
+          }
+          return client.focus();
+        }
+      }
+      // If no window is open, launch a new window
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+

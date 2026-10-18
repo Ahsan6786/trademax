@@ -12,14 +12,29 @@
   --tm-ws-text-main: #f8fafc;
   --tm-ws-text-muted: #94a3b8;
   --tm-ws-text-dim: #64748b;
-  --tm-ws-red: #e52529;
-  --tm-ws-red-hover: #c81e22;
+  --tm-ws-red: #dc2626;
+  --tm-ws-red-hover: #b91c1c;
 
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
   color: var(--tm-ws-text-main);
   animation: fadeInWs 0.25s ease-out;
+}
+
+/* Day Mode (Light Theme) Support */
+.tm-admin-workspace.tm-theme-light,
+.tm-theme-light .tm-admin-workspace {
+  --tm-ws-bg: #f8fafc;
+  --tm-ws-card: #ffffff;
+  --tm-ws-card-inner: #f1f5f9;
+  --tm-ws-border: #e2e8f0;
+  --tm-ws-border-subtle: #edf2f7;
+  --tm-ws-text-main: #0f172a;
+  --tm-ws-text-muted: #334155;
+  --tm-ws-text-dim: #64748b;
+  --tm-ws-red: #dc2626;
+  --tm-ws-red-hover: #b91c1c;
 }
 
 @keyframes fadeInWs {
@@ -418,10 +433,11 @@
   font-weight: 700;
 }
 .tm-ws-lesson-url code {
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--tm-ws-card);
+  border: 1px solid var(--tm-ws-border);
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
-  color: var(--tm-ws-text-muted);
+  color: var(--tm-ws-text-main);
   max-width: 400px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -482,7 +498,8 @@
 }
 
 .tm-ws-live-meta-box {
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--tm-ws-card);
+  border: 1px solid var(--tm-ws-border);
   padding: 0.75rem;
   border-radius: 6px;
   display: flex;
@@ -1029,26 +1046,27 @@
 
 .tm-release-tag {
   font-size: 0.72rem;
-  color: #cbd5e1;
-  background: #1e293b;
+  color: var(--tm-ws-text-main);
+  background: var(--tm-ws-card-inner);
+  border: 1px solid var(--tm-ws-border);
   padding: 2px 6px;
   border-radius: 4px;
 }
 
 .tm-s3-dropzone {
-  border: 2px dashed #334155;
+  border: 2px dashed var(--tm-ws-border);
   border-radius: 8px;
   padding: 24px;
   text-align: center;
-  background: #0f172a;
+  background: var(--tm-ws-card-inner);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .tm-s3-dropzone:hover,
 .tm-s3-dropzone.has-file {
-  border-color: #ef4444;
-  background: rgba(239, 68, 68, 0.04);
+  border-color: var(--tm-ws-red);
+  background: rgba(220, 38, 38, 0.04);
 }
 
 .tm-s3-dropzone-label {
@@ -1056,17 +1074,17 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  color: #94a3b8;
+  color: var(--tm-ws-text-muted);
   cursor: pointer;
 }
 
 .tm-s3-dropzone-label svg {
-  color: #ef4444;
+  color: var(--tm-ws-red);
 }
 
 .tm-s3-progress-container {
-  background: #0f172a;
-  border: 1px solid #1e293b;
+  background: var(--tm-ws-card-inner);
+  border: 1px solid var(--tm-ws-border);
   border-radius: 8px;
   padding: 12px 16px;
   margin-top: 8px;
@@ -1082,7 +1100,7 @@
 .s3-status-text {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--tm-ws-text-main);
 }
 
 .s3-progress-pct {
@@ -1188,7 +1206,7 @@
   margin: 4px 0 0 0;
   font-size: 1.5rem;
   font-weight: 850;
-  color: #f8fafc;
+  color: var(--tm-ws-text-main);
   letter-spacing: -0.01em;
 }
 
@@ -1200,18 +1218,18 @@
 .bold-price {
   font-size: 1.4rem;
   font-weight: 900;
-  color: #f8fafc;
+  color: var(--tm-ws-text-main);
 }
 
 .strike-price {
   display: block;
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--tm-ws-text-dim);
   text-decoration: line-through;
 }
 
 .tm-ws-overview-desc {
-  color: #94a3b8;
+  color: var(--tm-ws-text-muted);
   font-size: 0.88rem;
   line-height: 1.5;
   margin: 0;
@@ -1235,14 +1253,14 @@
 .chip-label {
   font-size: 0.7rem;
   font-weight: 700;
-  color: #64748b;
+  color: var(--tm-ws-text-dim);
   text-transform: uppercase;
 }
 
 .chip-val {
   font-size: 1.05rem;
   font-weight: 850;
-  color: #f8fafc;
+  color: var(--tm-ws-text-main);
 }
 
 .tm-ws-overview-actions {
@@ -1266,7 +1284,7 @@
   margin: 0;
   font-size: 1.1rem;
   font-weight: 800;
-  color: #f8fafc;
+  color: var(--tm-ws-text-main);
 }
 
 .tm-ws-topics-box h4,
@@ -1274,7 +1292,7 @@
   margin: 0 0 8px 0;
   font-size: 0.85rem;
   font-weight: 750;
-  color: #ef4444;
+  color: var(--tm-ws-red);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -1286,9 +1304,9 @@
 }
 
 .tm-topic-pill {
-  background: #1e293b;
-  border: 1px solid #334155;
-  color: #cbd5e1;
+  background: var(--tm-ws-card-inner);
+  border: 1px solid var(--tm-ws-border);
+  color: var(--tm-ws-text-main);
   font-size: 0.8rem;
   font-weight: 600;
   padding: 4px 10px;
@@ -1297,7 +1315,7 @@
 
 .tm-ws-outcomes-box p {
   margin: 0;
-  color: #94a3b8;
+  color: var(--tm-ws-text-muted);
   font-size: 0.88rem;
   line-height: 1.5;
 }
@@ -1332,8 +1350,9 @@
 .s3-pill {
   font-size: 0.75rem;
   font-weight: 750;
-  color: #94a3b8;
-  background: #1e293b;
+  color: var(--tm-ws-text-muted);
+  background: var(--tm-ws-card-inner);
+  border: 1px solid var(--tm-ws-border);
   padding: 4px 10px;
   border-radius: 4px;
 }
@@ -1345,14 +1364,14 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  color: #94a3b8;
+  color: var(--tm-ws-text-muted);
 }
 
 /* Mini Progress Bar */
 .tm-mini-progress-bar {
   width: 70px;
   height: 6px;
-  background: #1e293b;
+  background: var(--tm-ws-border);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -1369,4 +1388,234 @@
   .tm-ws-overview-chips-grid {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* ==========================================================================
+   DAY MODE (LIGHT THEME) WORKSPACE REFINEMENTS
+   Zero glassmorphism, solid cards, clear borders, high text readability
+   ========================================================================== */
+.tm-theme-light .tm-admin-workspace,
+.tm-admin-workspace.tm-theme-light {
+  background-color: #F8FAFC;
+  color: #0F172A;
+}
+
+.tm-theme-light .tm-workspace-header {
+  border-bottom-color: #E2E8F0;
+}
+
+.tm-theme-light .tm-workspace-back-btn,
+.tm-theme-light .tm-btn-refresh-ws {
+  background: #FFFFFF;
+  color: #0F172A;
+  border: 1px solid #CBD5E1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.tm-theme-light .tm-workspace-back-btn:hover,
+.tm-theme-light .tm-btn-refresh-ws:hover {
+  background: #F1F5F9;
+  border-color: #DC2626;
+  color: #DC2626;
+}
+
+.tm-theme-light .tm-workspace-course-title {
+  color: #0F172A;
+}
+
+.tm-theme-light .tm-workspace-metrics-bar .tm-ws-metric {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.tm-theme-light .tm-ws-metric .label {
+  color: #64748B;
+}
+
+.tm-theme-light .tm-ws-metric .val {
+  color: #0F172A;
+}
+
+.tm-theme-light .tm-workspace-tabs-bar {
+  border-bottom-color: #E2E8F0;
+}
+
+.tm-theme-light .tm-ws-tab-btn {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: #334155;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.tm-theme-light .tm-ws-tab-btn:hover {
+  background: #F1F5F9;
+  border-color: #94A3B8;
+  color: #0F172A;
+}
+
+.tm-theme-light .tm-ws-tab-btn.active {
+  background: #000000;
+  color: #FFFFFF;
+  border-color: #000000;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.tm-theme-light .tm-ws-section {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.tm-theme-light .tm-ws-section-head h3 {
+  color: #0F172A;
+}
+
+.tm-theme-light .tm-ws-section-head p {
+  color: #475569;
+}
+
+.tm-theme-light .tm-ws-overview-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.tm-theme-light .tm-ws-overview-chips-grid {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+}
+
+.tm-theme-light .tm-ws-content-overview-block {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.tm-theme-light .tm-ws-form-group input,
+.tm-theme-light .tm-ws-form-group select,
+.tm-theme-light .tm-ws-form-group textarea {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: #0F172A;
+}
+
+.tm-theme-light .tm-ws-form-group input:focus,
+.tm-theme-light .tm-ws-form-group select:focus,
+.tm-theme-light .tm-ws-form-group textarea:focus {
+  border-color: #DC2626;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);
+}
+
+.tm-theme-light .tm-ws-lesson-row {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+}
+
+.tm-theme-light .tm-ws-lesson-title {
+  color: #0F172A;
+}
+
+.tm-theme-light .tm-ws-lesson-desc {
+  color: #334155;
+}
+
+.tm-theme-light .tm-ws-live-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.tm-theme-light .tm-ws-live-title {
+  color: #0F172A;
+}
+
+.tm-theme-light .tm-ws-live-desc {
+  color: #334155;
+}
+
+.tm-theme-light .tm-ws-live-meta-box {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+}
+
+.tm-theme-light .tm-ws-notice-card,
+.tm-theme-light .tm-ws-res-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.tm-theme-light .tm-ws-notice-title,
+.tm-theme-light .tm-ws-res-title {
+  color: #0F172A;
+}
+
+.tm-theme-light .tm-ws-notice-content,
+.tm-theme-light .tm-ws-res-desc {
+  color: #334155;
+}
+
+.tm-theme-light .tm-ws-search-bar {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+}
+
+.tm-theme-light .tm-ws-search-bar input {
+  color: #0F172A;
+}
+
+.tm-theme-light .tm-ws-table-wrap {
+  border-color: #E2E8F0;
+  background: #FFFFFF;
+}
+
+.tm-theme-light .tm-ws-table th {
+  background: #F8FAFC;
+  color: #475569;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.tm-theme-light .tm-ws-table td {
+  border-bottom-color: #F1F5F9;
+  color: #0F172A;
+}
+
+.tm-theme-light .tm-ws-empty-box {
+  background: #F8FAFC;
+  border-color: #CBD5E1;
+}
+
+.tm-theme-light .tm-ws-empty-box h4 {
+  color: #0F172A;
+}
+
+.tm-theme-light .tm-ws-empty-box p {
+  color: #475569;
+}
+
+.tm-theme-light .tm-ws-modal {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+}
+
+.tm-theme-light .tm-ws-modal-head {
+  border-bottom-color: #E2E8F0;
+}
+
+.tm-theme-light .tm-ws-modal-head h3 {
+  color: #0F172A;
+}
+
+.tm-theme-light .tm-btn-outline-xs {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: #0F172A;
+}
+
+.tm-theme-light .tm-btn-outline-xs:hover {
+  background: #F1F5F9;
+  border-color: #94A3B8;
+  color: #000000;
 }

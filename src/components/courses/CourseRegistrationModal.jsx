@@ -1,5 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { loadRazorpay } from '../../utils/loadRazorpay';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  QrCode,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  Upload,
+  Copy,
+  Check,
+  ArrowRight,
+  ArrowLeft,
+  FileText,
+  ShieldCheck,
+  Smartphone,
+  Info,
+} from 'lucide-react';
 import './CourseRegistrationModal.css';
 
 export const CourseRegistrationModal = ({
@@ -9,299 +23,290 @@ export const CourseRegistrationModal = ({
   batchName: propBatchName = 'November',
   user,
   onNavigate,
+  onOpenAuth,
 }) => {
   const targetCourseTitle = course?.title || 'Basics to Advanced Course';
   const targetCourseSlug = course?.slug || 'trading-masterclass';
   const targetCourseId = course?.id || null;
-  const targetCoursePrice = course?.price !== undefined ? parseFloat(course.price) : 20000;
-  const targetOriginalPrice = course?.original_price !== undefined ? parseFloat(course.original_price) : 0;
   const batchName = course?.batch_name || propBatchName;
 
-  const [formData, setFormData] = useState({
-    name: user?.name || '',
-    mobile: user?.mobile || '',
-    email: user?.email || '',
-    trading_experience: user?.trading_experience || 'Intermediate',
-    interest: 'Both',
-    reference: 'Website',
-  });
+  // Authoritative price fetched from backend
+  const [resolvedCourse, setResolvedCourse] = useState(course || null);
+  const [coursePrice, setCoursePrice] = useState(
+    course?.price !== undefined ? parseFloat(course.price) : 20000
+  );
+  const [originalPrice, setOriginalPrice] = useState(
+    course?.original_price !== undefined ? parseFloat(course.original_price) : 25000
+  );
 
-  const [errors, setErrors] = useState({});
+  // Admin-configured payment settings
+  const [paymentConfig, setPaymentConfig] = useState(null);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [configError, setConfigError] = useState('');
+
+  // Flow steps: 'scan_and_pay' | 'submit_evidence' | 'pending_verification' | 'already_enrolled'
+  const [currentStep, setCurrentStep] = useState('scan_and_pay');
+
+  // Form State
+  const [transactionRef, setTransactionRef] = useState('');
+  const [studentNotes, setStudentNotes] = useState('');
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const [screenshotFile, setScreenshotFile] = useState(null);
+  const [screenshotPreview, setScreenshotPreview] = useState(null);
+
+  const [copiedUpi, setCopiedUpi] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [paymentStep, setPaymentStep] = useState('idle'); // 'idle' | 'creating_order' | 'checkout_active' | 'verifying'
   const [backendError, setBackendError] = useState('');
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [submittedClaim, setSubmittedClaim] = useState(null);
   const [isAlreadyEnrolled, setIsAlreadyEnrolled] = useState(false);
-  const [enrollmentDetails, setEnrollmentDetails] = useState(null);
-  const [completedPayment, setCompletedPayment] = useState(null);
+  const [isInProcess, setIsInProcess] = useState(false);
 
-  // Sync user profile when user prop changes or modal opens (prefill without requiring re-entry)
-  useEffect(() => {
-    if (user) {
-      setFormData((prev) => ({
-        ...prev,
-        name: user.name || prev.name,
-        email: user.email || prev.email,
-        mobile: user.mobile || prev.mobile,
-        trading_experience: user.trading_experience || prev.trading_experience,
-      }));
-    }
-  }, [user, isOpen]);
+  const fileInputRef = useRef(null);
 
-  // Check if current user/email is already enrolled for this course
+  // 1. Fetch authoritative course details from DB & check enrollment
   useEffect(() => {
     if (!isOpen) return;
 
-    const checkEmail = user?.email || formData.email;
-    if (!checkEmail) return;
-
+    let isMounted = true;
+    const targetSlugOrId = targetCourseId || targetCourseSlug || 'trading-masterclass';
     const token = localStorage.getItem('tm_token');
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-    const querySlug = encodeURIComponent(targetCourseSlug);
-    const queryId = targetCourseId ? `&course_id=${targetCourseId}` : '';
-    fetch(`/api/courses/check-enrollment?course_slug=${querySlug}${queryId}&email=${encodeURIComponent(checkEmail)}`, {
-      headers,
-    })
+    fetch(`/api/courses/${targetSlugOrId}`, { headers })
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && data.isEnrolled) {
-          setIsAlreadyEnrolled(true);
-          setEnrollmentDetails(data.enrollment);
-        } else {
-          setIsAlreadyEnrolled(false);
+        if (!isMounted) return;
+        if (data.success && data.course) {
+          setResolvedCourse(data.course);
+          setCoursePrice(parseFloat(data.course.price) || 20000);
+          setOriginalPrice(parseFloat(data.course.original_price) || 25000);
+          if (data.isEnrolled || data.course.is_enrolled) {
+            setIsAlreadyEnrolled(true);
+            setCurrentStep('already_enrolled');
+          } else if (data.isInProcess || data.course.is_in_process) {
+            setIsInProcess(true);
+            setSubmittedClaim(data.pendingClaim);
+            setCurrentStep('in_process');
+          }
         }
       })
-      .catch((err) => console.warn('Could not verify enrollment status:', err));
-  }, [isOpen, user?.email, targetCourseSlug, targetCourseId]);
+      .catch((err) => console.warn('Course fetch error:', err));
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, targetCourseId, targetCourseSlug]);
+
+  // 2. Fetch admin payment configuration
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let isMounted = true;
+    setConfigLoading(true);
+    setConfigError('');
+
+    fetch('/api/payments/manual-config')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isMounted) return;
+        if (data.success) {
+          setPaymentConfig(data);
+          if (!data.isConfigured || !data.enabled) {
+            setConfigError(
+              data.error_message ||
+                'Manual payment verification is currently being updated. Please contact TradeMax admissions.'
+            );
+          }
+        } else {
+          setConfigError('Unable to load payment configuration.');
+        }
+      })
+      .catch((err) => {
+        console.error('Config fetch error:', err);
+        if (isMounted) setConfigError('Network error loading payment details.');
+      })
+      .finally(() => {
+        if (isMounted) setConfigLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen]);
+
+  // Clean up object URL when component unmounts
+  useEffect(() => {
+    return () => {
+      if (screenshotPreview) {
+        URL.revokeObjectURL(screenshotPreview);
+      }
+    };
+  }, [screenshotPreview]);
 
   if (!isOpen) return null;
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    if (errors[e.target.name]) {
-      setErrors({ ...errors, [e.target.name]: null });
-    }
-    if (backendError) {
-      setBackendError('');
+  const handleCopyUpi = () => {
+    if (paymentConfig?.upi_id) {
+      navigator.clipboard.writeText(paymentConfig.upi_id);
+      setCopiedUpi(true);
+      setTimeout(() => setCopiedUpi(false), 2500);
     }
   };
 
-  const validate = () => {
-    const newErrors = {};
-    if (!formData.name.trim()) {
-      newErrors.name = 'Full name is required';
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setFormErrors((prev) => ({
+        ...prev,
+        screenshot: 'Only JPEG, PNG, and WebP image formats are permitted.',
+      }));
+      return;
     }
-    if (!formData.mobile.trim()) {
-      newErrors.mobile = 'Mobile number is required';
-    } else if (!/^[0-9+\s-]{8,15}$/.test(formData.mobile.trim())) {
-      newErrors.mobile = 'Please enter a valid mobile number';
+
+    if (file.size > 5 * 1024 * 1024) {
+      setFormErrors((prev) => ({
+        ...prev,
+        screenshot: 'Screenshot image must be under 5MB.',
+      }));
+      return;
     }
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email address is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email.trim())) {
-      newErrors.email = 'Please enter a valid email address';
+
+    setScreenshotFile(file);
+    setFormErrors((prev) => ({ ...prev, screenshot: null }));
+    if (screenshotPreview) {
+      URL.revokeObjectURL(screenshotPreview);
     }
-    return newErrors;
+    setScreenshotPreview(URL.createObjectURL(file));
   };
 
-  const handleSubmit = async (e) => {
+  const validateSubmission = () => {
+    const errors = {};
+    const cleanRef = transactionRef.trim();
+
+    if (!cleanRef) {
+      errors.transactionRef = 'UPI transaction reference / UTR number is required.';
+    } else if (cleanRef.length < 8 || cleanRef.length > 35) {
+      errors.transactionRef = 'Transaction reference must be between 8 and 35 characters.';
+    } else if (!/^[A-Za-z0-9\-_/]+$/.test(cleanRef)) {
+      errors.transactionRef = 'Invalid characters in reference number. Only letters, numbers, hyphens, and slashes are allowed.';
+    }
+
+    if (!screenshotFile) {
+      errors.screenshot = 'Please upload a screenshot of your successful UPI payment.';
+    }
+
+    if (!paymentConfirmed) {
+      errors.paymentConfirmed = 'You must confirm that you have completed the payment.';
+    }
+
+    return errors;
+  };
+
+  const handleSubmitClaim = async (e) => {
     e.preventDefault();
     setBackendError('');
-    const formErrors = validate();
 
-    if (Object.keys(formErrors).length > 0) {
-      setErrors(formErrors);
+    // Require student authentication
+    const token = localStorage.getItem('tm_token');
+    if (!token && !user) {
+      setBackendError('Please log in to your TradeMax student account to submit payment verification.');
+      if (onOpenAuth) onOpenAuth('login');
+      return;
+    }
+
+    const validationErrors = validateSubmission();
+    if (Object.keys(validationErrors).length > 0) {
+      setFormErrors(validationErrors);
       return;
     }
 
     setIsSubmitting(true);
-    setPaymentStep('creating_order');
 
     try {
-      // 1. Ensure Razorpay SDK is loaded
-      const isSdkLoaded = await loadRazorpay();
-      if (!isSdkLoaded) {
-        throw new Error('Razorpay payment gateway SDK failed to load. Please check your internet connection.');
+      const formData = new FormData();
+      formData.append('course_id', targetCourseId || resolvedCourse?.id || 1);
+      formData.append('course_slug', targetCourseSlug);
+      formData.append('transaction_ref', transactionRef.trim().toUpperCase());
+      formData.append('student_notes', studentNotes.trim());
+      formData.append('payment_confirmed', 'true');
+      if (screenshotFile) {
+        formData.append('screenshot', screenshotFile);
       }
 
-      const token = localStorage.getItem('tm_token');
-      const headers = {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      };
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      // 2. Request backend to create Razorpay Order securely
-      const orderRes = await fetch('/api/payments/create-order', {
+      const res = await fetch('/api/payments/manual-claim', {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-          ...formData,
-          course_id: targetCourseId,
-          course_slug: targetCourseSlug,
-          course_name: targetCourseTitle,
-          batch_name: batchName,
-        }),
+        credentials: 'include',
+        body: formData,
       });
 
-      const orderData = await orderRes.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({}));
 
-      if (!orderRes.ok || !orderData.success) {
-        if (orderData.isDuplicate) {
+      if (!res.ok || !data.success) {
+        if (data.isAlreadyEnrolled) {
           setIsAlreadyEnrolled(true);
+          setCurrentStep('already_enrolled');
           return;
         }
-        throw new Error(orderData.error || 'Failed to initialize payment order. Please try again.');
+        throw new Error(data.error || 'Failed to submit payment claim. Please verify your details.');
       }
 
-      // If course is free or requires no payment
-      if (orderData.requires_payment === false) {
-        setIsSuccess(true);
-        return;
-      }
-
-      const { order, key_id, currency } = orderData;
-      setPaymentStep('checkout_active');
-
-      // 3. Launch Razorpay Checkout Modal
-      const options = {
-        key: key_id || 'rzp_test_Toeh6O3nccqAo0',
-        amount: order.amount,
-        currency: currency || 'INR',
-        name: 'TRADEMAX',
-        description: `Admission: ${targetCourseTitle} (${batchName} Batch)`,
-        image: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
-        order_id: order.id,
-        prefill: {
-          name: formData.name.trim(),
-          email: formData.email.trim(),
-          contact: formData.mobile.trim(),
-        },
-        notes: {
-          course_id: targetCourseId ? String(targetCourseId) : '',
-          course_slug: targetCourseSlug,
-          course_title: targetCourseTitle,
-          batch_name: batchName,
-          test_mode: 'true',
-        },
-        theme: {
-          color: '#DC2626',
-        },
-        handler: async function (response) {
-          // 4. Cryptographic Server-Side Signature Verification
-          setPaymentStep('verifying');
-          try {
-            const verifyRes = await fetch('/api/payments/verify', {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                course_id: targetCourseId,
-                name: formData.name,
-                email: formData.email,
-                mobile: formData.mobile,
-                trading_experience: formData.trading_experience,
-                interest: formData.interest,
-                reference: formData.reference,
-                batch_name: batchName,
-                course_slug: targetCourseSlug,
-              }),
-            });
-
-            const verifyData = await verifyRes.json().catch(() => ({}));
-
-            if (!verifyRes.ok || !verifyData.success) {
-              throw new Error(verifyData.error || 'Payment signature verification failed. Please contact admissions.');
-            }
-
-            setCompletedPayment({
-              paymentId: response.razorpay_payment_id,
-              orderId: response.razorpay_order_id,
-              amount: (order.amount / 100).toLocaleString('en-IN'),
-              date: new Date().toLocaleDateString('en-IN', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              }),
-            });
-
-            setIsSuccess(true);
-            setPaymentStep('idle');
-            window.dispatchEvent(new CustomEvent('tm:enrollment_updated'));
-          } catch (verifyErr) {
-            console.error('[Payment Verification Error]:', verifyErr);
-            setBackendError(verifyErr.message || 'Payment signature could not be verified.');
-            setPaymentStep('idle');
-          } finally {
-            setIsSubmitting(false);
-          }
-        },
-        modal: {
-          ondismiss: function () {
-            setIsSubmitting(false);
-            setPaymentStep('idle');
-            fetch('/api/payments/failed', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                order_id: order.id,
-                reason: 'USER_CANCELLED',
-                description: 'User dismissed the Razorpay checkout modal before completing transaction.',
-              }),
-            }).catch(() => {});
-          },
-        },
-      };
-
-      const razorpayInstance = new window.Razorpay(options);
-
-      razorpayInstance.on('payment.failed', function (failedResponse) {
-        setIsSubmitting(false);
-        setPaymentStep('idle');
-        const errReason = failedResponse.error?.description || failedResponse.error?.reason || 'Payment declined or cancelled.';
-        setBackendError(`Payment Failed: ${errReason}`);
-
-        fetch('/api/payments/failed', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            order_id: order.id,
-            payment_id: failedResponse.error?.metadata?.payment_id,
-            code: failedResponse.error?.code,
-            reason: failedResponse.error?.reason,
-            description: failedResponse.error?.description,
-          }),
-        }).catch(() => {});
-      });
-
-      razorpayInstance.open();
+      setSubmittedClaim(data.claim);
+      setCurrentStep('pending_verification');
+      window.dispatchEvent(new CustomEvent('tm:enrollment_updated'));
     } catch (err) {
-      console.error('[Registration/Payment Error]:', err);
-      setBackendError(err.message || 'Could not complete registration. Please call 8799026206 directly.');
+      console.error('[Manual Claim Error]:', err);
+      setBackendError(err.message || 'Payment submission failed. Please contact TradeMax admissions.');
+    } finally {
       setIsSubmitting(false);
-      setPaymentStep('idle');
     }
   };
 
   const handleResetAndClose = () => {
-    setIsSuccess(false);
-    setIsAlreadyEnrolled(false);
-    setErrors({});
+    setCurrentStep('scan_and_pay');
+    setTransactionRef('');
+    setStudentNotes('');
+    setPaymentConfirmed(false);
+    setScreenshotFile(null);
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
+    setScreenshotPreview(null);
+    setFormErrors({});
     setBackendError('');
+    setIsAlreadyEnrolled(false);
     onClose();
   };
 
-  const handleNavigateToPortal = () => {
+  const handleGoToPortal = (tab = 'dashboard') => {
     handleResetAndClose();
     if (onNavigate) {
-      onNavigate('dashboard');
+      onNavigate(tab);
     } else {
-      window.location.hash = '#dashboard';
+      window.location.hash = `#${tab}`;
     }
+  };
+
+  const qrImageUrl = paymentConfig?.qr_code_url || '/qr.jpg';
+  const recipientName = paymentConfig?.recipient_name || 'PATIL TANISHQ DEEPAK';
+  const upiId = paymentConfig?.upi_id || '';
+  const instructions =
+    paymentConfig?.instructions ||
+    'Open any supported UPI payment app and scan the QR code above to pay the course fee. After completing your payment, return to TRADEMAX and submit your UPI transaction reference/UTR number along with a screenshot of your successful payment.';
+
+  const handleProceedToEvidence = () => {
+    const token = localStorage.getItem('tm_token');
+    if (!token && !user) {
+      setBackendError('Please log in before submitting payment verification.');
+      if (onOpenAuth) onOpenAuth('login');
+      return;
+    }
+    setBackendError('');
+    setCurrentStep('submit_evidence');
   };
 
   return (
@@ -313,256 +318,384 @@ export const CourseRegistrationModal = ({
       onClick={handleResetAndClose}
     >
       <div
-        className="tm-course-modal-card"
+        className="tm-course-modal-card tm-clean-modal-layout"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Simple Unobtrusive Close Button */}
-        <button
-          type="button"
-          className="tm-course-modal-close"
-          onClick={handleResetAndClose}
-          aria-label="Close"
-        >
-          ✕
-        </button>
-
-        {/* State A: Already Enrolled */}
-        {isAlreadyEnrolled ? (
-          <div className="tm-reg-success-view">
-            <div className="tm-reg-status-pill">Seat Reserved</div>
-            <h3 className="tm-reg-success-title">Already Enrolled</h3>
-            <p className="tm-reg-success-msg">
-              Your admission for <strong>{targetCourseTitle} ({batchName} Batch)</strong> is already confirmed.
+        {/* ====================================================================
+            SOLID BLUE HEADER (MATCHING SCREENSHOT)
+            ==================================================================== */}
+        <div className="tm-modal-header-blue">
+          <div className="tm-modal-header-text">
+            <h2 id="course-modal-title" className="tm-modal-header-title">
+              {currentStep === 'already_enrolled' || isAlreadyEnrolled
+                ? 'Course Enrollment'
+                : currentStep === 'pending_verification' || currentStep === 'in_process' || isInProcess
+                ? 'Payment Verification'
+                : currentStep === 'submit_evidence'
+                ? 'Payment Verification'
+                : 'Scan & Pay'}
+            </h2>
+            <p className="tm-modal-header-subtitle">
+              {currentStep === 'already_enrolled' || isAlreadyEnrolled
+                ? 'Your admission details for this program'
+                : currentStep === 'pending_verification' || currentStep === 'in_process' || isInProcess
+                ? 'Your payment proof has been submitted successfully. Your enrollment is pending admin verification.'
+                : currentStep === 'submit_evidence'
+                ? 'Enter your transaction UTR and upload your payment screenshot'
+                : 'Scan the official QR code with any UPI app to pay the course fee.'}
             </p>
-            <div className="tm-reg-hotline-box">
-              <span>Direct Admissions Hotline:</span>
-              <a href="tel:8799026206" className="tm-reg-support-phone">8799026206</a>
+          </div>
+          <button
+            type="button"
+            className="tm-modal-header-close"
+            onClick={handleResetAndClose}
+            aria-label="Close modal"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* ====================================================================
+            MODAL BODY (CLEAN WHITE CARDS MATCHING SCREENSHOT)
+            ==================================================================== */}
+        <div className="tm-modal-body-scroll">
+          {isAlreadyEnrolled || currentStep === 'already_enrolled' ? (
+            /* STATE 1: ALREADY ENROLLED */
+            <div className="tm-clean-card tm-already-enrolled-card">
+              <div className="tm-enrolled-badge">
+                <CheckCircle2 size={16} />
+                <span>Active Course Enrollment</span>
+              </div>
+              <h3 className="tm-enrolled-title">{targetCourseTitle}</h3>
+              <p className="tm-enrolled-msg">
+                Your admission for <strong>{targetCourseTitle} ({batchName} Batch)</strong> is already active in your account. You do not need to make another payment for this course.
+              </p>
+              <div className="tm-enrolled-support-row">
+                <span>Admissions Support:</span>
+                <a href="tel:8799026206" className="tm-support-link">8799026206</a>
+              </div>
             </div>
-            <div className="tm-reg-actions-row">
+          ) : (currentStep === 'pending_verification' || currentStep === 'in_process' || isInProcess) && submittedClaim ? (
+            /* STATE 2: PAYMENT CLAIM SUBMITTED (IN PROCESS) */
+            <div className="tm-clean-cards-stack">
+              <div className="tm-clean-card tm-pending-summary-card">
+                <div className="tm-pending-badge">
+                  <Clock size={15} />
+                  <span>Status: IN PROCESS</span>
+                </div>
+                <div className="tm-summary-course-name">{targetCourseTitle}</div>
+                <div className="tm-summary-course-fee">
+                  ₹{Number(submittedClaim.amount || coursePrice).toLocaleString('en-IN')}
+                </div>
+              </div>
+
+              <div className="tm-clean-card tm-receipt-details-card">
+                <div className="tm-receipt-item">
+                  <span className="label">Claim ID</span>
+                  <code className="val-code">{submittedClaim.claim_id}</code>
+                </div>
+                <div className="tm-receipt-item">
+                  <span className="label">UTR / Transaction Reference</span>
+                  <code className="val-code">{submittedClaim.transaction_ref}</code>
+                </div>
+                <div className="tm-receipt-item">
+                  <span className="label">Verification State</span>
+                  <span className="val-pending">Awaiting Admin Verification</span>
+                </div>
+              </div>
+
+              <div className="tm-clean-notice-card">
+                <Clock size={16} className="tm-notice-shield" style={{ color: '#D97706' }} />
+                <span>
+                  Your payment is in process. Your course access will be activated after admin verification.
+                </span>
+              </div>
+            </div>
+          ) : (
+            /* STATE 3: SCAN & PAY OR SUBMIT EVIDENCE */
+            <>
+              {backendError && (
+                <div className="tm-modal-error-banner" role="alert">
+                  <AlertCircle size={15} />
+                  <span>{backendError}</span>
+                </div>
+              )}
+
+              {configError ? (
+                <div className="tm-clean-card tm-error-card">
+                  <Info size={20} className="text-amber" />
+                  <div>
+                    <h4>Payment Notice</h4>
+                    <p>{configError}</p>
+                    <p className="tm-support-contact">
+                      Admissions Support: <a href="tel:8799026206">8799026206</a>
+                    </p>
+                  </div>
+                </div>
+              ) : configLoading ? (
+                <div className="tm-clean-card tm-loading-card">
+                  <div className="tm-spinner-clean"></div>
+                  <span>Loading official payment details...</span>
+                </div>
+              ) : currentStep === 'scan_and_pay' ? (
+                /* STEP A: SCAN & PAY VIEW */
+                <div className="tm-clean-cards-stack">
+                  {/* Clean Course & Fee Card */}
+                  <div className="tm-clean-card tm-modal-course-card">
+                    <div className="tm-course-card-left">
+                      <div className="tm-course-title-text">{targetCourseTitle}</div>
+                      <div className="tm-course-batch-text">{batchName} Batch</div>
+                    </div>
+                    <div className="tm-course-price-text">
+                      ₹{coursePrice.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+
+                  {/* Clean QR Code Card */}
+                  <div className="tm-clean-card tm-qr-card">
+                    <div className="tm-qr-img-frame">
+                      <img
+                        src={qrImageUrl}
+                        alt="Official TradeMax UPI Payment QR Code"
+                        className="tm-official-qr-img"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          setConfigError('Official payment QR code could not be loaded. Please call admissions.');
+                        }}
+                      />
+                    </div>
+
+                    <div className="tm-upi-info-strip">
+                      <div className="tm-upi-meta-row">
+                        <span className="label">Recipient:</span>
+                        <strong className="val">{recipientName}</strong>
+                      </div>
+                      {upiId ? (
+                        <div className="tm-upi-meta-row tm-upi-copy-row">
+                          <span className="label">UPI ID:</span>
+                          <div className="tm-upi-copy-box">
+                            <span className="val tm-mono">{upiId}</span>
+                            <button
+                              type="button"
+                              className="tm-btn-copy-clean"
+                              onClick={handleCopyUpi}
+                              title="Copy UPI ID"
+                            >
+                              {copiedUpi ? <Check size={13} color="#16a34a" /> : <Copy size={13} />}
+                              <span>{copiedUpi ? 'Copied' : 'Copy'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* STEP B: SUBMIT EVIDENCE FORM */
+                <form id="evidence-form" onSubmit={handleSubmitClaim} className="tm-clean-cards-stack" noValidate>
+                  {/* Student profile card */}
+                  {user && (
+                    <div className="tm-clean-card tm-student-id-card">
+                      <span className="label">Student Account:</span>
+                      <strong>{user.name || 'TradeMax Student'}</strong>
+                      <span className="text-muted">({user.email})</span>
+                    </div>
+                  )}
+
+                  {/* Transaction Reference / UTR Input Card */}
+                  <div className="tm-clean-card">
+                    <label className="tm-input-card-label" htmlFor="reg-utr">
+                      UPI Transaction Reference / UTR Number <span className="tm-req">*</span>
+                    </label>
+                    <input
+                      id="reg-utr"
+                      type="text"
+                      value={transactionRef}
+                      onChange={(e) => {
+                        setTransactionRef(e.target.value.toUpperCase());
+                        if (formErrors.transactionRef) {
+                          setFormErrors({ ...formErrors, transactionRef: null });
+                        }
+                      }}
+                      placeholder="e.g. 428912345678 (12-digit UTR)"
+                      className={`tm-clean-text-input ${formErrors.transactionRef ? 'invalid' : ''}`}
+                      disabled={isSubmitting}
+                      maxLength={35}
+                      autoComplete="off"
+                    />
+                    {formErrors.transactionRef ? (
+                      <span className="tm-input-err">{formErrors.transactionRef}</span>
+                    ) : (
+                      <span className="tm-input-hint">Found in your UPI payment app transaction details</span>
+                    )}
+                  </div>
+
+                  {/* Screenshot Upload Card */}
+                  <div className="tm-clean-card">
+                    <label className="tm-input-card-label">
+                      Payment Screenshot <span className="tm-req">*</span>
+                    </label>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      accept="image/jpeg,image/png,image/webp"
+                      style={{ display: 'none' }}
+                    />
+
+                    {screenshotPreview ? (
+                      <div className="tm-screenshot-preview-strip">
+                        <img
+                          src={screenshotPreview}
+                          alt="Screenshot preview"
+                          className="tm-ss-thumb"
+                        />
+                        <div className="tm-ss-details">
+                          <span className="tm-ss-filename">{screenshotFile?.name}</span>
+                          <span className="tm-ss-filesize">
+                            {(screenshotFile?.size / 1024).toFixed(1)} KB
+                          </span>
+                          <button
+                            type="button"
+                            className="tm-btn-change-file"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isSubmitting}
+                          >
+                            Change Screenshot
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className={`tm-clean-dropzone ${formErrors.screenshot ? 'invalid' : ''}`}
+                        onClick={() => fileInputRef.current?.click()}
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <Upload size={22} className="tm-dropzone-icon" />
+                        <div className="tm-dropzone-copy">
+                          <strong>Click to select payment screenshot</strong>
+                          <span>JPEG, PNG, WebP up to 5MB</span>
+                        </div>
+                      </div>
+                    )}
+                    {formErrors.screenshot && (
+                      <span className="tm-input-err">{formErrors.screenshot}</span>
+                    )}
+                  </div>
+
+                  {/* Confirmation Checkbox Card */}
+                  <div className="tm-clean-card tm-checkbox-card">
+                    <label className="tm-clean-checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={paymentConfirmed}
+                        onChange={(e) => {
+                          setPaymentConfirmed(e.target.checked);
+                          if (formErrors.paymentConfirmed) {
+                            setFormErrors({ ...formErrors, paymentConfirmed: null });
+                          }
+                        }}
+                        disabled={isSubmitting}
+                      />
+                      <span>
+                        I confirm that I have completed the payment of{' '}
+                        <strong>₹{coursePrice.toLocaleString('en-IN')}</strong> to{' '}
+                        <strong>{recipientName}</strong> via UPI.
+                      </span>
+                    </label>
+                    {formErrors.paymentConfirmed && (
+                      <span className="tm-input-err">{formErrors.paymentConfirmed}</span>
+                    )}
+                  </div>
+                </form>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* ====================================================================
+            FOOTER ACTION BAR (MATCHING SCREENSHOT WITH GREEN ACTION BUTTON)
+            ==================================================================== */}
+        <div className="tm-modal-footer-clean">
+          {isAlreadyEnrolled || currentStep === 'already_enrolled' ? (
+            <>
               <button
                 type="button"
-                className="tm-reg-btn-primary"
-                onClick={handleNavigateToPortal}
-              >
-                Go to Student Portal
-              </button>
-              <button
-                type="button"
-                className="tm-reg-btn-secondary"
+                className="tm-btn-cancel-clean"
                 onClick={handleResetAndClose}
               >
                 Close
               </button>
-            </div>
-          </div>
-        ) : isSuccess ? (
-          /* State B: Registration & Payment Confirmed */
-          <div className="tm-reg-success-view">
-            <div className="tm-reg-status-pill success">Payment Verified &middot; Access Granted</div>
-            <h3 className="tm-reg-success-title">Enrollment Confirmed</h3>
-            <p className="tm-reg-success-msg">
-              Your payment has been verified on our secure server. Welcome to <strong>{targetCourseTitle} ({batchName} Batch)</strong>.
-            </p>
-
-            {completedPayment && (
-              <div className="tm-payment-receipt-box">
-                <div className="tm-receipt-header">PAYMENT RECEIPT (TEST MODE)</div>
-                <div className="tm-receipt-grid">
-                  <div className="tm-receipt-row">
-                    <span className="tm-receipt-key">Transaction ID</span>
-                    <span className="tm-receipt-val tm-receipt-mono">{completedPayment.paymentId}</span>
-                  </div>
-                  <div className="tm-receipt-row">
-                    <span className="tm-receipt-key">Order ID</span>
-                    <span className="tm-receipt-val tm-receipt-mono">{completedPayment.orderId}</span>
-                  </div>
-                  <div className="tm-receipt-row">
-                    <span className="tm-receipt-key">Amount Paid</span>
-                    <span className="tm-receipt-val tm-receipt-price">₹{completedPayment.amount}</span>
-                  </div>
-                  <div className="tm-receipt-row">
-                    <span className="tm-receipt-key">Status</span>
-                    <span className="tm-receipt-val tm-receipt-verified">Captured &middot; SHA-256 Verified</span>
-                  </div>
-                  <div className="tm-receipt-row">
-                    <span className="tm-receipt-key">Timestamp</span>
-                    <span className="tm-receipt-val">{completedPayment.date}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="tm-reg-hotline-box">
-              <span>Admissions support hotline:</span>
-              <a href="tel:8799026206" className="tm-reg-support-phone">8799026206</a>
-            </div>
-
-            <div className="tm-reg-actions-row">
               <button
                 type="button"
-                className="tm-reg-btn-primary"
-                onClick={handleNavigateToPortal}
+                className="tm-btn-primary-green"
+                onClick={() => handleGoToPortal('my-courses')}
               >
-                Access Student Portal
+                Go to Classroom
               </button>
+            </>
+          ) : (currentStep === 'pending_verification' || currentStep === 'in_process' || isInProcess) && submittedClaim ? (
+            <>
               <button
                 type="button"
-                className="tm-reg-btn-secondary"
+                className="tm-btn-cancel-clean"
                 onClick={handleResetAndClose}
               >
-                Done
+                Close
               </button>
-            </div>
-          </div>
-        ) : (
-          /* State C: Clean Minimal Enrollment Form */
-          <>
-            <div className="tm-course-modal-header">
-              <div className="tm-modal-eyebrow">
-                TRADEMAX &middot; {batchName.toUpperCase()} BATCH ADMISSIONS
-              </div>
-              <h2 id="course-modal-title" className="tm-course-modal-title">
-                Enroll in {targetCourseTitle}
-              </h2>
-              <p className="tm-course-modal-sub">
-                {course?.subtitle || 'Cohort seats reserved upon confirmed payment.'}
-              </p>
-            </div>
-
-            {backendError && (
-              <div className="tm-course-modal-error" role="alert">
-                {backendError}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="tm-course-modal-form" noValidate>
-              {/* Full Name */}
-              <div className="tm-cm-field">
-                <label htmlFor="reg-name">Full Name</label>
-                <input
-                  id="reg-name"
-                  type="text"
-                  name="name"
-                  placeholder="Enter your full name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className={errors.name ? 'invalid' : ''}
-                  disabled={isSubmitting}
-                  autoComplete="name"
-                />
-                {errors.name && <span className="tm-cm-err">{errors.name}</span>}
-              </div>
-
-              {/* Mobile Number & Email Address 2-column Grid */}
-              <div className="tm-cm-grid-2">
-                <div className="tm-cm-field">
-                  <label htmlFor="reg-mobile">Mobile Number</label>
-                  <input
-                    id="reg-mobile"
-                    type="tel"
-                    name="mobile"
-                    placeholder="10-digit mobile number"
-                    value={formData.mobile}
-                    onChange={handleChange}
-                    className={errors.mobile ? 'invalid' : ''}
-                    disabled={isSubmitting}
-                    autoComplete="tel"
-                  />
-                  {errors.mobile && <span className="tm-cm-err">{errors.mobile}</span>}
-                </div>
-
-                <div className="tm-cm-field">
-                  <label htmlFor="reg-email">Email Address</label>
-                  <input
-                    id="reg-email"
-                    type="email"
-                    name="email"
-                    placeholder="name@example.com"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className={errors.email ? 'invalid' : ''}
-                    disabled={isSubmitting}
-                    autoComplete="email"
-                  />
-                  {errors.email && <span className="tm-cm-err">{errors.email}</span>}
-                </div>
-              </div>
-
-              {/* Trading Experience Level */}
-              <div className="tm-cm-field">
-                <label htmlFor="reg-experience">Trading Experience Level</label>
-                <select
-                  id="reg-experience"
-                  name="trading_experience"
-                  value={formData.trading_experience}
-                  onChange={handleChange}
-                  disabled={isSubmitting}
-                >
-                  <option value="Beginner">Beginner (New to financial markets)</option>
-                  <option value="Intermediate">Intermediate (1-2 years trading)</option>
-                  <option value="Advanced">Advanced (Consistent profitable trader)</option>
-                  <option value="Professional">Professional (Prop firm / Institutional)</option>
-                </select>
-              </div>
-
-              {/* Primary Market Focus */}
-              <div className="tm-cm-field">
-                <label htmlFor="reg-interest">Primary Trading Focus</label>
-                <select
-                  id="reg-interest"
-                  name="interest"
-                  value={formData.interest}
-                  onChange={handleChange}
-                  disabled={isSubmitting}
-                >
-                  <option value="Both">Both Forex &amp; Crypto (Recommended)</option>
-                  <option value="Forex">Forex Markets Only</option>
-                  <option value="Crypto">Crypto Markets Only</option>
-                </select>
-              </div>
-
-              {/* Pricing Section */}
-              <div className="tm-cm-fee-strip">
-                <div className="tm-cm-fee-info">
-                  <span className="tm-cm-fee-label">Total Program Fee</span>
-                  <span className="tm-cm-test-mode-tag">Razorpay Test Mode</span>
-                </div>
-                <div className="tm-cm-fee-prices">
-                  {targetOriginalPrice > targetCoursePrice && (
-                    <span className="tm-cm-fee-strike">₹{targetOriginalPrice.toLocaleString('en-IN')}</span>
-                  )}
-                  <span className="tm-cm-fee-bold">₹{targetCoursePrice.toLocaleString('en-IN')}</span>
-                  {targetOriginalPrice > targetCoursePrice && (
-                    <span className="tm-cm-fee-save">Save ₹{(targetOriginalPrice - targetCoursePrice).toLocaleString('en-IN')}</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Red Payment Button */}
               <button
-                type="submit"
-                className="tm-course-modal-submit"
+                type="button"
+                className="tm-btn-primary-green"
+                onClick={() => handleGoToPortal('my-courses')}
+              >
+                View in My Courses
+              </button>
+            </>
+          ) : currentStep === 'scan_and_pay' ? (
+            <>
+              <button
+                type="button"
+                className="tm-btn-cancel-clean"
+                onClick={handleResetAndClose}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="tm-btn-primary-green"
+                onClick={handleProceedToEvidence}
+                disabled={Boolean(configError) || configLoading}
+              >
+                <CheckCircle2 size={16} />
+                <span>Payment Completed</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="tm-btn-cancel-clean"
+                onClick={() => {
+                  setBackendError('');
+                  setCurrentStep('scan_and_pay');
+                }}
                 disabled={isSubmitting}
               >
-                {paymentStep === 'creating_order' ? (
-                  'Creating Razorpay Order...'
-                ) : paymentStep === 'checkout_active' ? (
-                  'Complete in Razorpay Window...'
-                ) : paymentStep === 'verifying' ? (
-                  'Verifying Payment Signature...'
-                ) : isSubmitting ? (
-                  'Processing Enrollment...'
-                ) : (
-                  `Proceed to Pay ₹${targetCoursePrice.toLocaleString('en-IN')} (Test Mode)`
-                )}
+                Back
               </button>
-
-              <div className="tm-course-modal-guarantee">
-                Razorpay 256-bit encrypted checkout &middot; Test Mode only
-              </div>
-            </form>
-          </>
-        )}
+              <button
+                type="submit"
+                form="evidence-form"
+                className="tm-btn-primary-green"
+                disabled={isSubmitting}
+              >
+                <CheckCircle2 size={16} />
+                <span>{isSubmitting ? 'Submitting...' : 'Submit Verification'}</span>
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

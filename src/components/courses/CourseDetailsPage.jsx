@@ -21,6 +21,7 @@ export const CourseDetailsPage = ({
   const activeTheme = propTheme || internalTheme;
   const [dbCourse, setDbCourse] = useState(typeof course === 'object' ? course : null);
   const [isEnrolled, setIsEnrolled] = useState(Boolean(course?.is_enrolled));
+  const [isInProcess, setIsInProcess] = useState(Boolean(course?.is_in_process));
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -45,9 +46,11 @@ export const CourseDetailsPage = ({
         if (data.success && data.course) {
           setDbCourse(data.course);
           setIsEnrolled(Boolean(data.isEnrolled || data.course.is_enrolled));
+          setIsInProcess(Boolean(data.isInProcess || data.course.is_in_process));
         } else if (typeof course === 'object' && course !== null) {
           setDbCourse(course);
           setIsEnrolled(Boolean(course.is_enrolled));
+          setIsInProcess(Boolean(course.is_in_process));
         }
       })
       .catch((err) => {
@@ -229,6 +232,27 @@ export const CourseDetailsPage = ({
                           <span className="tm-cdp-badge-check" aria-hidden="true">✓</span>
                           <span>ENROLLED</span>
                         </div>
+                      </div>
+                    ) : isInProcess ? (
+                      <div className="tm-cdp-in-process-action-wrap" style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                        <div className="tm-cdp-in-process-status-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', padding: '6px 12px', borderRadius: '6px', fontWeight: 800, fontSize: '0.82rem', width: 'fit-content' }}>
+                          <span>⏱</span>
+                          <span>IN PROCESS</span>
+                        </div>
+                        <p style={{ margin: '4px 0 8px', fontSize: '0.8rem', color: '#F59E0B', lineHeight: '1.4' }}>
+                          Your payment is in process. Your course access will be activated after admin verification.
+                        </p>
+                        <button
+                          type="button"
+                          className="tm-cdp-btn-register"
+                          style={{ background: '#1E293B', borderColor: '#334155', color: '#38BDF8', cursor: 'pointer' }}
+                          onClick={() => {
+                            if (onNavigate) onNavigate('my-courses');
+                            else window.location.hash = '#my-courses';
+                          }}
+                        >
+                          VIEW IN MY COURSES &rarr;
+                        </button>
                       </div>
                     ) : (
                       <button

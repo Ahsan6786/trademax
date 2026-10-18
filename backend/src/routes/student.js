@@ -1,7 +1,9 @@
 import { Router } from 'express';
+import fs from 'fs';
 import { pool } from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { generatePresignedGetUrl } from '../services/s3Service.js';
+import { getPrivateScreenshotFilePath } from '../services/storageService.js';
 
 export const studentRouter = Router();
 
@@ -30,7 +32,7 @@ studentRouter.get('/dashboard', async (req, res) => {
     }
     const profile = profileRes.rows[0];
 
-    // 2. Fetch Enrolled Courses with course metadata
+    // 2. Fetch Enrolled Courses with course metadata (Verified Active Enrollments Only)
     const enrollmentsRes = await pool.query(
       `SELECT e.id as enrollment_id,
               COALESCE(e.course_id, c.id, 1) as course_id,
@@ -45,6 +47,9 @@ studentRouter.get('/dashboard', async (req, res) => {
               e.enrollment_status,
               e.payment_status,
               e.amount_paid,
+              'ENROLLED' as status,
+              FALSE as is_in_process,
+              TRUE as access_granted,
               COALESCE(e.progress_percentage, 0) as progress_percentage,
               COALESCE(e.completed_lessons, 0) as completed_lessons,
               COALESCE(e.total_lessons, 16) as total_lessons,
@@ -56,6 +61,8 @@ studentRouter.get('/dashboard', async (req, res) => {
          OR (c.slug = 'trading-masterclass' AND LOWER(e.course_name) LIKE '%masterclass%')
        )
        WHERE (e.user_id = $1 OR LOWER(e.email) = $2)
+         AND e.enrollment_status = 'enrolled'
+         AND (e.payment_status = 'completed' OR e.payment_status = 'paid' OR e.amount_paid > 0)
        ORDER BY e.created_at DESC`,
       [userId, userEmail]
     );
@@ -67,6 +74,40 @@ studentRouter.get('/dashboard', async (req, res) => {
       completed_lessons: parseInt(item.completed_lessons, 10) || 0,
       total_lessons: parseInt(item.total_lessons, 10) || 16,
     }));
+
+    // Fetch Pending In-Process Payment Claims (where student does not have verified enrollment)
+    const pendingClaimsRes = await pool.query(
+      `SELECT mpc.id as claim_id_pk,
+              mpc.claim_id,
+              mpc.course_id,
+              mpc.course_id as id,
+              c.title as course_title,
+              COALESCE(c.subtitle, 'Forex & Crypto Trading') as course_subtitle,
+              COALESCE(c.thumbnail, '/1-c.jpeg') as thumbnail,
+              COALESCE(c.slug, 'trading-masterclass') as slug,
+              'IN PROCESS' as status,
+              TRUE as is_in_process,
+              FALSE as access_granted,
+              mpc.status as claim_status,
+              mpc.amount as amount_paid,
+              mpc.transaction_ref,
+              'Your payment is in process. Your course access will be activated after admin verification.' as process_note,
+              mpc.created_at as enrolled_at
+       FROM manual_payment_claims mpc
+       INNER JOIN courses c ON mpc.course_id = c.id
+       WHERE mpc.user_id = $1
+         AND mpc.status IN ('PENDING', 'UNDER_REVIEW')
+         AND NOT EXISTS (
+           SELECT 1 FROM enrollments e
+           WHERE (e.user_id = $1 OR LOWER(e.email) = $2)
+             AND (e.course_id = mpc.course_id OR LOWER(e.course_name) = LOWER(c.title))
+             AND e.enrollment_status = 'enrolled'
+             AND (e.payment_status = 'completed' OR e.payment_status = 'paid' OR e.amount_paid > 0)
+         )
+       ORDER BY mpc.created_at DESC`,
+      [userId, userEmail]
+    );
+    const pendingCourses = pendingClaimsRes.rows;
 
     // 3. Fetch Upcoming Live Classes
     const liveClassesRes = await pool.query(
@@ -90,7 +131,7 @@ studentRouter.get('/dashboard', async (req, res) => {
        LIMIT 6`
     );
 
-    // 5. Activity Overview & Stats
+    // 5. Activity Overview & Stats (Verified enrollments only)
     const totalEnrolled = enrolledCourses.length;
     const upcomingSessionsCount = liveClassesRes.rows.length;
     const avgProgress = totalEnrolled > 0
@@ -107,6 +148,7 @@ studentRouter.get('/dashboard', async (req, res) => {
           averageProgress: avgProgress,
         },
         enrolledCourses,
+        pendingCourses,
         upcomingClasses: liveClassesRes.rows,
         announcements: announcementsRes.rows,
       },
@@ -122,7 +164,7 @@ studentRouter.get('/dashboard', async (req, res) => {
 
 /**
  * GET /api/student/courses
- * Fetch all published courses dynamically from PostgreSQL with enrollment status for this student
+ * Fetch all published courses dynamically with verified enrollment status and in-process status
  */
 studentRouter.get('/courses', async (req, res) => {
   try {
@@ -139,23 +181,44 @@ studentRouter.get('/courses', async (req, res) => {
        ORDER BY id ASC`
     );
 
-    // Query student's enrollments to flag enrolled courses
+    // Query student's verified enrollments
     const studentEnrollmentsRes = await pool.query(
       `SELECT course_id, course_name, enrollment_status, created_at
        FROM enrollments
-       WHERE (user_id = $1 OR LOWER(email) = $2)`,
+       WHERE (user_id = $1 OR LOWER(email) = $2)
+         AND enrollment_status = 'enrolled'
+         AND (payment_status = 'completed' OR payment_status = 'paid' OR amount_paid > 0)`,
       [userId, userEmail]
     );
 
+    // Query student's pending payment claims
+    const pendingClaimsRes = await pool.query(
+      `SELECT course_id, claim_id, status, created_at
+       FROM manual_payment_claims
+       WHERE user_id = $1 AND status IN ('PENDING', 'UNDER_REVIEW')`,
+      [userId]
+    );
+
+    // Query student's rejected claims
+    const rejectedClaimsRes = await pool.query(
+      `SELECT course_id, claim_id, status, rejection_reason, created_at
+       FROM manual_payment_claims
+       WHERE user_id = $1 AND status = 'REJECTED'`,
+      [userId]
+    );
+
     const enrolledCourseIds = new Set(
-      studentEnrollmentsRes.rows
-        .map((e) => e.course_id)
-        .filter(Boolean)
+      studentEnrollmentsRes.rows.map((e) => e.course_id).filter(Boolean)
     );
     const enrolledCourseNames = new Set(
-      studentEnrollmentsRes.rows
-        .map((e) => (e.course_name || '').toLowerCase().trim())
-        .filter(Boolean)
+      studentEnrollmentsRes.rows.map((e) => (e.course_name || '').toLowerCase().trim()).filter(Boolean)
+    );
+
+    const pendingCourseIds = new Set(
+      pendingClaimsRes.rows.map((p) => p.course_id).filter(Boolean)
+    );
+    const rejectedCourseIds = new Set(
+      rejectedClaimsRes.rows.map((r) => r.course_id).filter(Boolean)
     );
 
     const coursesWithStatus = coursesRes.rows.map((course) => {
@@ -164,9 +227,15 @@ studentRouter.get('/courses', async (req, res) => {
         enrolledCourseNames.has(course.title.toLowerCase().trim()) ||
         (course.slug === 'trading-masterclass' && enrolledCourseNames.has('trading masterclass'));
 
+      const isInProcess = !isEnrolled && pendingCourseIds.has(course.id);
+      const isRejected = !isEnrolled && !isInProcess && rejectedCourseIds.has(course.id);
+
       return {
         ...course,
         is_enrolled: Boolean(isEnrolled),
+        is_in_process: Boolean(isInProcess),
+        is_rejected: Boolean(isRejected),
+        status: isEnrolled ? 'ENROLLED' : (isInProcess ? 'IN PROCESS' : (isRejected ? 'PAYMENT REJECTED' : 'AVAILABLE')),
       };
     });
 
@@ -185,15 +254,16 @@ studentRouter.get('/courses', async (req, res) => {
 
 /**
  * GET /api/student/my-courses
- * Dedicated endpoint returning ONLY courses the student has successfully enrolled in
- * (Verified payment or authorized admin enrollment)
+ * Dedicated endpoint returning courses the student has actively enrolled in
+ * OR submitted payment proof for (which shows "IN PROCESS")
  */
 studentRouter.get('/my-courses', async (req, res) => {
   try {
     const userId = req.user.id;
     const userEmail = (req.user.email || '').toLowerCase().trim();
 
-    const myCoursesRes = await pool.query(
+    // 1. Fetch Verified Active Enrollments
+    const verifiedRes = await pool.query(
       `SELECT e.id as enrollment_id,
               e.course_id,
               c.id as course_id,
@@ -208,6 +278,10 @@ studentRouter.get('/my-courses', async (req, res) => {
               e.batch_name,
               e.enrollment_status,
               e.payment_status,
+              'ENROLLED' as status,
+              FALSE as is_in_process,
+              FALSE as is_rejected,
+              TRUE as access_granted,
               e.amount_paid,
               COALESCE(e.progress_percentage, 0) as progress_percentage,
               COALESCE(e.completed_lessons, 0) as completed_lessons,
@@ -222,9 +296,88 @@ studentRouter.get('/my-courses', async (req, res) => {
       [userId, userEmail]
     );
 
+    const verifiedCourses = verifiedRes.rows;
+    const verifiedCourseIds = new Set(verifiedCourses.map((r) => r.course_id));
+
+    // 2. Fetch Pending and Rejected Claims (where user is not already enrolled)
+    const claimsRes = await pool.query(
+      `SELECT mpc.id as claim_id_pk,
+              mpc.claim_id,
+              mpc.course_id,
+              c.id as course_id,
+              c.title,
+              COALESCE(c.subtitle, 'Forex & Crypto Trading Masterclass') as subtitle,
+              COALESCE(c.description, '') as description,
+              COALESCE(c.thumbnail, '/1-c.jpeg') as thumbnail,
+              COALESCE(c.slug, 'trading-masterclass') as slug,
+              COALESCE(c.duration, '1 Month') as duration,
+              COALESCE(c.level, 'Basic to Advanced') as level,
+              COALESCE(c.learning_mode, 'Live Online') as learning_mode,
+              COALESCE(c.batch_name, 'November') as batch_name,
+              mpc.status as claim_status,
+              mpc.transaction_ref,
+              mpc.amount as amount_paid,
+              mpc.rejection_reason,
+              mpc.created_at as enrolled_at
+       FROM manual_payment_claims mpc
+       INNER JOIN courses c ON mpc.course_id = c.id
+       WHERE mpc.user_id = $1
+         AND mpc.status IN ('PENDING', 'UNDER_REVIEW', 'REJECTED')
+       ORDER BY mpc.created_at DESC`,
+      [userId]
+    );
+
+    // Map unverified claims into courses list
+    const unverifiedCourses = [];
+    const processedCourseIds = new Set(verifiedCourseIds);
+
+    for (const row of claimsRes.rows) {
+      if (processedCourseIds.has(row.course_id)) {
+        continue;
+      }
+      processedCourseIds.add(row.course_id);
+
+      const isPending = row.claim_status === 'PENDING' || row.claim_status === 'UNDER_REVIEW';
+      const isRejected = row.claim_status === 'REJECTED';
+
+      unverifiedCourses.push({
+        enrollment_id: null,
+        course_id: row.course_id,
+        id: row.course_id,
+        title: row.title,
+        subtitle: row.subtitle,
+        description: row.description,
+        thumbnail: row.thumbnail,
+        slug: row.slug,
+        duration: row.duration,
+        level: row.level,
+        learning_mode: row.learning_mode,
+        batch_name: row.batch_name,
+        enrollment_status: isPending ? 'pending' : 'rejected',
+        payment_status: isPending ? 'pending' : 'rejected',
+        status: isPending ? 'IN PROCESS' : 'PAYMENT REJECTED',
+        is_in_process: isPending,
+        is_rejected: isRejected,
+        access_granted: false,
+        claim_id: row.claim_id,
+        claim_status: row.claim_status,
+        transaction_ref: row.transaction_ref,
+        amount_paid: row.amount_paid,
+        rejection_reason: row.rejection_reason,
+        process_note: isPending
+          ? 'Your payment is in process. Your course access will be activated after admin verification.'
+          : (row.rejection_reason ? `Payment rejected: ${row.rejection_reason}` : 'Your payment could not be verified. Please resubmit valid proof.'),
+        can_resubmit: isRejected,
+        progress_percentage: 0,
+        completed_lessons: 0,
+        total_lessons: 16,
+        enrolled_at: row.enrolled_at,
+      });
+    }
+
     return res.status(200).json({
       success: true,
-      courses: myCoursesRes.rows,
+      courses: [...verifiedCourses, ...unverifiedCourses],
     });
   } catch (err) {
     console.error('[Student My Courses Error]:', err);
@@ -324,6 +477,37 @@ studentRouter.get('/courses/:courseId/classroom', async (req, res) => {
       );
 
       if (enrollCheck.rows.length === 0) {
+        // Check if student has an active in-process payment claim
+        const claimCheck = await pool.query(
+          `SELECT claim_id, status FROM manual_payment_claims
+           WHERE user_id = $1 AND course_id = $2 AND status IN ('PENDING', 'UNDER_REVIEW')
+           LIMIT 1`,
+          [userId, courseId]
+        );
+        if (claimCheck.rows.length > 0) {
+          return res.status(403).json({
+            success: false,
+            isPending: true,
+            claimId: claimCheck.rows[0].claim_id,
+            error: 'Access denied. Your payment is in process and awaiting administrator verification. Your course access will be activated after admin verification.',
+          });
+        }
+
+        const rejCheck = await pool.query(
+          `SELECT claim_id, rejection_reason FROM manual_payment_claims
+           WHERE user_id = $1 AND course_id = $2 AND status = 'REJECTED'
+           LIMIT 1`,
+          [userId, courseId]
+        );
+        if (rejCheck.rows.length > 0) {
+          return res.status(403).json({
+            success: false,
+            isRejected: true,
+            claimId: rejCheck.rows[0].claim_id,
+            error: `Access denied. Your payment claim was rejected: ${rejCheck.rows[0].rejection_reason || 'Could not verify payment'}. Please review and resubmit your payment evidence.`,
+          });
+        }
+
         return res.status(403).json({
           success: false,
           error: 'Access denied. You are not authorized to view this course. Please enroll to access course materials.',
@@ -741,3 +925,101 @@ studentRouter.post('/notifications/:id/read', async (req, res) => {
     return res.status(500).json({ success: false, error: 'Failed to mark notification as read.' });
   }
 });
+
+/**
+ * GET /api/student/payment-claims
+ * Returns all payment claims submitted by the authenticated student (IDOR protected)
+ */
+studentRouter.get('/payment-claims', async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      `SELECT mpc.id, mpc.claim_id, mpc.course_id, mpc.amount, mpc.currency,
+              mpc.transaction_ref, mpc.status, mpc.rejection_reason,
+              mpc.admin_notes, mpc.created_at, mpc.updated_at, mpc.reviewed_at,
+              c.title as course_title, c.slug as course_slug, c.thumbnail as course_thumbnail,
+              c.batch_name
+       FROM manual_payment_claims mpc
+       INNER JOIN courses c ON mpc.course_id = c.id
+       WHERE mpc.user_id = $1
+       ORDER BY mpc.created_at DESC`,
+      [userId]
+    );
+
+    const claims = result.rows.map((row) => {
+      const rawRef = row.transaction_ref || '';
+      const maskedRef = rawRef.length > 4 ? `••••••••${rawRef.slice(-4)}` : rawRef;
+
+      let nextAction = 'Awaiting verification by admissions admin';
+      if (row.status === 'UNDER_REVIEW') {
+        nextAction = 'Claim is currently under active review';
+      } else if (row.status === 'APPROVED') {
+        nextAction = 'Course access granted. Access classroom in portal.';
+      } else if (row.status === 'REJECTED') {
+        nextAction = 'Claim rejected. Review reason and resubmit valid evidence.';
+      }
+
+      return {
+        ...row,
+        masked_transaction_ref: maskedRef,
+        next_action: nextAction,
+        can_resubmit: row.status === 'REJECTED',
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      claims,
+    });
+  } catch (err) {
+    console.error('[Student Claims List Error]:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve payment history.',
+    });
+  }
+});
+
+/**
+ * GET /api/student/payment-claims/:id/screenshot
+ * Securely stream payment screenshot to the owning student (IDOR protected)
+ */
+studentRouter.get('/payment-claims/:id/screenshot', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    const claimRes = await pool.query(
+      `SELECT screenshot_path, screenshot_mime_type, user_id
+       FROM manual_payment_claims
+       WHERE (id::text = $1 OR claim_id = $1)
+       LIMIT 1`,
+      [id]
+    );
+
+    if (claimRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Payment claim not found.' });
+    }
+
+    const claim = claimRes.rows[0];
+
+    // Enforce IDOR protection: only owner student or admin can access
+    if (claim.user_id !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Unauthorized to view this screenshot.' });
+    }
+
+    const filePath = getPrivateScreenshotFilePath(claim.screenshot_path);
+    if (!filePath || !fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'Screenshot file not found on server.' });
+    }
+
+    res.setHeader('Content-Type', claim.screenshot_mime_type || 'image/jpeg');
+    res.setHeader('Cache-Control', 'private, no-store');
+    return fs.createReadStream(filePath).pipe(res);
+  } catch (err) {
+    console.error('[Student Screenshot Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to load screenshot.' });
+  }
+});
+

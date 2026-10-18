@@ -318,7 +318,7 @@
   font-weight: 700;
   color: #FFFFFF !important;
   background-color: #0F172A;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid #1E293B;
   padding: 4px 12px;
   border-radius: 6px;
   line-height: 1.35;
@@ -455,7 +455,7 @@ html[data-theme="dark"] .tm-cdp-course-category {
 
 .tm-cdp-btn-enrolled {
   background-color: #1E293B;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid #0F172A;
   color: #FFFFFF;
 }
 
