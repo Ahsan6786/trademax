@@ -22,6 +22,15 @@ export const Footer = ({ onNavigate }) => {
         const el = document.getElementById('terminal');
         if (el) el.scrollIntoView({ behavior: 'smooth' });
       }
+    } else if (target === 'privacy') {
+      if (onNavigate) onNavigate('privacy');
+      else window.location.hash = '#privacy';
+    } else if (target === 'terms') {
+      if (onNavigate) onNavigate('terms');
+      else window.location.hash = '#terms';
+    } else if (target === 'refund') {
+      if (onNavigate) onNavigate('refund');
+      else window.location.hash = '#refund';
     }
   };
 
@@ -153,6 +162,60 @@ export const Footer = ({ onNavigate }) => {
                 <polyline points="7 7 17 7 17 17"></polyline>
               </svg>
             </span>
+          </div>
+
+          {/* Institutional Policy Links & Official Instagram */}
+          <div className="tm-footer-institutional-row">
+            <div className="tm-footer-policy-links">
+              <a
+                href="#privacy"
+                onClick={(e) => handleNav(e, 'privacy')}
+                className="tm-footer-policy-link"
+              >
+                Privacy Policy
+              </a>
+              <span className="tm-footer-policy-dot" aria-hidden="true">•</span>
+              <a
+                href="#terms"
+                onClick={(e) => handleNav(e, 'terms')}
+                className="tm-footer-policy-link"
+              >
+                Terms &amp; Conditions
+              </a>
+              <span className="tm-footer-policy-dot" aria-hidden="true">•</span>
+              <a
+                href="#refund"
+                onClick={(e) => handleNav(e, 'refund')}
+                className="tm-footer-policy-link"
+              >
+                Refund Policy
+              </a>
+            </div>
+
+            <a
+              href="https://www.instagram.com/trademax.mitwpu/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="tm-footer-instagram-link"
+              aria-label="Follow TradeMax on Instagram @trademax.mitwpu"
+              title="Official TradeMax Instagram @trademax.mitwpu"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+              <span>@trademax.mitwpu</span>
+            </a>
           </div>
 
           {/* Thin Horizontal Divider */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -38,10 +38,12 @@ import {
   QrCode,
   Filter,
   Bell,
+  LifeBuoy,
 } from 'lucide-react';
 import './AdminPanel.css';
 import { IndividualCourseWorkspace } from './IndividualCourseWorkspace';
 import { AdminPushNotifications } from './AdminPushNotifications';
+import { AdminTickets } from './AdminTickets';
 
 export const AdminPanel = ({
   user,
@@ -138,6 +140,9 @@ export const AdminPanel = ({
 
   // Selected Claim for Review Modal & Full Screenshot Preview
   const [selectedClaim, setSelectedClaim] = useState(null);
+
+  // Support Tickets State
+  const [ticketStats, setTicketStats] = useState({ total: 0, open: 0, in_progress: 0, resolved: 0, urgent: 0 });
   const [selectedClaimLoading, setSelectedClaimLoading] = useState(false);
   const [previewScreenshotClaim, setPreviewScreenshotClaim] = useState(null);
 
@@ -177,10 +182,14 @@ export const AdminPanel = ({
     };
   };
 
-  const showNotification = (message, type = 'success') => {
+  const showNotification = useCallback((message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
-  };
+  }, []);
+
+  const handleTicketStatsUpdate = useCallback((newStats) => {
+    if (newStats) setTicketStats(newStats);
+  }, []);
 
   // 1. Fetch Dashboard Stats
   const fetchDashboardStats = async () => {
@@ -207,6 +216,19 @@ export const AdminPanel = ({
         }
       } catch (e) {
         // Silent fail for stats badge
+      }
+
+      // Fetch support ticket stats for the sidebar badge
+      try {
+        const ticketRes = await fetch('/api/tickets/admin/all?limit=1', {
+          headers: getAuthHeaders(),
+        });
+        const ticketData = await ticketRes.json();
+        if (ticketData.success && ticketData.stats) {
+          setTicketStats(ticketData.stats);
+        }
+      } catch (e) {
+        // Silent fail for ticket stats badge
       }
     } catch (err) {
       console.error('Error fetching dashboard stats:', err);
@@ -1305,6 +1327,21 @@ export const AdminPanel = ({
           >
             <Bell size={18} />
             <span>Push Notifications</span>
+          </button>
+
+          <button
+            type="button"
+            className={`tm-admin-nav-item ${activeTab === 'tickets' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('tickets');
+              setMobileSidebarOpen(false);
+            }}
+          >
+            <LifeBuoy size={18} />
+            <span>Support Tickets</span>
+            {ticketStats && ticketStats.open > 0 && (
+              <span className="tm-admin-nav-badge">{ticketStats.open}</span>
+            )}
           </button>
 
           <button
@@ -3335,6 +3372,18 @@ export const AdminPanel = ({
             <AdminPushNotifications
               courses={courses}
               showNotification={showNotification}
+            />
+          )}
+
+          {/* ==============================================================
+              TAB 9: SUPPORT TICKETS
+              ============================================================== */}
+          {activeTab === 'tickets' && (
+            <AdminTickets
+              theme={theme}
+              authToken={localStorage.getItem('tm_token')}
+              showNotification={showNotification}
+              onStatsUpdate={handleTicketStatsUpdate}
             />
           )}
         </div>

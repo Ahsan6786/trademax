@@ -503,6 +503,28 @@ body.auth-open {
   text-decoration: underline;
 }
 
+.auth-support-contact {
+  font-size: 12px;
+  color: #64748B;
+  text-align: center;
+  line-height: 1.5;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.auth-support-email-link {
+  color: #DC2626;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.15s ease, text-decoration 0.15s ease;
+}
+
+.auth-support-email-link:hover {
+  color: #B91C1C;
+  text-decoration: underline;
+}
+
 /* ==========================================================================
    Mobile Performance Optimizations (< 768px)
    ========================================================================== */

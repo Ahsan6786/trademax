@@ -13,6 +13,8 @@ import { SettingsPage } from './components/settings/SettingsPage';
 import { MobileBottomNav } from './components/common/MobileBottomNav';
 import { Footer } from './components/common/Footer';
 import { AppleSuccessOverlay } from './components/landing/AppleSuccessOverlay';
+import { PrivacyPolicyPage } from './components/legal/PrivacyPolicyPage';
+import { TermsConditionsPage } from './components/legal/TermsConditionsPage';
 import { authService } from './services/auth';
 import { applySystemUI, getTopBarColor } from './systemUI';
 
@@ -62,6 +64,35 @@ function App() {
 
       if (hash === '#settings') {
         return 'settings';
+      }
+
+      if (
+        pathname === '/privacy' ||
+        pathname === '/privacy-policy' ||
+        hash === '#privacy' ||
+        hash === '#privacy-policy'
+      ) {
+        return 'privacy';
+      }
+
+      if (
+        pathname === '/terms' ||
+        pathname === '/terms-conditions' ||
+        pathname === '/terms-and-conditions' ||
+        hash === '#terms' ||
+        hash === '#terms-conditions' ||
+        hash === '#terms-and-conditions'
+      ) {
+        return 'terms';
+      }
+
+      if (
+        pathname === '/refund' ||
+        pathname === '/refund-policy' ||
+        hash === '#refund' ||
+        hash === '#refund-policy'
+      ) {
+        return 'refund';
       }
 
       // Direct URL check for dedicated Student Dashboard / Portal
@@ -303,6 +334,41 @@ function App() {
         return;
       }
 
+      if (
+        pathname === '/privacy' ||
+        pathname === '/privacy-policy' ||
+        hash === '#privacy' ||
+        hash === '#privacy-policy'
+      ) {
+        setCurrentView('privacy');
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        return;
+      }
+
+      if (
+        pathname === '/terms' ||
+        pathname === '/terms-conditions' ||
+        pathname === '/terms-and-conditions' ||
+        hash === '#terms' ||
+        hash === '#terms-conditions' ||
+        hash === '#terms-and-conditions'
+      ) {
+        setCurrentView('terms');
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        return;
+      }
+
+      if (
+        pathname === '/refund' ||
+        pathname === '/refund-policy' ||
+        hash === '#refund' ||
+        hash === '#refund-policy'
+      ) {
+        setCurrentView('refund');
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        return;
+      }
+
       if (hash === '#my-courses') {
         if (!currentUser) {
           setCurrentView('landing');
@@ -538,6 +604,21 @@ function App() {
         window.history.pushState({ view: 'settings' }, '', '/#settings');
       }
       setCurrentView('settings');
+    } else if (view === 'privacy' || view === 'privacy-policy') {
+      if (typeof window !== 'undefined') {
+        window.history.pushState({ view: 'privacy' }, '', '/#privacy');
+      }
+      setCurrentView('privacy');
+    } else if (view === 'terms' || view === 'terms-conditions' || view === 'terms-and-conditions') {
+      if (typeof window !== 'undefined') {
+        window.history.pushState({ view: 'terms' }, '', '/#terms');
+      }
+      setCurrentView('terms');
+    } else if (view === 'refund' || view === 'refund-policy') {
+      if (typeof window !== 'undefined') {
+        window.history.pushState({ view: 'refund' }, '', '/#refund');
+      }
+      setCurrentView('refund');
     } else if (view === 'course-details') {
       const slug =
         typeof selectedCourseForDetails === 'string'
@@ -580,6 +661,12 @@ function App() {
 
     // Synchronously transition view on THIS click without delay
     handleNavigate(target);
+  };
+
+  const handlePolicyNavigateHome = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+    handleNavigate('landing');
   };
 
   const showBottomNav = Boolean(user) && currentView !== 'admin';
@@ -650,6 +737,57 @@ function App() {
             user={user}
             theme={theme}
             onToggleTheme={toggleTheme}
+          />
+          <Footer onNavigate={handleNavigate} theme={theme} />
+          <AuthOverlay
+            ref={authRef}
+            onLoginSuccess={handleLoginSuccess}
+            onRegisterSuccess={handleRegisterSuccess}
+          />
+        </div>
+      ) : currentView === 'privacy' ? (
+        <div className={`tm-cdp-page-wrapper tm-theme-${theme}`}>
+          <Navbar
+            onOpenAuth={handleOpenAuth}
+            onNavigate={handleNavigate}
+            user={user}
+            onLogout={handleLogout}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            isHome={false}
+            currentView="privacy"
+            onBack={handlePolicyNavigateHome}
+          />
+          <PrivacyPolicyPage
+            onNavigate={handleNavigate}
+            theme={theme}
+            onBack={handlePolicyNavigateHome}
+          />
+          <Footer onNavigate={handleNavigate} theme={theme} />
+          <AuthOverlay
+            ref={authRef}
+            onLoginSuccess={handleLoginSuccess}
+            onRegisterSuccess={handleRegisterSuccess}
+          />
+        </div>
+      ) : currentView === 'terms' || currentView === 'refund' ? (
+        <div className={`tm-cdp-page-wrapper tm-theme-${theme}`}>
+          <Navbar
+            onOpenAuth={handleOpenAuth}
+            onNavigate={handleNavigate}
+            user={user}
+            onLogout={handleLogout}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            isHome={false}
+            currentView={currentView}
+            onBack={handlePolicyNavigateHome}
+          />
+          <TermsConditionsPage
+            onNavigate={handleNavigate}
+            theme={theme}
+            onBack={handlePolicyNavigateHome}
+            initialSection={currentView === 'refund' ? 'refund' : 'terms'}
           />
           <Footer onNavigate={handleNavigate} theme={theme} />
           <AuthOverlay

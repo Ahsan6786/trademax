@@ -531,8 +531,15 @@ export const AuthOverlay = forwardRef((props, ref) => {
 
               <p className="auth-terms-note">
                 By continuing, you agree to TRADEMAX's{' '}
-                <a href="#terms" onClick={(e) => e.preventDefault()}>Terms of Service</a> and{' '}
-                <a href="#privacy" onClick={(e) => e.preventDefault()}>Privacy Policy</a>.
+                <a href="#terms" onClick={(e) => { e.preventDefault(); handleClose(); window.location.hash = '#terms'; }}>Terms of Service</a> and{' '}
+                <a href="#privacy" onClick={(e) => { e.preventDefault(); handleClose(); window.location.hash = '#privacy'; }}>Privacy Policy</a>.
+              </p>
+
+              <p className="auth-support-contact">
+                Need help? Contact{' '}
+                <a href="mailto:patiltrader01@gmail.com" className="auth-support-email-link">
+                  patiltrader01@gmail.com
+                </a>
               </p>
             </form>
           </div>

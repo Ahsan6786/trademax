@@ -771,6 +771,41 @@ export const initDb = async () => {
       CREATE INDEX IF NOT EXISTS idx_push_logs_campaign ON push_delivery_logs(campaign_id);
     `);
 
+    // 21. Support Tickets Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS support_tickets (
+        id SERIAL PRIMARY KEY,
+        ticket_number VARCHAR(50) UNIQUE NOT NULL,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        subject VARCHAR(255) NOT NULL,
+        category VARCHAR(100) NOT NULL DEFAULT 'General Inquiry',
+        priority VARCHAR(50) NOT NULL DEFAULT 'medium',
+        status VARCHAR(50) NOT NULL DEFAULT 'open',
+        resolved_at TIMESTAMP WITH TIME ZONE,
+        last_reply_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_support_tickets_user_id ON support_tickets(user_id);
+      CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status);
+      CREATE INDEX IF NOT EXISTS idx_support_tickets_priority ON support_tickets(priority);
+      CREATE INDEX IF NOT EXISTS idx_support_tickets_created_at ON support_tickets(created_at DESC);
+
+      -- 22. Ticket Messages Thread Table
+      CREATE TABLE IF NOT EXISTS ticket_messages (
+        id SERIAL PRIMARY KEY,
+        ticket_id INTEGER NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+        sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        sender_role VARCHAR(50) NOT NULL DEFAULT 'student',
+        message TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ticket_messages_ticket_id ON ticket_messages(ticket_id);
+      CREATE INDEX IF NOT EXISTS idx_ticket_messages_created_at ON ticket_messages(created_at ASC);
+    `);
+
     const adminEmail = (process.env.ADMIN_EMAIL || 'admin@trademaxclub.in').trim().toLowerCase();
     const adminPassword = process.env.ADMIN_PASSWORD || 'TradeMax@2026';
 

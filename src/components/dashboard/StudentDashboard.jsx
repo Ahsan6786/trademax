@@ -23,7 +23,9 @@ import {
   X,
   Lock,
   RefreshCw,
+  LifeBuoy,
 } from 'lucide-react';
+import { StudentTickets } from './StudentTickets';
 import './StudentDashboard.css';
 
 export const StudentDashboard = ({
@@ -287,7 +289,6 @@ export const StudentDashboard = ({
         <div className="tm-portal-sidebar-header">
           <div className="tm-portal-brand" onClick={() => handleTabSwitch('dashboard')}>
             <span className="tm-portal-logo-text">TRADE<span className="tm-red">MAX</span></span>
-            <span className="tm-portal-badge">STUDENT</span>
           </div>
           <button
             type="button"
@@ -352,6 +353,15 @@ export const StudentDashboard = ({
           >
             <CreditCard size={18} />
             <span>My Payments</span>
+          </button>
+
+          <button
+            type="button"
+            className={`tm-portal-nav-item ${activeTab === 'support' && !activeCourseClassroom ? 'active' : ''}`}
+            onClick={() => handleTabSwitch('support')}
+          >
+            <LifeBuoy size={18} />
+            <span>Support Tickets</span>
           </button>
 
           <button
@@ -577,26 +587,45 @@ export const StudentDashboard = ({
                   {/* 3 Metric Cards */}
                   <div className="tm-stats-grid">
                     <div className="tm-stat-card">
-                      <span className="tm-stat-label">{t.dashboard.statEnrolled}</span>
-                      <span className="tm-stat-value">{stats.totalEnrolled}</span>
-                      <span className="tm-stat-sub">Active institutional cohorts</span>
+                      <div className="tm-stat-top">
+                        <span className="tm-stat-label">{t.dashboard.statEnrolled}</span>
+                      </div>
+                      <div className="tm-stat-bottom">
+                        <span className="tm-stat-value">{stats.totalEnrolled}</span>
+                        <span className="tm-stat-sub">Active institutional cohorts</span>
+                      </div>
                     </div>
 
-                    <div className="tm-stat-card">
-                      <span className="tm-stat-label">{t.dashboard.statProgress}</span>
-                      <span className="tm-stat-value">{stats.averageProgress}%</span>
-                      <div className="tm-stat-progressbar">
+                    <div className="tm-stat-card tm-stat-card-progress">
+                      <div className="tm-stat-top">
+                        <span className="tm-stat-label">{t.dashboard.statProgress}</span>
+                      </div>
+                      <div className="tm-stat-bottom">
+                        <span className="tm-stat-value">{stats.averageProgress}%</span>
                         <div
-                          className="tm-stat-progressbar-fill"
-                          style={{ width: `${Math.min(100, stats.averageProgress)}%` }}
-                        />
+                          className="tm-stat-progressbar"
+                          role="progressbar"
+                          aria-valuenow={stats.averageProgress}
+                          aria-valuemin="0"
+                          aria-valuemax="100"
+                        >
+                          <div
+                            className="tm-stat-progressbar-fill"
+                            style={{ width: `${Math.min(100, Math.max(0, stats.averageProgress))}%` }}
+                          />
+                        </div>
+                        <span className="tm-stat-sub">Overall curriculum completion</span>
                       </div>
                     </div>
 
                     <div className="tm-stat-card">
-                      <span className="tm-stat-label">{t.dashboard.statUpcoming}</span>
-                      <span className="tm-stat-value">{stats.upcomingSessionsCount}</span>
-                      <span className="tm-stat-sub">Scheduled live classes</span>
+                      <div className="tm-stat-top">
+                        <span className="tm-stat-label">{t.dashboard.statUpcoming}</span>
+                      </div>
+                      <div className="tm-stat-bottom">
+                        <span className="tm-stat-value">{stats.upcomingSessionsCount}</span>
+                        <span className="tm-stat-sub">Scheduled live classes</span>
+                      </div>
                     </div>
                   </div>
 
@@ -1384,6 +1413,15 @@ export const StudentDashboard = ({
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* SUPPORT TICKETS */}
+              {activeTab === 'support' && (
+                <StudentTickets
+                  theme={theme}
+                  user={user || dashboardData?.profile}
+                  authToken={localStorage.getItem('tm_token')}
+                />
               )}
             </>
           )}

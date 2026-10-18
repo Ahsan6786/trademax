@@ -12,6 +12,7 @@ import { studentRouter } from './routes/student.js';
 import { paymentsRouter } from './routes/payments.js';
 import { manualPaymentsRouter } from './routes/manualPayments.js';
 import pushRouter from './routes/push.js';
+import { ticketsRouter } from './routes/tickets.js';
 import { startPushScheduler } from './services/pushService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -53,7 +54,15 @@ app.use(
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
-// Serve uploaded course resources securely
+// Explicitly block direct public static access to private payment screenshots and QR codes
+app.use('/uploads/private_screenshots', (req, res) => {
+  res.status(403).json({ success: false, error: 'Direct access to private uploads is forbidden.' });
+});
+app.use('/uploads/qr_codes', (req, res) => {
+  res.status(403).json({ success: false, error: 'Direct access to private QR code storage is forbidden.' });
+});
+
+// Serve uploaded public course resources
 app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
 
 // Health Check
@@ -86,6 +95,9 @@ app.use('/api/student', studentRouter);
 
 // Push Notification Routes (PWA Web Push)
 app.use('/api/push', pushRouter);
+
+// Support Ticket System Routes (RBAC Protected)
+app.use('/api/tickets', ticketsRouter);
 
 // 404 Handler
 app.use((req, res) => {

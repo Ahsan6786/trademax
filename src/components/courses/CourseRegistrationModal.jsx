@@ -470,23 +470,6 @@ export const CourseRegistrationModal = ({
                         <span className="label">Recipient:</span>
                         <strong className="val">{recipientName}</strong>
                       </div>
-                      {upiId ? (
-                        <div className="tm-upi-meta-row tm-upi-copy-row">
-                          <span className="label">UPI ID:</span>
-                          <div className="tm-upi-copy-box">
-                            <span className="val tm-mono">{upiId}</span>
-                            <button
-                              type="button"
-                              className="tm-btn-copy-clean"
-                              onClick={handleCopyUpi}
-                              title="Copy UPI ID"
-                            >
-                              {copiedUpi ? <Check size={13} color="#16a34a" /> : <Copy size={13} />}
-                              <span>{copiedUpi ? 'Copied' : 'Copy'}</span>
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
                     </div>
                   </div>
                 </div>
