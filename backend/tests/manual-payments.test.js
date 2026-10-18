@@ -281,8 +281,8 @@ describe('TRADEMAX Manual Payment Verification Test Suite (Scenarios A through P
 
   // Scenario G: Oversized screenshot is rejected
   test('G. Oversized screenshot is rejected', async () => {
-    // 5.5MB dummy buffer
-    const bigBuffer = Buffer.alloc(5.5 * 1024 * 1024, 0xff);
+    // 10.5MB dummy buffer to test above 10MB limit
+    const bigBuffer = Buffer.alloc(10.5 * 1024 * 1024, 0xff);
     bigBuffer[0] = 0xff;
     bigBuffer[1] = 0xd8;
     bigBuffer[2] = 0xff;

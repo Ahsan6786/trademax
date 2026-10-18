@@ -25,12 +25,12 @@ if (!fs.existsSync(PRIVATE_QR_DIR)) {
  * - WebP (RIFF .... WEBP)
  */
 export function validateImageMagicBytes(buffer) {
-  if (!buffer || buffer.length < 12) {
+  if (!buffer || buffer.length < 8) {
     return { valid: false, error: 'File is too small or empty.' };
   }
 
-  // Check JPEG: ff d8 ff
-  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+  // Check JPEG: SOI marker 0xFF 0xD8
+  if (buffer[0] === 0xff && buffer[1] === 0xd8) {
     return { valid: true, mimeType: 'image/jpeg', extension: 'jpg' };
   }
 
@@ -49,10 +49,12 @@ export function validateImageMagicBytes(buffer) {
   }
 
   // Check WebP: bytes 0-3 'RIFF' and bytes 8-11 'WEBP'
-  const riff = buffer.subarray(0, 4).toString('ascii');
-  const webp = buffer.subarray(8, 12).toString('ascii');
-  if (riff === 'RIFF' && webp === 'WEBP') {
-    return { valid: true, mimeType: 'image/webp', extension: 'webp' };
+  if (buffer.length >= 12) {
+    const riff = buffer.subarray(0, 4).toString('ascii');
+    const webp = buffer.subarray(8, 12).toString('ascii');
+    if (riff === 'RIFF' && webp === 'WEBP') {
+      return { valid: true, mimeType: 'image/webp', extension: 'webp' };
+    }
   }
 
   return {
@@ -70,9 +72,9 @@ export async function savePrivateScreenshot({ buffer, originalName }) {
     throw new Error('Valid file buffer is required.');
   }
 
-  const MAX_SIZE = 5 * 1024 * 1024; // 5 MB limit
+  const MAX_SIZE = 10 * 1024 * 1024; // 10 MB limit
   if (buffer.length > MAX_SIZE) {
-    throw new Error('Screenshot file size exceeds the 5MB limit.');
+    throw new Error('Screenshot file size exceeds the 10MB limit.');
   }
 
   const validation = validateImageMagicBytes(buffer);

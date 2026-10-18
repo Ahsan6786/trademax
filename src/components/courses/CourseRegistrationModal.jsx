@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Smartphone,
   Info,
+  RefreshCw,
 } from 'lucide-react';
 import './CourseRegistrationModal.css';
 
@@ -158,8 +159,14 @@ export const CourseRegistrationModal = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
+    // Clear target value to allow re-selecting the same file if needed
+    e.target.value = '';
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    const hasAllowedExt = /\.(jpe?g|png|webp)$/i.test(file.name || '');
+    const mime = (file.type || '').toLowerCase();
+
+    if (!allowedTypes.includes(mime) && !hasAllowedExt) {
       setFormErrors((prev) => ({
         ...prev,
         screenshot: 'Only JPEG, PNG, and WebP image formats are permitted.',
@@ -167,10 +174,10 @@ export const CourseRegistrationModal = ({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 10 * 1024 * 1024) {
       setFormErrors((prev) => ({
         ...prev,
-        screenshot: 'Screenshot image must be under 5MB.',
+        screenshot: 'Screenshot image must be under 10MB.',
       }));
       return;
     }
@@ -185,7 +192,7 @@ export const CourseRegistrationModal = ({
 
   const validateSubmission = () => {
     const errors = {};
-    const cleanRef = transactionRef.trim();
+    const cleanRef = transactionRef.trim().replace(/\s+/g, '');
 
     if (!cleanRef) {
       errors.transactionRef = 'UPI transaction reference / UTR number is required.';
@@ -227,10 +234,11 @@ export const CourseRegistrationModal = ({
     setIsSubmitting(true);
 
     try {
+      const cleanUtr = transactionRef.trim().toUpperCase().replace(/\s+/g, '');
       const formData = new FormData();
       formData.append('course_id', targetCourseId || resolvedCourse?.id || 1);
       formData.append('course_slug', targetCourseSlug);
-      formData.append('transaction_ref', transactionRef.trim().toUpperCase());
+      formData.append('transaction_ref', cleanUtr);
       formData.append('student_notes', studentNotes.trim());
       formData.append('payment_confirmed', 'true');
       if (screenshotFile) {
@@ -246,7 +254,11 @@ export const CourseRegistrationModal = ({
         body: formData,
       });
 
-      const data = await res.json().catch(() => ({}));
+      let data = {};
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await res.json().catch(() => ({}));
+      }
 
       if (!res.ok || !data.success) {
         if (data.isAlreadyEnrolled) {
@@ -254,7 +266,25 @@ export const CourseRegistrationModal = ({
           setCurrentStep('already_enrolled');
           return;
         }
-        throw new Error(data.error || 'Failed to submit payment claim. Please verify your details.');
+
+        // Specific, helpful error messages without generic obfuscation:
+        if (res.status === 413) {
+          throw new Error('Payment screenshot exceeds the permitted file size (10MB limit). Please upload a smaller image.');
+        }
+        if (res.status === 401) {
+          throw new Error('Your session has expired. Please log in again to verify your payment.');
+        }
+        if (res.status === 415) {
+          throw new Error('Unsupported image format. Please upload a clear JPEG, PNG, or WebP screenshot.');
+        }
+        if (res.status === 409) {
+          throw new Error(data.error || 'This transaction reference is already linked to an active claim or completed payment.');
+        }
+        if (res.status >= 500) {
+          throw new Error('Temporary verification server issue. Your details have been preserved; please try submitting again in a moment.');
+        }
+
+        throw new Error(data.error || 'Unable to submit payment verification. Please check your transaction reference and screenshot.');
       }
 
       setSubmittedClaim(data.claim);
@@ -262,7 +292,7 @@ export const CourseRegistrationModal = ({
       window.dispatchEvent(new CustomEvent('tm:enrollment_updated'));
     } catch (err) {
       console.error('[Manual Claim Error]:', err);
-      setBackendError(err.message || 'Payment submission failed. Please contact TradeMax admissions.');
+      setBackendError(err.message || 'Payment submission failed. Please verify your details or contact admissions.');
     } finally {
       setIsSubmitting(false);
     }
@@ -498,7 +528,8 @@ export const CourseRegistrationModal = ({
                       type="text"
                       value={transactionRef}
                       onChange={(e) => {
-                        setTransactionRef(e.target.value.toUpperCase());
+                        const val = e.target.value.toUpperCase().replace(/\s+/g, '');
+                        setTransactionRef(val);
                         if (formErrors.transactionRef) {
                           setFormErrors({ ...formErrors, transactionRef: null });
                         }
@@ -561,7 +592,7 @@ export const CourseRegistrationModal = ({
                         <Upload size={22} className="tm-dropzone-icon" />
                         <div className="tm-dropzone-copy">
                           <strong>Click to select payment screenshot</strong>
-                          <span>JPEG, PNG, WebP up to 5MB</span>
+                          <span>JPEG, PNG, WebP up to 10MB</span>
                         </div>
                       </div>
                     )}
@@ -676,8 +707,17 @@ export const CourseRegistrationModal = ({
                 className="tm-btn-primary-green"
                 disabled={isSubmitting}
               >
-                <CheckCircle2 size={16} />
-                <span>{isSubmitting ? 'Submitting...' : 'Submit Verification'}</span>
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw size={16} className="spin" />
+                    <span>Submitting Claim...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={16} />
+                    <span>Submit Verification</span>
+                  </>
+                )}
               </button>
             </>
           )}

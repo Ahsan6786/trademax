@@ -21,12 +21,13 @@ export const manualPaymentsRouter = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB limit
   },
   fileFilter: (req, file, cb) => {
-    const allowedMime = ['image/jpeg', 'image/png', 'image/webp'];
-    const allowedExt = /\.(jpg|jpeg|png|webp)$/i;
-    if (allowedMime.includes(file.mimetype) || allowedExt.test(file.originalname)) {
+    const allowedMime = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    const allowedExt = /\.(jpe?g|png|webp)$/i;
+    const mime = (file.mimetype || '').toLowerCase();
+    if (allowedMime.includes(mime) || allowedExt.test(file.originalname)) {
       cb(null, true);
     } else {
       cb(new Error('Invalid file type. Only JPEG, PNG, and WebP images are allowed.'));
@@ -42,7 +43,8 @@ export function normalizeAndValidateUtr(rawRef) {
     return { valid: false, error: 'Transaction reference / UTR number is required.' };
   }
 
-  const normalized = rawRef.trim().toUpperCase();
+  // Strip all whitespace, tabs, and newlines from user input or pasted strings
+  const normalized = rawRef.trim().toUpperCase().replace(/\s+/g, '');
 
   // Typical Indian UPI UTR is 12 digits, but banking reference numbers can range from 8 to 35 alphanumeric characters
   if (normalized.length < 8 || normalized.length > 35) {
@@ -179,7 +181,7 @@ manualPaymentsRouter.post(
         if (err.code === 'LIMIT_FILE_SIZE') {
           return res.status(400).json({
             success: false,
-            error: 'Payment screenshot is too large. Maximum allowed size is 5MB.',
+            error: 'Payment screenshot is too large. Maximum allowed size is 10MB.',
           });
         }
         return res.status(400).json({ success: false, error: err.message });
@@ -512,7 +514,7 @@ manualPaymentsRouter.post(
         if (err.code === 'LIMIT_FILE_SIZE') {
           return res.status(400).json({
             success: false,
-            error: 'Screenshot file size exceeds 5MB limit.',
+            error: 'Screenshot file size exceeds 10MB limit.',
           });
         }
         return res.status(400).json({ success: false, error: err.message });
