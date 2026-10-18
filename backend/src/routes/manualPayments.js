@@ -87,17 +87,22 @@ manualPaymentsRouter.get('/manual-config', async (req, res) => {
     const config = settingsRes.rows[0];
     const hasQr = Boolean(config.qr_code_url && config.qr_code_url.trim());
     const hasRecipient = Boolean(config.recipient_name && config.recipient_name.trim());
-    const hasUpi = Boolean(config.upi_id && config.upi_id.trim());
     const isManualEnabled = Boolean(config.is_manual_enabled);
 
     // Verify qr.jpg exists if configured to use /qr.jpg
     let qrExists = true;
     if (config.qr_code_url === '/qr.jpg') {
       const publicQrPath = path.resolve(__dirname, '../../../public/qr.jpg');
-      qrExists = fs.existsSync(publicQrPath);
+      const distQrPath = path.resolve(__dirname, '../../../dist/qr.jpg');
+      const wwwQrPath = '/var/www/trademax/qr.jpg';
+      qrExists = fs.existsSync(publicQrPath) || fs.existsSync(distQrPath) || fs.existsSync(wwwQrPath);
+    } else if (config.qr_code_url && config.qr_code_url.startsWith('/api/payments/qr-image/')) {
+      const filename = config.qr_code_url.replace('/api/payments/qr-image/', '');
+      const filePath = getQrCodeFilePath(filename);
+      qrExists = Boolean(filePath && fs.existsSync(filePath));
     }
 
-    const isConfigured = isManualEnabled && hasQr && hasRecipient && hasUpi && qrExists;
+    const isConfigured = isManualEnabled && hasQr && hasRecipient && qrExists;
 
     return res.status(200).json({
       success: true,
@@ -105,7 +110,7 @@ manualPaymentsRouter.get('/manual-config', async (req, res) => {
       isConfigured,
       qr_code_url: config.qr_code_url,
       recipient_name: config.recipient_name,
-      upi_id: config.upi_id,
+      upi_id: config.upi_id || '',
       instructions: config.instructions,
       error_message: !isConfigured
         ? !isManualEnabled
@@ -215,10 +220,10 @@ manualPaymentsRouter.post(
           error: 'Manual UPI payments are currently disabled. Please contact admissions.',
         });
       }
-      if (!config.qr_code_url || !config.recipient_name || !config.upi_id) {
+      if (!config.qr_code_url || !config.recipient_name) {
         return res.status(400).json({
           success: false,
-          error: 'Official payment QR code or UPI details have not been finalized by the administrator.',
+          error: 'Official payment QR code details have not been finalized by the administrator.',
         });
       }
 

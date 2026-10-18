@@ -453,6 +453,9 @@ export const CourseRegistrationModal = ({
 
                   {/* Clean QR Code Card */}
                   <div className="tm-clean-card tm-qr-card">
+                    <p className="tm-qr-instruction">
+                      Scan with any UPI app (GPay, PhonePe, Paytm, BHIM) to pay
+                    </p>
                     <div className="tm-qr-img-frame">
                       <img
                         src={qrImageUrl}

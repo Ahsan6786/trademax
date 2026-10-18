@@ -180,6 +180,15 @@
   padding: 18px 16px 14px;
 }
 
+.tm-qr-instruction {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  margin: 0 0 12px 0;
+  text-align: center;
+  line-height: 1.4;
+}
+
 .tm-qr-img-frame {
   width: 200px;
   height: 232px;

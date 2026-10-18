@@ -3082,11 +3082,15 @@ adminRouter.put('/payment-settings', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Payment recipient name is required.' });
     }
 
-    if (manualEnabled && (!upi_id || !upi_id.trim())) {
-      return res.status(400).json({
-        success: false,
-        error: 'UPI ID is required to enable manual payments.',
-      });
+    if (manualEnabled && (!qr_code_url || !qr_code_url.trim()) && (!upi_id || !upi_id.trim())) {
+      const currentRes = await pool.query('SELECT qr_code_url FROM payment_settings WHERE id = 1 LIMIT 1');
+      const hasExistingQr = Boolean(currentRes.rows[0]?.qr_code_url);
+      if (!hasExistingQr) {
+        return res.status(400).json({
+          success: false,
+          error: 'Either a Payment QR Code or UPI ID is required to enable manual payments.',
+        });
+      }
     }
 
     const cleanRecipient = recipient_name.trim();
@@ -3105,7 +3109,7 @@ adminRouter.put('/payment-settings', async (req, res) => {
        WHERE id = 1
        RETURNING *`,
       [
-        Boolean(is_manual_enabled),
+        Boolean(manualEnabled),
         cleanRecipient,
         cleanUpi,
         cleanInstructions,

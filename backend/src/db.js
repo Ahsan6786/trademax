@@ -642,7 +642,10 @@ export const initDb = async () => {
         '',
         'Open any supported UPI payment app and scan the QR code above to pay the course fee. After completing your payment, return to TRADEMAX and submit your UPI transaction reference/UTR number along with a screenshot of your successful payment.'
       )
-      ON CONFLICT (id) DO NOTHING;
+      ON CONFLICT (id) DO UPDATE SET
+        is_manual_enabled = TRUE,
+        qr_code_url = COALESCE(NULLIF(payment_settings.qr_code_url, ''), '/qr.jpg'),
+        recipient_name = COALESCE(NULLIF(payment_settings.recipient_name, ''), 'PATIL TANISHQ DEEPAK');
     `);
 
     // 16. Dedicated Manual Payment Claims Model & Table
