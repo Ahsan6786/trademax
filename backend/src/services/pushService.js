@@ -224,6 +224,29 @@ export async function sendTestNotification(userId, testPayload) {
 }
 
 /**
+ * Automatically recover campaigns stuck in 'processing' due to server restart or timeout
+ */
+export async function recoverStuckCampaigns() {
+  try {
+    const res = await pool.query(
+      `UPDATE push_campaigns
+       SET status = 'failed'
+       WHERE status = 'processing'
+         AND (
+           (created_at < NOW() - INTERVAL '5 minutes' AND sent_at IS NULL)
+           OR sent_at < NOW() - INTERVAL '5 minutes'
+         )
+       RETURNING id, title`
+    );
+    if (res.rows.length > 0) {
+      console.log(`🧹 Auto-recovered ${res.rows.length} stuck push campaign(s):`, res.rows.map((r) => r.id));
+    }
+  } catch (err) {
+    console.warn('⚠️ Warning during stuck push campaign recovery:', err.message);
+  }
+}
+
+/**
  * Dispatch an admin campaign to eligible opted-in users
  */
 export async function dispatchCampaign(campaignId) {
@@ -232,177 +255,248 @@ export async function dispatchCampaign(campaignId) {
 
   const campaign = campRes.rows[0];
 
-  // Determine preference filter based on category
-  let prefColumn = 'notify_announcements';
-  if (campaign.category === 'motivation') prefColumn = 'notify_motivation';
-  else if (campaign.category === 'courses') prefColumn = 'notify_courses';
-  else if (campaign.category === 'live_classes') prefColumn = 'notify_live_classes';
-
-  // Build subscriber selection query
-  let subQuery = `
-    SELECT ps.* 
-    FROM push_subscriptions ps
-    WHERE ps.is_active = TRUE
-      AND ps.${prefColumn} = TRUE
-  `;
-  const subParams = [];
-
-  if (campaign.target_type === 'course' && campaign.target_course_id) {
-    subQuery += `
-      AND ps.user_id IN (
-        SELECT user_id FROM enrollments 
-        WHERE course_id = $1 AND LOWER(enrollment_status) IN ('enrolled', 'completed', 'active')
-      )
-    `;
-    subParams.push(campaign.target_course_id);
-  }
-
-  const subRes = await pool.query(subQuery, subParams);
-  const subscribers = subRes.rows;
-
-  let sentCount = 0;
-  let failureCount = 0;
-
-  for (const sub of subscribers) {
-    const outcome = await sendNotificationToSubscription(sub, {
-      title: campaign.title,
-      body: campaign.message,
-      icon: campaign.icon_url,
-      url: campaign.action_url
-    });
-
-    // Log delivery
-    await pool.query(
-      `INSERT INTO push_delivery_logs (campaign_id, user_id, status, error_message, delivered_at)
-       VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
-      [campaign.id, sub.user_id, outcome.success ? 'delivered' : 'failed', outcome.error || null]
-    );
-
-    if (outcome.success) {
-      sentCount++;
-    } else {
-      failureCount++;
-    }
-  }
-
-  // Update campaign
+  // Immediately mark status as 'processing' with timestamp
   await pool.query(
-    `UPDATE push_campaigns 
-     SET status = 'sent', sent_count = $1, failure_count = $2, sent_at = CURRENT_TIMESTAMP
-     WHERE id = $3`,
-    [sentCount, failureCount, campaign.id]
+    "UPDATE push_campaigns SET status = 'processing', sent_at = CURRENT_TIMESTAMP WHERE id = $1",
+    [campaignId]
   );
 
-  return { sentCount, failureCount, totalSubscribers: subscribers.length };
-}
-
-/**
- * Send Daily Motivational Quote to all subscribed users
- */
-export async function sendDailyMotivationalQuote() {
   try {
-    // Pick the least recently sent active quote
-    const quoteRes = await pool.query(
-      'SELECT * FROM motivational_quotes WHERE is_active = TRUE ORDER BY last_sent_at ASC NULLS FIRST LIMIT 1'
-    );
+    // Determine preference filter based on category
+    let prefColumn = null;
+    if (campaign.category === 'motivation') prefColumn = 'notify_motivation';
+    else if (campaign.category === 'courses') prefColumn = 'notify_courses';
+    else if (campaign.category === 'live_classes') prefColumn = 'notify_live_classes';
+    else if (campaign.category === 'announcements') prefColumn = 'notify_announcements';
 
-    if (quoteRes.rows.length === 0) {
-      console.log('ℹ️ No active motivational quotes found.');
-      return { success: false, message: 'No active motivational quotes found.' };
+    // Build subscriber selection query for all active subscriptions
+    let subQuery = `
+      SELECT ps.* 
+      FROM push_subscriptions ps
+      WHERE ps.is_active = TRUE
+    `;
+    if (prefColumn) {
+      subQuery += ` AND ps.${prefColumn} = TRUE`;
     }
 
-    const quote = quoteRes.rows[0];
-
-    // Find subscribers who opted in for motivation
-    const subsRes = await pool.query(
-      'SELECT * FROM push_subscriptions WHERE is_active = TRUE AND notify_motivation = TRUE'
-    );
-
-    const subscribers = subsRes.rows;
-    if (subscribers.length === 0) {
-      console.log('ℹ️ No subscribers opted into motivational quotes yet. Advancing quote rotation.');
-      await pool.query('UPDATE motivational_quotes SET last_sent_at = CURRENT_TIMESTAMP WHERE id = $1', [quote.id]);
-
-      // Record campaign log entry
-      await pool.query(
-        `INSERT INTO push_campaigns (title, message, category, target_type, status, schedule_type, sent_count, failure_count, sent_at)
-         VALUES ($1, $2, 'motivation', 'all', 'sent', 'immediate', 0, 0, CURRENT_TIMESTAMP)`,
-        ['⚡ Daily Trading Discipline', `"${quote.quote}" — ${quote.author || 'TradeMax'}`]
-      );
-
-      return {
-        success: true,
-        quote: quote.quote,
-        author: quote.author,
-        sent: 0,
-        failed: 0,
-        message: 'Daily motivation quote rotated successfully. 0 subscribers currently opted in.'
-      };
+    const subParams = [];
+    if (campaign.target_type === 'course' && campaign.target_course_id) {
+      subQuery += `
+        AND ps.user_id IN (
+          SELECT user_id FROM enrollments 
+          WHERE course_id = $1 AND LOWER(enrollment_status) IN ('enrolled', 'completed', 'active')
+        )
+      `;
+      subParams.push(campaign.target_course_id);
     }
 
-    // Create campaign entry for tracking
-    const campRes = await pool.query(
-      `INSERT INTO push_campaigns (title, message, category, target_type, status, schedule_type)
-       VALUES ($1, $2, 'motivation', 'all', 'processing', 'scheduled')
-       RETURNING id`,
-      ['⚡ Daily Trading Discipline', `"${quote.quote}" — ${quote.author || 'TradeMax'}`]
-    );
+    const subRes = await pool.query(subQuery, subParams);
+    const subscribers = subRes.rows;
 
-    const campaignId = campRes.rows[0].id;
-
-    let sent = 0;
-    let failed = 0;
+    let sentCount = 0;
+    let failureCount = 0;
 
     for (const sub of subscribers) {
       const outcome = await sendNotificationToSubscription(sub, {
-        title: '⚡ TradeMax Daily Discipline',
-        body: `"${quote.quote}" — ${quote.author || 'TradeMax'}`,
-        icon: '/tm-logo.png',
-        url: '/dashboard'
+        title: campaign.title,
+        body: campaign.message,
+        icon: campaign.icon_url || '/tm-logo.png',
+        url: campaign.action_url || '/#dashboard'
       });
 
+      // Log delivery attempt
       await pool.query(
         `INSERT INTO push_delivery_logs (campaign_id, user_id, status, error_message, delivered_at)
          VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
-        [campaignId, sub.user_id, outcome.success ? 'delivered' : 'failed', outcome.error || null]
+        [campaign.id, sub.user_id, outcome.success ? 'delivered' : 'failed', outcome.error || null]
       );
 
-      if (outcome.success) sent++;
-      else failed++;
+      if (outcome.success) {
+        sentCount++;
+      } else {
+        failureCount++;
+      }
     }
 
-    // Update quote last_sent_at
-    await pool.query('UPDATE motivational_quotes SET last_sent_at = CURRENT_TIMESTAMP WHERE id = $1', [quote.id]);
+    // Determine final status: if 0 subscribers, mark 'sent' so it doesn't get stuck
+    const finalStatus = subscribers.length === 0 ? 'sent' : (sentCount > 0 ? 'sent' : 'failed');
 
-    // Update campaign
     await pool.query(
       `UPDATE push_campaigns 
-       SET status = 'sent', sent_count = $1, failure_count = $2, sent_at = CURRENT_TIMESTAMP
-       WHERE id = $3`,
-      [sent, failed, campaignId]
+       SET status = $1, sent_count = $2, failure_count = $3, sent_at = CURRENT_TIMESTAMP
+       WHERE id = $4`,
+      [finalStatus, sentCount, failureCount, campaign.id]
     );
 
-    console.log(`✅ Daily Motivation dispatched to ${sent} subscribers (${failed} failed)`);
-    return { success: true, quote: quote.quote, author: quote.author, sent, failed };
+    return { sentCount, failureCount, totalSubscribers: subscribers.length };
   } catch (err) {
-    console.error('❌ Error sending daily motivation quote:', err.message);
+    console.error(`❌ Campaign ${campaignId} dispatch error:`, err.message);
+    await pool.query(
+      "UPDATE push_campaigns SET status = 'failed', sent_at = CURRENT_TIMESTAMP WHERE id = $1",
+      [campaignId]
+    );
     throw err;
   }
 }
 
 /**
- * Background Scheduler for Scheduled Campaigns
+ * Returns date and hour breakdown in Asia/Kolkata timezone
+ */
+export function getKolkataTime(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(date);
+
+  const map = {};
+  for (const p of parts) map[p.type] = p.value;
+  return {
+    year: parseInt(map.year, 10),
+    month: parseInt(map.month, 10),
+    day: parseInt(map.day, 10),
+    hour: parseInt(map.hour, 10),
+    minute: parseInt(map.minute, 10),
+    second: parseInt(map.second, 10),
+    dateStr: `${map.year}-${map.month}-${map.day}`,
+    hourStr: map.hour
+  };
+}
+
+/**
+ * Send Trading Motivation quote to all subscribed users
+ * Optionally guarded by idempotencyKey to prevent duplicate execution
+ */
+export async function sendDailyMotivationalQuote(options = {}) {
+  const { idempotencyKey = null, scheduledSlot = null } = options;
+
+  try {
+    // 1. Check idempotency if scheduled
+    if (idempotencyKey) {
+      const existing = await pool.query(
+        'SELECT id, status FROM push_campaigns WHERE idempotency_key = $1',
+        [idempotencyKey]
+      );
+      if (existing.rows.length > 0) {
+        return {
+          success: true,
+          duplicateSkipped: true,
+          message: `Scheduled motivation for slot ${idempotencyKey} has already executed.`
+        };
+      }
+    }
+
+    // 2. Pick least recently sent active quote to avoid repeating consecutively
+    const quoteRes = await pool.query(
+      'SELECT * FROM motivational_quotes WHERE is_active = TRUE ORDER BY last_sent_at ASC NULLS FIRST, id ASC LIMIT 1'
+    );
+
+    if (quoteRes.rows.length === 0) {
+      console.warn('ℹ️ No active motivational quotes found in database.');
+      return { success: false, message: 'No active motivational quotes found in database.' };
+    }
+
+    const quote = quoteRes.rows[0];
+    const title = 'TradeMax Trading Motivation';
+    const message = `"${quote.quote}" — ${quote.author || 'Patil Trader'}`;
+
+    // 3. Create a unique campaign record for this notification
+    const campRes = await pool.query(
+      `INSERT INTO push_campaigns (
+        title, message, category, target_type, status, schedule_type, idempotency_key, action_url, icon_url
+      ) VALUES ($1, $2, 'motivation', 'all', 'processing', $3, $4, '/#dashboard', '/tm-logo.png')
+      RETURNING id`,
+      [title, message, scheduledSlot ? 'scheduled' : 'immediate', idempotencyKey]
+    );
+
+    const campaignId = campRes.rows[0].id;
+
+    // 4. Dispatch the campaign to all eligible opted-in subscribers
+    const dispatchResult = await dispatchCampaign(campaignId);
+
+    // 5. Update quote last_sent_at for round-robin rotation
+    await pool.query('UPDATE motivational_quotes SET last_sent_at = CURRENT_TIMESTAMP WHERE id = $1', [quote.id]);
+
+    console.log(`✅ [Trading Motivation] Dispatched campaign ${campaignId} to ${dispatchResult.sentCount} subscribers (${dispatchResult.failureCount} failed)`);
+    return {
+      success: true,
+      campaignId,
+      quote: quote.quote,
+      author: quote.author,
+      ...dispatchResult
+    };
+  } catch (err) {
+    console.error('❌ Error executing sendDailyMotivationalQuote:', err.message);
+    throw err;
+  }
+}
+
+/**
+ * Check and trigger Automated Trading Motivation every 6 hours in Asia/Kolkata
+ * Target IST times: 9:00 AM, 3:00 PM, 9:00 PM, 3:00 AM
+ */
+export async function checkAndRunScheduledMotivation() {
+  try {
+    const kt = getKolkataTime();
+    // 3:00 AM (03), 9:00 AM (09), 3:00 PM (15), 9:00 PM (21)
+    const targetHours = [3, 9, 15, 21];
+
+    if (!targetHours.includes(kt.hour)) {
+      return;
+    }
+
+    const slotKey = `motivation_ist_${kt.dateStr}_${String(kt.hour).padStart(2, '0')}`;
+
+    // Verify if this slot has already executed today
+    const existing = await pool.query(
+      'SELECT id, status FROM push_campaigns WHERE idempotency_key = $1',
+      [slotKey]
+    );
+
+    if (existing.rows.length > 0) {
+      return; // Already executed for this slot
+    }
+
+    console.log(`⏰ [Push Scheduler] Executing 6-hour Trading Motivation for Asia/Kolkata slot: ${slotKey} (IST ${kt.hour}:00)`);
+    await sendDailyMotivationalQuote({
+      idempotencyKey: slotKey,
+      scheduledSlot: `${kt.hour}:00 IST`
+    });
+  } catch (err) {
+    console.error('❌ Error in checkAndRunScheduledMotivation:', err.message);
+  }
+}
+
+/**
+ * Background Scheduler for Scheduled Campaigns & Automated 6-Hour Motivation
  */
 let schedulerInterval = null;
 
 export function startPushScheduler() {
   if (schedulerInterval) return;
 
-  console.log('⏱️ Starting Push Notification Scheduler (checks every 60s)...');
+  console.log('⏱️ Starting Push Notification Scheduler (checks every 30s in Asia/Kolkata)...');
+
+  // Initial recovery of any leftover stuck campaigns
+  recoverStuckCampaigns().catch((err) => console.warn('Initial campaign recovery error:', err.message));
+
+  // Run initial motivation slot check on startup
+  checkAndRunScheduledMotivation().catch((err) => console.warn('Initial motivation check error:', err.message));
 
   schedulerInterval = setInterval(async () => {
     try {
-      // Find campaigns scheduled for now or in the past that are still 'scheduled'
+      // 1. Recover any stale processing campaigns
+      await recoverStuckCampaigns();
+
+      // 2. Check and run 6-hour automated trading motivation (9 AM, 3 PM, 9 PM, 3 AM IST)
+      await checkAndRunScheduledMotivation();
+
+      // 3. Find admin-created campaigns scheduled for now or in the past that are still 'scheduled'
       const dueCampaigns = await pool.query(
         `SELECT id FROM push_campaigns 
          WHERE status = 'scheduled' 
@@ -419,5 +513,6 @@ export function startPushScheduler() {
     } catch (err) {
       console.error('❌ Push scheduler run error:', err.message);
     }
-  }, 60000); // Check once a minute
+  }, 30000); // Check every 30 seconds
 }
+

@@ -207,6 +207,14 @@
   font-size: 11px;
 }
 
+.tm-footer-social-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tm-footer-social-link,
 .tm-footer-instagram-link {
   display: inline-flex;
   align-items: center;
@@ -222,12 +230,14 @@
   transition: all 0.15s ease;
 }
 
+.tm-footer-social-link:hover,
 .tm-footer-instagram-link:hover {
   background: rgba(255, 255, 255, 0.22);
   border-color: #FFFFFF;
   transform: translateY(-1px);
 }
 
+.tm-footer-social-link:active,
 .tm-footer-instagram-link:active {
   transform: translateY(0);
 }

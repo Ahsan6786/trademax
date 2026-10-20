@@ -125,15 +125,15 @@
   border-color: #D1D5DB;
 }
 
-.tm-stat-card-open {
+.tm-admin-ticket-stat-card.tm-stat-card-open {
   border-top: 3px solid #F59E0B;
 }
 
-.tm-stat-card-progress {
+.tm-admin-ticket-stat-card.tm-stat-card-progress {
   border-top: 3px solid #3B82F6;
 }
 
-.tm-stat-card-resolved {
+.tm-admin-ticket-stat-card.tm-stat-card-resolved {
   border-top: 3px solid #10B981;
 }
 

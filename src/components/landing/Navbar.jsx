@@ -159,14 +159,38 @@ export const Navbar = ({
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
           )}
 
+          {/* Social Media: Telegram Channel Link */}
+          <a
+            href="https://t.me/trademaxchallenge"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="tm-nav-social-btn"
+            aria-label="TradeMax Telegram Channel"
+            title="Join TradeMax on Telegram @trademaxchallenge"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </a>
+
           {/* Social Media: Instagram Direct Link */}
           <a
-            href="https://www.instagram.com/trademax.mitwpu/"
+            href="https://www.instagram.com/patil_trader01?cplk=MTUwcXZjMnplNnJ5Nw%3D%3D&utm_source=qr"
             target="_blank"
             rel="noopener noreferrer"
             className="tm-nav-social-btn"
             aria-label="TradeMax Instagram"
-            title="Follow TradeMax on Instagram @trademax.mitwpu"
+            title="Follow TradeMax on Instagram @patil_trader01"
           >
             <svg
               width="18"
@@ -435,22 +459,45 @@ export const Navbar = ({
 
               {/* Prominent Full-Width Contact CTA Button */}
               <a
-                href="#contact"
+                href="tel:+916352461137"
                 className="tm-fs-cta-btn"
-                onClick={(e) => handleNavClick(e, 'contact')}
-                aria-label="Direct Consultation: Let's Talk"
+                aria-label="Direct Consultation: Call 6352461137"
               >
-                <span className="tm-fs-cta-text">LET'S TALK</span>
+                <span className="tm-fs-cta-text">CALL 6352461137</span>
                 <span className="tm-fs-cta-arrow" aria-hidden="true">&rarr;</span>
+              </a>
+
+              {/* Official Telegram Link in Mobile Menu */}
+              <a
+                href="https://t.me/trademaxchallenge"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tm-fs-instagram-link"
+                aria-label="Join TradeMax on Telegram @trademaxchallenge"
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                <span>@trademaxchallenge on Telegram</span>
               </a>
 
               {/* Official Instagram Link in Mobile Menu */}
               <a
-                href="https://www.instagram.com/trademax.mitwpu/"
+                href="https://www.instagram.com/patil_trader01?cplk=MTUwcXZjMnplNnJ5Nw%3D%3D&utm_source=qr"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="tm-fs-instagram-link"
-                aria-label="Follow TradeMax on Instagram"
+                aria-label="Follow TradeMax on Instagram @patil_trader01"
               >
                 <svg
                   width="18"
@@ -466,7 +513,7 @@ export const Navbar = ({
                   <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
                   <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
                 </svg>
-                <span>@trademax.mitwpu on Instagram</span>
+                <span>@patil_trader01 on Instagram</span>
               </a>
             </div>
           </div>,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import welcomeAnimationData from '../../Welcome.json';
 import { authService } from '../../services/auth';
 import './AppleSuccessOverlay.css';
@@ -6,17 +7,24 @@ import './AppleSuccessOverlay.css';
 /**
  * AppleSuccessOverlay
  * Plays the Welcome.json Lottie animation on first-time signup with smooth
- * backdrop, mobile-responsive layout, and seamless transition to dashboard.
+ * backdrop, responsive viewport sizing, safe-area support, and seamless transition to dashboard.
  */
 export const AppleSuccessOverlay = ({ user, onContinue }) => {
   const lottieContainerRef = useRef(null);
   const animInstanceRef = useRef(null);
+  const fallbackTimerRef = useRef(null);
   const [isFinishing, setIsFinishing] = useState(false);
   const hasFinishedRef = useRef(false);
 
   const handleFinish = () => {
     if (hasFinishedRef.current) return;
     hasFinishedRef.current = true;
+
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+
     setIsFinishing(true);
 
     if (user) {
@@ -38,11 +46,38 @@ export const AppleSuccessOverlay = ({ user, onContinue }) => {
     }, 280);
   };
 
+  // 1. Immediately dismiss any open mobile virtual keyboard
+  useEffect(() => {
+    if (typeof document !== 'undefined' && document.activeElement && typeof document.activeElement.blur === 'function') {
+      document.activeElement.blur();
+    }
+  }, []);
+
+  // 2. Main Lottie Animation Lifecycle
   useEffect(() => {
     let isCancelled = false;
 
+    // Check for user prefers-reduced-motion
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (prefersReducedMotion) {
+      const rmTimer = setTimeout(() => {
+        handleFinish();
+      }, 350);
+      return () => clearTimeout(rmTimer);
+    }
+
+    // Fallback safety timeout (4.8 seconds max duration) to ensure the user never gets stuck
+    fallbackTimerRef.current = setTimeout(() => {
+      console.warn('[Welcome] Animation safety timeout fired.');
+      handleFinish();
+    }, 4800);
+
     const initLottie = async () => {
-      // 1. Resolve Lottie player (window.lottie from /lottie.min.js)
+      // Resolve Lottie player (window.lottie from /lottie.min.js)
       let lottiePlayer = typeof window !== 'undefined' ? window.lottie : null;
       if (!lottiePlayer) {
         for (let i = 0; i < 20; i++) {
@@ -69,15 +104,24 @@ export const AppleSuccessOverlay = ({ user, onContinue }) => {
           loop: false,
           autoplay: true,
           animationData: welcomeAnimationData,
+          rendererSettings: {
+            preserveAspectRatio: 'xMidYMid meet',
+            progressiveLoad: true,
+            hideOnTransparent: true,
+          },
         });
 
-        // Play smoothly at 1.25x speed
-        animInstanceRef.current.setSpeed(1.25);
+        // Smooth playback speed
+        animInstanceRef.current.setSpeed(1.2);
 
         animInstanceRef.current.addEventListener('complete', () => {
+          if (fallbackTimerRef.current) {
+            clearTimeout(fallbackTimerRef.current);
+            fallbackTimerRef.current = null;
+          }
           setTimeout(() => {
             handleFinish();
-          }, 350);
+          }, 300);
         });
 
         animInstanceRef.current.addEventListener('error', (e) => {
@@ -94,6 +138,10 @@ export const AppleSuccessOverlay = ({ user, onContinue }) => {
 
     return () => {
       isCancelled = true;
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current);
+        fallbackTimerRef.current = null;
+      }
       if (animInstanceRef.current) {
         try {
           animInstanceRef.current.destroy();
@@ -114,34 +162,20 @@ export const AppleSuccessOverlay = ({ user, onContinue }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
       className={`tm-welcome-backdrop tm-welcome-blackout ${isFinishing ? 'tm-welcome-fade-out' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label="Welcome to TRADEMAX"
-      onClick={handleFinish}
     >
-      <div
-        className="welcome-lottie-stage"
-        onClick={(e) => {
-          e.stopPropagation();
-          handleFinish();
-        }}
-      >
+      <div className="welcome-lottie-stage">
         <div ref={lottieContainerRef} className="welcome-lottie-wrap" />
-        <button
-          type="button"
-          className="welcome-skip-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleFinish();
-          }}
-          title="Continue to dashboard"
-        >
-          Skip &rarr;
-        </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
+export default AppleSuccessOverlay;

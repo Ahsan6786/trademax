@@ -99,9 +99,11 @@ export async function subscribeToPush(token = null, preferences = {}) {
       throw new Error(vapidData.error || 'Failed to retrieve push service credentials.');
     }
 
-    const convertedVapidKey = urlBase64ToUint8Array(vapidData.publicKey);
-
-    // 3. Ensure service worker is ready and subscribe
+    // 3. Ensure service worker is registered and ready, then subscribe
+    let existingReg = await navigator.serviceWorker.getRegistration();
+    if (!existingReg) {
+      await navigator.serviceWorker.register('/sw.js');
+    }
     const registration = await navigator.serviceWorker.ready;
     let subscription = await registration.pushManager.getSubscription();
 

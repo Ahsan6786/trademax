@@ -402,7 +402,7 @@ export const CourseRegistrationModal = ({
               </p>
               <div className="tm-enrolled-support-row">
                 <span>Admissions Support:</span>
-                <a href="tel:8799026206" className="tm-support-link">8799026206</a>
+                <a href="tel:+916352461137" className="tm-support-link">6352461137</a>
               </div>
             </div>
           ) : (currentStep === 'pending_verification' || currentStep === 'in_process' || isInProcess) && submittedClaim ? (
@@ -458,7 +458,7 @@ export const CourseRegistrationModal = ({
                     <h4>Payment Notice</h4>
                     <p>{configError}</p>
                     <p className="tm-support-contact">
-                      Admissions Support: <a href="tel:8799026206">8799026206</a>
+                      Admissions Support: <a href="tel:+916352461137">6352461137</a>
                     </p>
                   </div>
                 </div>

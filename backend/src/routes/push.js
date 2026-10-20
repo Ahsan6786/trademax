@@ -183,9 +183,28 @@ router.put('/preferences', optionalAuth, async (req, res) => {
  */
 router.get('/admin/stats', adminMiddleware, async (req, res) => {
   try {
+    // 1. Total Registered Users
+    const usersRes = await pool.query('SELECT COUNT(*) as total_users FROM users');
+
+    // 2. Push-Enabled Users (unique users with at least 1 active push device)
+    const pushUsersRes = await pool.query(
+      'SELECT COUNT(DISTINCT user_id) as push_enabled_users FROM push_subscriptions WHERE is_active = TRUE AND user_id IS NOT NULL'
+    );
+
+    // 3. Active Subscriptions & Total device subscriptions
     const subsRes = await pool.query(
       'SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE is_active = TRUE) as active FROM push_subscriptions'
     );
+
+    // 4. Delivered and Failed Deliveries from actual delivery audit logs
+    const logsRes = await pool.query(
+      `SELECT 
+        COUNT(*) FILTER (WHERE status = 'delivered') as total_delivered,
+        COUNT(*) FILTER (WHERE status = 'failed') as total_failed
+       FROM push_delivery_logs`
+    );
+
+    // 5. Total Campaigns
     const campRes = await pool.query(
       `SELECT 
         COUNT(*) as total_campaigns,
@@ -193,18 +212,38 @@ router.get('/admin/stats', adminMiddleware, async (req, res) => {
         COALESCE(SUM(failure_count), 0) as total_failed
        FROM push_campaigns`
     );
+
+    // 6. Motivational Quotes
     const quotesRes = await pool.query(
       'SELECT COUNT(*) as total_quotes, COUNT(*) FILTER (WHERE is_active = TRUE) as active_quotes FROM motivational_quotes'
+    );
+
+    const totalRegisteredUsers = parseInt(usersRes.rows[0].total_users, 10);
+    const pushEnabledUsers = parseInt(pushUsersRes.rows[0].push_enabled_users, 10);
+    const activeSubscriptions = parseInt(subsRes.rows[0].active, 10);
+    const deliveredNotifications = Math.max(
+      parseInt(logsRes.rows[0].total_delivered, 10),
+      parseInt(campRes.rows[0].total_sent, 10)
+    );
+    const failedDeliveries = Math.max(
+      parseInt(logsRes.rows[0].total_failed, 10),
+      parseInt(campRes.rows[0].total_failed, 10)
     );
 
     res.json({
       success: true,
       stats: {
+        total_registered_users: totalRegisteredUsers,
+        push_enabled_users: pushEnabledUsers,
+        active_subscriptions: activeSubscriptions,
+        delivered_notifications: deliveredNotifications,
+        failed_deliveries: failedDeliveries,
+        // Backwards compatibility mappings for existing UI elements
         total_subscribers: parseInt(subsRes.rows[0].total, 10),
-        active_subscribers: parseInt(subsRes.rows[0].active, 10),
+        active_subscribers: activeSubscriptions,
         total_campaigns: parseInt(campRes.rows[0].total_campaigns, 10),
-        total_notifications_sent: parseInt(campRes.rows[0].total_sent, 10),
-        total_notifications_failed: parseInt(campRes.rows[0].total_failed, 10),
+        total_notifications_sent: deliveredNotifications,
+        total_notifications_failed: failedDeliveries,
         total_quotes: parseInt(quotesRes.rows[0].total_quotes, 10),
         active_quotes: parseInt(quotesRes.rows[0].active_quotes, 10)
       }

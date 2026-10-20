@@ -109,7 +109,7 @@ export const PrivacyPolicyPage = ({ onNavigate, theme = 'dark', onBack }) => {
                 <span>Institutional Scope &amp; Applicable Laws</span>
               </h2>
               <p>
-                This Privacy Policy applies to the TradeMax platform, official website, student portal, and associated educational services operated under the banner of <strong>TradeMax</strong> (official social handle: <code>@trademax.mitwpu</code>), situated in Pune, Maharashtra, India.
+                This Privacy Policy applies to the TradeMax platform, official website, student portal, and associated educational services operated under the banner of <strong>TradeMax</strong> (official social handle: <code>@patil_trader01</code>), situated in Pune, Maharashtra, India.
               </p>
               <p>
                 We process personal information in compliance with applicable Indian legislations, including:
@@ -349,20 +349,31 @@ export const PrivacyPolicyPage = ({ onNavigate, theme = 'dark', onBack }) => {
                     <strong>Pune, Maharashtra, India</strong>
                   </div>
                   <div className="tm-grievance-item">
-                    <span className="label">Official Instagram:</span>
+                    <span className="label">Official Telegram:</span>
                     <a
-                      href="https://www.instagram.com/trademax.mitwpu/"
+                      href="https://t.me/trademaxchallenge"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="tm-legal-ext-link"
                     >
-                      @trademax.mitwpu <ExternalLink size={12} />
+                      @trademaxchallenge <ExternalLink size={12} />
+                    </a>
+                  </div>
+                  <div className="tm-grievance-item">
+                    <span className="label">Official Instagram:</span>
+                    <a
+                      href="https://www.instagram.com/patil_trader01?cplk=MTUwcXZjMnplNnJ5Nw%3D%3D&utm_source=qr"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="tm-legal-ext-link"
+                    >
+                      @patil_trader01 <ExternalLink size={12} />
                     </a>
                   </div>
                   <div className="tm-grievance-item">
                     <span className="label">Admissions Helpline:</span>
-                    <a href="tel:8799026206" className="tm-legal-ext-link">
-                      +91 8799026206
+                    <a href="tel:+916352461137" className="tm-legal-ext-link">
+                      6352461137
                     </a>
                   </div>
                 </div>

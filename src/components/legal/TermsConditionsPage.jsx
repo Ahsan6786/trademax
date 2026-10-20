@@ -143,7 +143,7 @@ export const TermsConditionsPage = ({ onNavigate, theme = 'dark', onBack, initia
                 <span>Acceptance of Terms</span>
               </h2>
               <p>
-                These Terms and Conditions (&quot;Terms&quot;) constitute a legally binding agreement between you (the &quot;Student&quot;, &quot;User&quot;, or &quot;Subscriber&quot;) and <strong>TradeMax</strong> (&quot;TradeMax&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;), operating under <code>@trademax.mitwpu</code> in Pune, Maharashtra, India.
+                These Terms and Conditions (&quot;Terms&quot;) constitute a legally binding agreement between you (the &quot;Student&quot;, &quot;User&quot;, or &quot;Subscriber&quot;) and <strong>TradeMax</strong> (&quot;TradeMax&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;), operating under <code>@patil_trader01</code> in Pune, Maharashtra, India.
               </p>
               <p>
                 By visiting our website, signing up for an account, enrolling in any training course, attending live sessions, or accessing educational materials, you agree to comply with and be bound by these Terms and our Privacy Policy. If you do not agree to these Terms, you must not access or use the platform.
@@ -395,20 +395,31 @@ export const TermsConditionsPage = ({ onNavigate, theme = 'dark', onBack, initia
                     <strong>Pune, Maharashtra, India</strong>
                   </div>
                   <div className="tm-grievance-item">
-                    <span className="label">Official Instagram:</span>
+                    <span className="label">Official Telegram:</span>
                     <a
-                      href="https://www.instagram.com/trademax.mitwpu/"
+                      href="https://t.me/trademaxchallenge"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="tm-legal-ext-link"
                     >
-                      @trademax.mitwpu <ExternalLink size={12} />
+                      @trademaxchallenge <ExternalLink size={12} />
+                    </a>
+                  </div>
+                  <div className="tm-grievance-item">
+                    <span className="label">Official Instagram:</span>
+                    <a
+                      href="https://www.instagram.com/patil_trader01?cplk=MTUwcXZjMnplNnJ5Nw%3D%3D&utm_source=qr"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="tm-legal-ext-link"
+                    >
+                      @patil_trader01 <ExternalLink size={12} />
                     </a>
                   </div>
                   <div className="tm-grievance-item">
                     <span className="label">Contact Line:</span>
-                    <a href="tel:8799026206" className="tm-legal-ext-link">
-                      +91 8799026206
+                    <a href="tel:+916352461137" className="tm-legal-ext-link">
+                      6352461137
                     </a>
                   </div>
                 </div>

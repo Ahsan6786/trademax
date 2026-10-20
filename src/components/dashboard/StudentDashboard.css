@@ -94,18 +94,18 @@
 .tm-portal-topbar,
 .tm-portal-header {
   display: flex;
-  height: 58px;
-  min-height: 58px;
-  max-height: 58px;
+  height: calc(58px + env(safe-area-inset-top, 0px));
+  min-height: calc(58px + env(safe-area-inset-top, 0px));
   background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%) !important;
   border-bottom: 1px solid #991B1B !important;
-  padding: 0 28px;
+  padding: env(safe-area-inset-top, 0px) 28px 0;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
   position: relative;
   z-index: 90;
   box-shadow: 0 2px 10px rgba(185, 28, 28, 0.28);
+  box-sizing: border-box;
 }
 
 .tm-portal-topbar-left,
@@ -658,27 +658,43 @@
   width: 100%;
 }
 
+.tm-portal-layout .tm-stat-card,
+.tm-stats-grid .tm-stat-card,
 .tm-stat-card {
-  background-color: #111111;
-  border: 1px solid #242424;
-  border-top: 3px solid #DC2626;
-  border-radius: 8px;
-  padding: 1.5rem 1.6rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 148px;
-  box-sizing: border-box;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-  user-select: none;
+  background-color: #121316 !important;
+  border: 1px solid #2B2F38 !important;
+  border-radius: 10px !important;
+  padding: 1.5rem 1.6rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  min-height: 148px !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45) !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease !important;
+  user-select: none !important;
 }
 
-.tm-stat-card:hover {
-  transform: translateY(-2px);
-  border-color: #383838;
-  border-top-color: #EF4444;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), 0 2px 6px rgba(0, 0, 0, 0.4);
+.tm-portal-layout .tm-stat-card-progress,
+.tm-stats-grid .tm-stat-card-progress {
+  border-top: 1px solid #2B2F38 !important;
+}
+
+.tm-portal-layout .tm-stat-card:hover,
+.tm-portal-layout .tm-stat-card:focus,
+.tm-portal-layout .tm-stat-card:focus-visible,
+.tm-portal-layout .tm-stat-card:active,
+.tm-stats-grid .tm-stat-card:hover,
+.tm-stats-grid .tm-stat-card:focus,
+.tm-stats-grid .tm-stat-card:focus-visible,
+.tm-stats-grid .tm-stat-card:active,
+.tm-stat-card:hover,
+.tm-stat-card:focus,
+.tm-stat-card:focus-visible,
+.tm-stat-card:active {
+  transform: translateY(-2px) !important;
+  border-color: #434854 !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65) !important;
 }
 
 .tm-stat-top {
@@ -737,19 +753,40 @@
 
 /* LIGHT MODE OVERRIDES: Crisp White / Light-Grey with clearly visible borders and soft shadows */
 .tm-portal-layout.tm-theme-light .tm-stat-card,
+[data-theme='light'] .tm-portal-layout .tm-stat-card,
+[data-theme='light'] .tm-stats-grid .tm-stat-card,
 [data-theme='light'] .tm-stat-card {
-  background-color: #FFFFFF;
-  border: 1px solid #D1D5DB;
-  border-top: 3px solid #DC2626;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+}
+
+.tm-portal-layout.tm-theme-light .tm-stat-card-progress,
+[data-theme='light'] .tm-portal-layout .tm-stat-card-progress,
+[data-theme='light'] .tm-stats-grid .tm-stat-card-progress,
+[data-theme='light'] .tm-stat-card-progress {
+  border-top: 1px solid #E2E8F0 !important;
 }
 
 .tm-portal-layout.tm-theme-light .tm-stat-card:hover,
-[data-theme='light'] .tm-stat-card:hover {
-  transform: translateY(-2px);
-  border-color: #9CA3AF;
-  border-top-color: #B91C1C;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.09), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+.tm-portal-layout.tm-theme-light .tm-stat-card:focus,
+.tm-portal-layout.tm-theme-light .tm-stat-card:focus-visible,
+.tm-portal-layout.tm-theme-light .tm-stat-card:active,
+[data-theme='light'] .tm-portal-layout .tm-stat-card:hover,
+[data-theme='light'] .tm-portal-layout .tm-stat-card:focus,
+[data-theme='light'] .tm-portal-layout .tm-stat-card:focus-visible,
+[data-theme='light'] .tm-portal-layout .tm-stat-card:active,
+[data-theme='light'] .tm-stats-grid .tm-stat-card:hover,
+[data-theme='light'] .tm-stats-grid .tm-stat-card:focus,
+[data-theme='light'] .tm-stats-grid .tm-stat-card:focus-visible,
+[data-theme='light'] .tm-stats-grid .tm-stat-card:active,
+[data-theme='light'] .tm-stat-card:hover,
+[data-theme='light'] .tm-stat-card:focus,
+[data-theme='light'] .tm-stat-card:focus-visible,
+[data-theme='light'] .tm-stat-card:active {
+  transform: translateY(-2px) !important;
+  border-color: #94A3B8 !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08) !important;
 }
 
 .tm-portal-layout.tm-theme-light .tm-stat-label,
@@ -1860,7 +1897,10 @@
     height: calc(54px + env(safe-area-inset-top, 0px));
     min-height: calc(54px + env(safe-area-inset-top, 0px));
     max-height: calc(54px + env(safe-area-inset-top, 0px));
-    padding: env(safe-area-inset-top, 0px) 16px 0;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-bottom: 0;
     align-items: center;
     position: relative;
     flex-shrink: 0;
@@ -1868,6 +1908,7 @@
     background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%) !important;
     border-bottom: 1px solid #991B1B !important;
     box-shadow: 0 2px 10px rgba(185, 28, 28, 0.3);
+    box-sizing: border-box;
   }
 
   .tm-portal-topbar-left,
@@ -2062,10 +2103,13 @@
   }
 
   .tm-portal-main {
+    flex: 1;
+    min-height: 0;
     height: calc(100dvh - 54px - env(safe-area-inset-top, 0px));
     max-height: calc(100dvh - 54px - env(safe-area-inset-top, 0px));
-    padding: 1.25rem 1rem;
+    padding: 1.25rem max(1rem, env(safe-area-inset-right, 0px)) 1.25rem max(1rem, env(safe-area-inset-left, 0px));
     overscroll-behavior-y: contain;
+    background-color: var(--tm-portal-bg);
   }
 
   /* 3. Welcome Card Intro Label Removal & Balanced Spacing */

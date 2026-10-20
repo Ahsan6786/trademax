@@ -13,7 +13,7 @@ createRoot(document.getElementById('root')).render(
 );
 
 // Register Progressive Web App Service Worker
-if (typeof window !== 'undefined' && 'serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch((err) => {
       console.warn('SW registration failed:', err);

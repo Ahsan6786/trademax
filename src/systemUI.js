@@ -4,10 +4,13 @@
    bar style, plus keyboard / standalone-zoom handling.
    ========================================================================== */
 
-// Colour of the very top strip of each screen (what sits under the status bar).
 export function getTopBarColor(view, theme, authOpen = false) {
-  const dark = theme === 'dark';
   if (authOpen) return '#000000'; // Auth overlay is always pure black
+  // TradeMax student dashboard and admin panel use the signature red topbar
+  if (view === 'dashboard' || view === 'admin') {
+    return '#DC2626';
+  }
+  const dark = theme === 'dark';
   return dark ? '#000000' : '#FFFFFF';
 }
 

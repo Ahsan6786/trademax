@@ -35,12 +35,16 @@
         try {
           var saved = localStorage.getItem('tm_theme') || localStorage.getItem('tm_course_theme') || 'dark';
           document.documentElement.setAttribute('data-theme', saved);
-          // Pure black #000000 in Night Mode, pure white #FFFFFF in Day Mode
           var color = saved === 'dark' ? '#000000' : '#FFFFFF';
+          var hash = window.location.hash || '';
+          var path = window.location.pathname || '';
+          if (hash === '#dashboard' || path.startsWith('/dashboard') || hash === '#admin' || path.startsWith('/admin')) {
+            color = '#DC2626';
+          }
           var meta = document.getElementById('theme-color-meta');
           if (meta) meta.setAttribute('content', color);
           var apple = document.getElementById('apple-status-bar-meta');
-          if (apple) apple.setAttribute('content', saved === 'dark' ? 'black-translucent' : 'default');
+          if (apple) apple.setAttribute('content', color === '#FFFFFF' ? 'default' : 'black-translucent');
           document.documentElement.style.setProperty('--tm-system-ui-color', color);
         } catch (e) {}
       })();

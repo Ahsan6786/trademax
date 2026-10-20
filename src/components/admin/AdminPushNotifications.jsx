@@ -23,10 +23,16 @@ import './AdminPushNotifications.css';
 export const AdminPushNotifications = ({ courses = [], showNotification }) => {
   const [subTab, setSubTab] = useState('campaigns'); // 'campaigns' | 'create' | 'quotes' | 'logs'
   const [stats, setStats] = useState({
+    total_registered_users: 0,
+    push_enabled_users: 0,
+    active_subscriptions: 0,
+    delivered_notifications: 0,
+    failed_deliveries: 0,
     active_subscribers: 0,
     total_subscribers: 0,
     total_campaigns: 0,
     total_notifications_sent: 0,
+    total_notifications_failed: 0,
     total_quotes: 0,
     active_quotes: 0
   });
@@ -378,49 +384,60 @@ export const AdminPushNotifications = ({ courses = [], showNotification }) => {
         </div>
       </div>
 
-      {/* Metrics Row */}
-      <div className="tm-admin-stats-grid">
+      {/* Metrics Row - 5 Essential Production Push Indicators */}
+      <div className="tm-admin-stats-grid tm-push-stats-grid">
         <div className="tm-stat-card">
-          <div className="tm-stat-icon-wrap green">
-            <Bell size={20} />
+          <div className="tm-stat-icon-wrap blue">
+            <Users size={20} />
           </div>
           <div className="tm-stat-data">
-            <span className="tm-stat-label">Active Subscribers</span>
-            <div className="tm-stat-number">{stats.active_subscribers}</div>
-            <span className="tm-stat-hint">Opted-in browser devices</span>
+            <span className="tm-stat-label">Total Registered Users</span>
+            <div className="tm-stat-number">{stats.total_registered_users}</div>
+            <span className="tm-stat-hint">Platform user accounts</span>
           </div>
         </div>
 
         <div className="tm-stat-card">
-          <div className="tm-stat-icon-wrap red">
-            <Send size={20} />
+          <div className="tm-stat-icon-wrap green">
+            <Smartphone size={20} />
           </div>
           <div className="tm-stat-data">
-            <span className="tm-stat-label">Delivered Notifications</span>
-            <div className="tm-stat-number">{stats.total_notifications_sent}</div>
-            <span className="tm-stat-hint">Delivered across all campaigns</span>
+            <span className="tm-stat-label">Push-Enabled Users</span>
+            <div className="tm-stat-number">{stats.push_enabled_users}</div>
+            <span className="tm-stat-hint">Unique users opted-in</span>
           </div>
         </div>
 
         <div className="tm-stat-card">
           <div className="tm-stat-icon-wrap amber">
-            <Sparkles size={20} />
+            <Bell size={20} />
           </div>
           <div className="tm-stat-data">
-            <span className="tm-stat-label">Trading Quotes</span>
-            <div className="tm-stat-number">{stats.active_quotes}</div>
-            <span className="tm-stat-hint">Active discipline quotes</span>
+            <span className="tm-stat-label">Active Subscriptions</span>
+            <div className="tm-stat-number">{stats.active_subscriptions}</div>
+            <span className="tm-stat-hint">Active browser endpoints</span>
           </div>
         </div>
 
         <div className="tm-stat-card">
-          <div className="tm-stat-icon-wrap blue">
-            <Megaphone size={20} />
+          <div className="tm-stat-icon-wrap green">
+            <Send size={20} />
           </div>
           <div className="tm-stat-data">
-            <span className="tm-stat-label">Total Campaigns</span>
-            <div className="tm-stat-number">{stats.total_campaigns}</div>
-            <span className="tm-stat-hint">Broadcasts and alerts</span>
+            <span className="tm-stat-label">Delivered Notifications</span>
+            <div className="tm-stat-number">{stats.delivered_notifications}</div>
+            <span className="tm-stat-hint">Confirmed deliveries</span>
+          </div>
+        </div>
+
+        <div className="tm-stat-card">
+          <div className="tm-stat-icon-wrap red">
+            <AlertCircle size={20} />
+          </div>
+          <div className="tm-stat-data">
+            <span className="tm-stat-label">Failed Deliveries</span>
+            <div className="tm-stat-number">{stats.failed_deliveries}</div>
+            <span className="tm-stat-hint">Expired / revoked devices</span>
           </div>
         </div>
       </div>
@@ -515,6 +532,8 @@ export const AdminPushNotifications = ({ courses = [], showNotification }) => {
                             ? 'Scheduled'
                             : camp.status === 'processing'
                             ? 'Sending'
+                            : camp.status === 'failed'
+                            ? 'Failed'
                             : 'Draft'}
                         </span>
                       </td>
@@ -528,12 +547,12 @@ export const AdminPushNotifications = ({ courses = [], showNotification }) => {
                       </td>
                       <td>
                         <div className="tm-actions-cell" style={{ justifyContent: 'flex-end', gap: '6px' }}>
-                          {camp.status === 'scheduled' && (
+                          {(camp.status === 'scheduled' || camp.status === 'failed') && (
                             <button
                               type="button"
                               className="tm-btn-table-action success"
                               onClick={() => handleSendCampaignNow(camp.id)}
-                              title="Send immediately now"
+                              title={camp.status === 'failed' ? 'Retry sending now' : 'Send immediately now'}
                             >
                               <Send size={13} />
                             </button>
@@ -621,7 +640,7 @@ export const AdminPushNotifications = ({ courses = [], showNotification }) => {
                     value={formData.target_type}
                     onChange={(e) => setFormData({ ...formData, target_type: e.target.value })}
                   >
-                    <option value="all">All Opted-in Subscribers ({stats.active_subscribers})</option>
+                    <option value="all">All Eligible Users ({stats.active_subscriptions || stats.push_enabled_users || 0} active devices)</option>
                     <option value="course">Students Enrolled in a Specific Course</option>
                   </select>
                 </div>

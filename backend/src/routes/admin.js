@@ -1161,7 +1161,7 @@ adminRouter.get('/settings', async (req, res) => {
         seatsAvailable: settings.seats_available,
         showSeatCount: settings.show_seat_count,
         announcementText: settings.announcement_text,
-        contactPhone: settings.contact_phone || '8799026206',
+        contactPhone: settings.contact_phone || '6352461137',
       },
     });
   } catch (err) {

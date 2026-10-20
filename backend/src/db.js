@@ -725,6 +725,8 @@ export const initDb = async () => {
 
       CREATE INDEX IF NOT EXISTS idx_push_campaigns_status ON push_campaigns(status);
       CREATE INDEX IF NOT EXISTS idx_push_campaigns_sched ON push_campaigns(scheduled_for);
+      ALTER TABLE push_campaigns ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(100) UNIQUE;
+      CREATE INDEX IF NOT EXISTS idx_push_campaigns_idemp ON push_campaigns(idempotency_key);
     `);
 
     // 19. Motivational Quotes Library Table
@@ -753,7 +755,15 @@ export const initDb = async () => {
         ('Consistency in trading comes from consistent rule execution, not having a 100% win rate.', 'TradeMax Mentor', 'Consistency'),
         ('Trade what you see on the charts, not what you hope or fear in your mind.', 'Patil Trader', 'Psychology'),
         ('Never let a single trade compromise your trading account or your emotional composure.', 'Risk Desk', 'Discipline'),
-        ('Patience in waiting for market confirmation separates profitable traders from gamblers.', 'TradeMax Mentor', 'Patience')
+        ('Patience in waiting for market confirmation separates profitable traders from gamblers.', 'TradeMax Mentor', 'Patience'),
+        ('Your stop-loss is non-negotiable. Trade size should fit your risk tolerance, never your ego.', 'Risk Desk', 'Risk Management'),
+        ('Do not revenge trade. The market is always here tomorrow; your capital might not be if you lose control.', 'Patil Trader', 'Emotional Control'),
+        ('Small, consistent, compounding gains outperform erratic home runs over a trading career.', 'Institutional Desk', 'Consistency'),
+        ('Wait for your edge. Trading without confirmation is just gambling with extra steps.', 'TradeMax Mentor', 'Patience'),
+        ('Emotional detachment is a superpower in the markets. Accept the risk before you click buy or sell.', 'Patil Trader', 'Emotional Control'),
+        ('The best trade is often the one you chose not to take because your rules were not met.', 'Risk Desk', 'Discipline'),
+        ('Win or lose, review your trading journal daily. Growth happens in reflection and rule adherence.', 'TradeMax Mentor', 'Consistency'),
+        ('Keep your drawdowns shallow. Surviving market volatility is the prerequisite to thriving in it.', 'Institutional Desk', 'Risk Management')
       ON CONFLICT DO NOTHING;
     `);
 

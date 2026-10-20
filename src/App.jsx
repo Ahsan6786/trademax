@@ -140,7 +140,7 @@ function App() {
     seatsAvailable: 15,
     showSeatCount: false,
     announcementText: 'November Batch — Limited Seats Available',
-    contactPhone: '8799026206',
+    contactPhone: '6352461137',
   });
 
   const [theme, setTheme] = useState(() => {

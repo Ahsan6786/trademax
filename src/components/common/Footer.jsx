@@ -138,8 +138,8 @@ export const Footer = ({ onNavigate }) => {
                 </svg>
               </span>
             </a>
-            <a href="tel:8799026206" className="tm-footer-nav-link">
-              <span>Contact</span>
+            <a href="tel:+916352461137" className="tm-footer-nav-link" title="Call TradeMax Admissions">
+              <span>Contact (6352461137)</span>
               <span className="tm-footer-link-arrow" aria-hidden="true">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF1E27" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 12h14" />
@@ -164,7 +164,7 @@ export const Footer = ({ onNavigate }) => {
             </span>
           </div>
 
-          {/* Institutional Policy Links & Official Instagram */}
+          {/* Institutional Policy Links & Official Contact/Social Badges */}
           <div className="tm-footer-institutional-row">
             <div className="tm-footer-policy-links">
               <a
@@ -192,30 +192,80 @@ export const Footer = ({ onNavigate }) => {
               </a>
             </div>
 
-            <a
-              href="https://www.instagram.com/trademax.mitwpu/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="tm-footer-instagram-link"
-              aria-label="Follow TradeMax on Instagram @trademax.mitwpu"
-              title="Official TradeMax Instagram @trademax.mitwpu"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            <div className="tm-footer-social-links">
+              {/* Official Telegram Channel */}
+              <a
+                href="https://t.me/trademaxchallenge"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tm-footer-social-link tm-footer-telegram-link"
+                aria-label="Join TradeMax on Telegram @trademaxchallenge"
+                title="Official TradeMax Telegram @trademaxchallenge"
               >
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-              </svg>
-              <span>@trademax.mitwpu</span>
-            </a>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                <span>Telegram</span>
+              </a>
+
+              {/* Official Instagram */}
+              <a
+                href="https://www.instagram.com/patil_trader01?cplk=MTUwcXZjMnplNnJ5Nw%3D%3D&utm_source=qr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tm-footer-social-link tm-footer-instagram-link"
+                aria-label="Follow TradeMax on Instagram @patil_trader01"
+                title="Official TradeMax Instagram @patil_trader01"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                </svg>
+                <span>@patil_trader01</span>
+              </a>
+
+              {/* Official Contact Phone */}
+              <a
+                href="tel:+916352461137"
+                className="tm-footer-social-link tm-footer-phone-link"
+                aria-label="Call TradeMax: 6352461137"
+                title="Call TradeMax: 6352461137"
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+                <span>6352461137</span>
+              </a>
+            </div>
           </div>
 
           {/* Thin Horizontal Divider */}

@@ -9,6 +9,13 @@
   gap: 20px;
 }
 
+.tm-push-stats-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
 .tm-push-table-header {
   padding: 18px 22px;
   display: flex;

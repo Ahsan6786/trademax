@@ -114,7 +114,7 @@ export const AdminPanel = ({
     seatsAvailable: 15,
     showSeatCount: false,
     announcementText: 'November Batch — Limited Seats Available',
-    contactPhone: '8799026206',
+    contactPhone: '6352461137',
   });
   const [settingsSaving, setSettingsSaving] = useState(false);
 
@@ -320,7 +320,7 @@ export const AdminPanel = ({
           seatsAvailable: data.settings.seatsAvailable || 15,
           showSeatCount: Boolean(data.settings.showSeatCount),
           announcementText: data.settings.announcementText || 'November Batch — Limited Seats Available',
-          contactPhone: data.settings.contactPhone || '8799026206',
+          contactPhone: data.settings.contactPhone || '6352461137',
         });
       }
     } catch (err) {
@@ -2564,7 +2564,7 @@ export const AdminPanel = ({
                         value={settingsForm.contactPhone}
                         onChange={(e) => setSettingsForm({ ...settingsForm, contactPhone: e.target.value })}
                         className="tm-admin-input"
-                        placeholder="e.g. 8799026206"
+                        placeholder="e.g. 6352461137"
                         required
                       />
                     </div>
@@ -3320,7 +3320,7 @@ export const AdminPanel = ({
                           value={paymentSettings.upi_id}
                           onChange={(e) => setPaymentSettings({ ...paymentSettings, upi_id: e.target.value.trim() })}
                           className="tm-admin-input"
-                          placeholder="e.g. 8799026206@ybl or trademax@icici"
+                          placeholder="e.g. 6352461137@ybl or trademax@icici"
                           required
                         />
                         <span className="tm-input-hint">Displayed to students for copy-paste and payment validation.</span>

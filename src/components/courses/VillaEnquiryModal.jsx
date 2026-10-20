@@ -116,7 +116,7 @@ export const VillaEnquiryModal = ({
 
       setIsSubmitted(true);
     } catch (err) {
-      setSubmitError(err.message || 'Could not send enquiry. Please contact 8799026206 directly.');
+      setSubmitError(err.message || 'Could not send enquiry. Please contact 6352461137 directly.');
     } finally {
       setIsSubmitting(false);
     }
@@ -160,7 +160,7 @@ export const VillaEnquiryModal = ({
 
             <div className="tm-vem-contact-box">
               <span className="tm-vem-contact-label">Direct Admissions Desk:</span>
-              <a href="tel:8799026206" className="tm-vem-contact-phone">8799026206</a>
+              <a href="tel:+916352461137" className="tm-vem-contact-phone">6352461137</a>
             </div>
 
             <button

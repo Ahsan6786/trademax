@@ -2576,7 +2576,8 @@
 /* ==========================================================================
    MANUAL PAYMENT VERIFICATION STATS CARDS
    ========================================================================== */
-.tm-stat-card {
+.tm-admin-layout .tm-stat-card,
+.tm-admin-panel .tm-stat-card {
   background-color: var(--adm-card-bg);
   border: 1px solid var(--adm-border);
   border-radius: 12px;
@@ -2592,13 +2593,15 @@
   box-sizing: border-box;
 }
 
-.tm-stat-card:hover {
+.tm-admin-layout .tm-stat-card:hover,
+.tm-admin-panel .tm-stat-card:hover {
   border-color: var(--adm-text-muted);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.tm-stat-card.active-filter {
+.tm-admin-layout .tm-stat-card.active-filter,
+.tm-admin-panel .tm-stat-card.active-filter {
   border-color: #DC2626;
   background-color: var(--adm-card-sub);
   box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25);
