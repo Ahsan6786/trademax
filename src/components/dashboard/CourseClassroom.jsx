@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './CourseClassroom.css';
+import { PdfViewerModal } from '../common/PdfViewerModal';
 
 // Pure helper to parse course topics safely without violating Rules of Hooks
 const parseCourseTopics = (topics) => {
@@ -27,6 +28,19 @@ export const CourseClassroom = ({ courseId, user, onBack, theme = 'dark' }) => {
   const [loadingPlayback, setLoadingPlayback] = useState(false);
   const [playbackError, setPlaybackError] = useState(null);
   const [downloadingResourceId, setDownloadingResourceId] = useState(null);
+
+  // In-App PDF Viewer State
+  const [pdfViewerState, setPdfViewerState] = useState({
+    isOpen: false,
+    title: '',
+    fileName: '',
+    fileSize: '',
+    viewUrl: '',
+    downloadUrl: '',
+    loading: false,
+    error: null,
+    resource: null,
+  });
 
   // Fetch secure short-lived playback URL on demand for the active lesson
   const fetchPlaybackUrl = useCallback(async (lesson) => {
@@ -145,6 +159,73 @@ export const CourseClassroom = ({ courseId, user, onBack, theme = 'dark' }) => {
       console.error('[Toggle Progress Error]:', err);
     } finally {
       setTogglingProgress(false);
+    }
+  };
+
+  // Secure In-App PDF Viewer for enrolled students
+  const handleViewResource = async (item) => {
+    if (!item) return;
+
+    const isPdf =
+      item.resource_type === 'pdf' ||
+      item.file_name?.toLowerCase().endsWith('.pdf') ||
+      item.content_type === 'application/pdf';
+
+    // For non-PDF files, retain download
+    if (!isPdf) {
+      handleDownloadResource(item);
+      return;
+    }
+
+    // External URL fallback (e.g. Google Drive) if not an S3/internal file
+    if (item.resource_url && /^https?:\/\//i.test(item.resource_url) && !item.s3_key) {
+      window.open(item.resource_url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    setPdfViewerState({
+      isOpen: true,
+      title: item.title,
+      fileName: item.file_name || `${item.title}.pdf`,
+      fileSize: item.file_size,
+      viewUrl: '',
+      downloadUrl: '',
+      loading: true,
+      error: null,
+      resource: item,
+    });
+
+    try {
+      const token = localStorage.getItem('tm_token');
+      const viewEndpoint = `/api/student/courses/${courseId}/resources/${item.id}/download?inline=true&json=true${token ? `&token=${encodeURIComponent(token)}` : ''}`;
+      const res = await fetch(viewEndpoint, {
+        headers: {
+          Accept: 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to retrieve secure PDF stream.');
+      }
+
+      setPdfViewerState((prev) => ({
+        ...prev,
+        viewUrl: data.viewUrl || data.url,
+        downloadUrl: data.downloadUrl || data.url,
+        fileName: data.fileName || prev.fileName,
+        fileSize: data.fileSize || prev.fileSize,
+        loading: false,
+        error: null,
+      }));
+    } catch (err) {
+      console.error('[Student View PDF Error]:', err);
+      setPdfViewerState((prev) => ({
+        ...prev,
+        loading: false,
+        error: err.message || 'Could not load PDF document.',
+      }));
     }
   };
 
@@ -593,25 +674,53 @@ export const CourseClassroom = ({ courseId, user, onBack, theme = 'dark' }) => {
                     )}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadResource(item)}
-                    disabled={downloadingResourceId === item.id}
-                    className="tm-btn-download-resource"
-                    id={`tm-download-res-${item.id}`}
-                  >
-                    {downloadingResourceId === item.id ? (
-                      <>
-                        <span className="tm-spinner-inline" />
-                        <span>Downloading...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Download Material</span>
-                        <span aria-hidden="true">&darr;</span>
-                      </>
-                    )}
-                  </button>
+                  {item.resource_type === 'pdf' || item.file_name?.toLowerCase().endsWith('.pdf') ? (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleViewResource(item)}
+                        className="tm-btn-view-resource"
+                        id={`tm-view-res-${item.id}`}
+                      >
+                        <span>View PDF</span>
+                        <span aria-hidden="true">&rarr;</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadResource(item)}
+                        disabled={downloadingResourceId === item.id}
+                        className="tm-btn-download-resource icon-only"
+                        id={`tm-download-res-${item.id}`}
+                        title="Download PDF File"
+                      >
+                        {downloadingResourceId === item.id ? (
+                          <span className="tm-spinner-inline" />
+                        ) : (
+                          <span aria-hidden="true">&darr;</span>
+                        )}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadResource(item)}
+                      disabled={downloadingResourceId === item.id}
+                      className="tm-btn-download-resource"
+                      id={`tm-download-res-${item.id}`}
+                    >
+                      {downloadingResourceId === item.id ? (
+                        <>
+                          <span className="tm-spinner-inline" />
+                          <span>Downloading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Download Material</span>
+                          <span aria-hidden="true">&darr;</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               ))
             )}
@@ -847,6 +956,22 @@ export const CourseClassroom = ({ courseId, user, onBack, theme = 'dark' }) => {
           </div>
         )}
       </div>
+
+      {/* In-App PDF Viewer Modal for Students */}
+      <PdfViewerModal
+        isOpen={pdfViewerState.isOpen}
+        onClose={() => setPdfViewerState((prev) => ({ ...prev, isOpen: false }))}
+        title={pdfViewerState.title}
+        fileName={pdfViewerState.fileName}
+        fileSize={pdfViewerState.fileSize}
+        viewUrl={pdfViewerState.viewUrl}
+        downloadUrl={pdfViewerState.downloadUrl}
+        loading={pdfViewerState.loading}
+        error={pdfViewerState.error}
+        theme={theme}
+        onRetry={() => pdfViewerState.resource && handleViewResource(pdfViewerState.resource)}
+        onDownload={() => pdfViewerState.resource && handleDownloadResource(pdfViewerState.resource)}
+      />
     </div>
   );
 };

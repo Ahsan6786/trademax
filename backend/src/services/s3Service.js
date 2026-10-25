@@ -89,16 +89,17 @@ export async function uploadObjectToS3({
 }
 
 /**
- * Generate a short-lived presigned GET download URL with Content-Disposition: attachment
+ * Generate a short-lived presigned GET download/view URL with configurable Content-Disposition (attachment vs inline)
  */
 export async function generatePresignedDownloadUrl({
   key,
   filename = 'download',
   contentType,
+  dispositionType = 'attachment',
   expiresIn = 900,
 }) {
   const effectiveContentType = contentType || getMimeType(filename);
-  const disposition = formatContentDisposition(filename, 'attachment');
+  const disposition = formatContentDisposition(filename, dispositionType);
 
   const command = new GetObjectCommand({
     Bucket: S3_BUCKET,

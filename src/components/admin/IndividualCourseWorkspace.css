@@ -1008,6 +1008,27 @@
   color: #ef4444;
 }
 
+.tm-btn-primary-xs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--tm-ws-red);
+  border: 1px solid var(--tm-ws-red);
+  color: #ffffff;
+  text-decoration: none;
+  padding: 0.35rem 0.65rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tm-btn-primary-xs:hover {
+  background: var(--tm-ws-red-hover);
+  border-color: var(--tm-ws-red-hover);
+  transform: translateY(-1px);
+}
+
 @media (max-width: 768px) {
   .tm-ws-form-grid {
     grid-template-columns: 1fr;

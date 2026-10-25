@@ -28,8 +28,10 @@ import {
   Lock,
   Layers,
   Sparkles,
+  Download,
 } from 'lucide-react';
 import './IndividualCourseWorkspace.css';
+import { PdfViewerModal } from '../common/PdfViewerModal';
 
 export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) => {
   // 8 Required Sections (Section 7)
@@ -122,6 +124,19 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
     resource_url: '',
     batch_name: 'All Batches',
     is_published: true,
+  });
+
+  // In-App PDF Viewer State
+  const [pdfViewerState, setPdfViewerState] = useState({
+    isOpen: false,
+    title: '',
+    fileName: '',
+    fileSize: '',
+    viewUrl: '',
+    downloadUrl: '',
+    loading: false,
+    error: null,
+    resource: null,
   });
 
   // Enrolled Student Form (Section 13 & 14)
@@ -980,6 +995,73 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
     window.open(downloadEndpoint, '_blank');
   };
 
+  const handleOpenResource = async (item) => {
+    if (!item) return;
+
+    const isPdf =
+      item.resource_type === 'pdf' ||
+      item.file_name?.toLowerCase().endsWith('.pdf') ||
+      item.content_type === 'application/pdf';
+
+    // For non-PDF documents (Word, PPT, Excel, Zip), retain direct download
+    if (!isPdf) {
+      handleAdminDownloadResource(item);
+      return;
+    }
+
+    // External URL fallback if not an S3/internal file
+    if (item.resource_url && /^https?:\/\//i.test(item.resource_url) && !item.s3_key) {
+      window.open(item.resource_url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    // Open In-App PDF Viewer Modal
+    setPdfViewerState({
+      isOpen: true,
+      title: item.title,
+      fileName: item.file_name || `${item.title}.pdf`,
+      fileSize: item.file_size,
+      viewUrl: '',
+      downloadUrl: '',
+      loading: true,
+      error: null,
+      resource: item,
+    });
+
+    try {
+      const token = localStorage.getItem('tm_token');
+      const viewEndpoint = `/api/admin/courses/${courseId}/resources/${item.id}/download?inline=true&json=true${token ? `&token=${encodeURIComponent(token)}` : ''}`;
+      const res = await fetch(viewEndpoint, {
+        headers: {
+          Accept: 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to retrieve secure PDF stream.');
+      }
+
+      setPdfViewerState((prev) => ({
+        ...prev,
+        viewUrl: data.viewUrl || data.url,
+        downloadUrl: data.downloadUrl || data.url,
+        fileName: data.fileName || prev.fileName,
+        fileSize: data.fileSize || prev.fileSize,
+        loading: false,
+        error: null,
+      }));
+    } catch (err) {
+      console.error('[Open PDF Viewer Error]:', err);
+      setPdfViewerState((prev) => ({
+        ...prev,
+        loading: false,
+        error: err.message || 'Could not load PDF document.',
+      }));
+    }
+  };
+
   // =========================================================================
   // SECTION 13: STUDENTS MANAGEMENT
   // =========================================================================
@@ -1823,15 +1905,37 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
                             {item.file_size ? `${item.file_size} · ` : ''}
                             {new Date(item.created_at).toLocaleDateString()}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => handleAdminDownloadResource(item)}
-                            className="tm-btn-outline-xs"
-                            title="Download or View Material"
-                          >
-                            <ExternalLink size={12} />
-                            <span>View / Download</span>
-                          </button>
+                          {item.resource_type === 'pdf' || item.file_name?.toLowerCase().endsWith('.pdf') ? (
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenResource(item)}
+                                className="tm-btn-primary-xs"
+                                title="View PDF Document In-App"
+                              >
+                                <Eye size={12} />
+                                <span>View PDF</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleAdminDownloadResource(item)}
+                                className="tm-btn-outline-xs"
+                                title="Download PDF File"
+                              >
+                                <Download size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleAdminDownloadResource(item)}
+                              className="tm-btn-outline-xs"
+                              title="Download Material"
+                            >
+                              <Download size={12} />
+                              <span>Download</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -2967,6 +3071,24 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
           </div>
         </div>
       )}
+
+      {/* ===================================================================
+          MODAL: IN-APP PDF VIEWER (Responsive PDF Modal)
+          =================================================================== */}
+      <PdfViewerModal
+        isOpen={pdfViewerState.isOpen}
+        onClose={() => setPdfViewerState((prev) => ({ ...prev, isOpen: false }))}
+        title={pdfViewerState.title}
+        fileName={pdfViewerState.fileName}
+        fileSize={pdfViewerState.fileSize}
+        viewUrl={pdfViewerState.viewUrl}
+        downloadUrl={pdfViewerState.downloadUrl}
+        loading={pdfViewerState.loading}
+        error={pdfViewerState.error}
+        theme={theme}
+        onRetry={() => pdfViewerState.resource && handleOpenResource(pdfViewerState.resource)}
+        onDownload={() => pdfViewerState.resource && handleAdminDownloadResource(pdfViewerState.resource)}
+      />
     </div>
   );
 };

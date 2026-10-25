@@ -414,4 +414,78 @@ describe('Course Material Upload & Download Functionality Suite', () => {
     assert.equal(data.success, false);
     assert.ok(data.error.includes('Invalid file type') || data.error.includes('Upload failed'));
   });
+
+  it('14. Admin retrieves inline view URL for PDF with Content-Disposition: inline', async () => {
+    const pdfResource = uploadedResources.find((r) => r.file_name.endsWith('.pdf'));
+    assert.ok(pdfResource, 'Test PDF resource must exist');
+
+    const res = await fetch(
+      `${API_BASE}/admin/courses/${testCourse.id}/resources/${pdfResource.id}/download?inline=true&json=true`,
+      {
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          Accept: 'application/json',
+        },
+      }
+    );
+
+    const data = await res.json();
+    assert.equal(res.status, 200);
+    assert.equal(data.success, true);
+    assert.equal(data.isPdf, true);
+    assert.equal(data.isInline, true);
+    assert.ok(data.viewUrl, 'Must return viewUrl for In-App viewer');
+    assert.ok(data.downloadUrl, 'Must return downloadUrl for optional download button');
+
+    // If S3 presigned URL, verify response-content-disposition contains inline
+    if (data.viewUrl.includes('response-content-disposition=')) {
+      assert.ok(
+        data.viewUrl.includes('inline') || data.viewUrl.includes('response-content-disposition=inline'),
+        'viewUrl must specify inline disposition'
+      );
+    }
+  });
+
+  it('15. Enrolled student retrieves inline view URL and separate download URL for PDF', async () => {
+    const pdfResource = uploadedResources.find((r) => r.file_name.endsWith('.pdf'));
+    assert.ok(pdfResource, 'Test PDF resource must exist');
+
+    const res = await fetch(
+      `${API_BASE}/student/courses/${testCourse.id}/resources/${pdfResource.id}/download?inline=true&json=true`,
+      {
+        headers: {
+          Authorization: `Bearer ${enrolledToken}`,
+          Accept: 'application/json',
+        },
+      }
+    );
+
+    const data = await res.json();
+    assert.equal(res.status, 200);
+    assert.equal(data.success, true);
+    assert.equal(data.isPdf, true);
+    assert.ok(data.viewUrl, 'viewUrl must be returned for students');
+    assert.ok(data.downloadUrl, 'downloadUrl must be returned for students');
+  });
+
+  it('16. Dedicated /view route alias provides inline viewing', async () => {
+    const pdfResource = uploadedResources.find((r) => r.file_name.endsWith('.pdf'));
+    assert.ok(pdfResource, 'Test PDF resource must exist');
+
+    const res = await fetch(
+      `${API_BASE}/admin/courses/${testCourse.id}/resources/${pdfResource.id}/view`,
+      {
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          Accept: 'application/json',
+        },
+      }
+    );
+
+    const data = await res.json();
+    assert.equal(res.status, 200);
+    assert.equal(data.success, true);
+    assert.equal(data.isInline, true);
+    assert.ok(data.viewUrl);
+  });
 });
