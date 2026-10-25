@@ -114,10 +114,11 @@ export async function generatePresignedDownloadUrl({
 /**
  * Get object stream from S3 for server-side piping
  */
-export async function getS3ObjectStream({ key }) {
+export async function getS3ObjectStream({ key, range }) {
   const command = new GetObjectCommand({
     Bucket: S3_BUCKET,
     Key: key,
+    ...(range ? { Range: range } : {}),
   });
   return await s3Client.send(command);
 }

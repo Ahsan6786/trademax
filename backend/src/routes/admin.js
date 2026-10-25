@@ -17,6 +17,7 @@ import {
   abortMultipart,
   uploadObjectToS3,
   generatePresignedDownloadUrl,
+  getS3ObjectStream,
   getMimeType,
   formatContentDisposition,
 } from '../services/s3Service.js';
@@ -2484,6 +2485,26 @@ adminRouter.get('/courses/:courseId/resources/:resourceId/download', async (req,
 
     // 1. S3 Stored Resource
     if (resource.s3_key) {
+      if (req.query.stream === 'true' || req.query.proxy === 'true') {
+        try {
+          const range = req.headers.range;
+          const s3Obj = await getS3ObjectStream({ key: resource.s3_key, range });
+          res.setHeader('Content-Type', effectiveMimeType);
+          res.setHeader('Content-Disposition', formatContentDisposition(fileName, dispositionType));
+          res.setHeader('Accept-Ranges', 'bytes');
+          res.setHeader('Cache-Control', 'private, max-age=3600');
+          if (s3Obj.ContentRange) {
+            res.status(206);
+            res.setHeader('Content-Range', s3Obj.ContentRange);
+          }
+          if (s3Obj.ContentLength) res.setHeader('Content-Length', s3Obj.ContentLength);
+          if (s3Obj.ETag) res.setHeader('ETag', s3Obj.ETag);
+          return s3Obj.Body.pipe(res);
+        } catch (streamErr) {
+          console.warn('[Admin S3 Stream Warning - fallback to presigned redirect]:', streamErr.message);
+        }
+      }
+
       const activeUrl = await generatePresignedDownloadUrl({
         key: resource.s3_key,
         filename: fileName,
@@ -2513,12 +2534,15 @@ adminRouter.get('/courses/:courseId/resources/:resourceId/download', async (req,
         });
       }
 
+      const streamUrl = `/api/admin/courses/${courseId}/resources/${resource.id}/view?stream=true`;
+
       if (req.query.json === 'true' || req.headers.accept?.includes('application/json')) {
         return res.json({
           success: true,
           url: isInline ? viewUrl : downloadUrl,
           viewUrl,
           downloadUrl,
+          streamUrl,
           fileName,
           fileSize: resource.file_size,
           contentType: effectiveMimeType,

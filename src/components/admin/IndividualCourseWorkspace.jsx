@@ -1046,7 +1046,7 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
       setPdfViewerState((prev) => ({
         ...prev,
         viewUrl: data.viewUrl || data.url,
-        downloadUrl: data.downloadUrl || data.url,
+        streamUrl: data.streamUrl || `/api/admin/courses/${courseId}/resources/${item.id}/download?stream=true`,
         fileName: data.fileName || prev.fileName,
         fileSize: data.fileSize || prev.fileSize,
         loading: false,
@@ -1906,25 +1906,15 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
                             {new Date(item.created_at).toLocaleDateString()}
                           </span>
                           {item.resource_type === 'pdf' || item.file_name?.toLowerCase().endsWith('.pdf') ? (
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenResource(item)}
-                                className="tm-btn-primary-xs"
-                                title="View PDF Document In-App"
-                              >
-                                <Eye size={12} />
-                                <span>View PDF</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleAdminDownloadResource(item)}
-                                className="tm-btn-outline-xs"
-                                title="Download PDF File"
-                              >
-                                <Download size={12} />
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenResource(item)}
+                              className="tm-btn-primary-xs"
+                              title="View PDF Document In-App"
+                            >
+                              <Eye size={12} />
+                              <span>View PDF</span>
+                            </button>
                           ) : (
                             <button
                               type="button"
@@ -3081,13 +3071,9 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
         title={pdfViewerState.title}
         fileName={pdfViewerState.fileName}
         fileSize={pdfViewerState.fileSize}
+        streamUrl={pdfViewerState.streamUrl}
         viewUrl={pdfViewerState.viewUrl}
-        downloadUrl={pdfViewerState.downloadUrl}
-        loading={pdfViewerState.loading}
-        error={pdfViewerState.error}
         theme={theme}
-        onRetry={() => pdfViewerState.resource && handleOpenResource(pdfViewerState.resource)}
-        onDownload={() => pdfViewerState.resource && handleAdminDownloadResource(pdfViewerState.resource)}
       />
     </div>
   );

@@ -7,6 +7,7 @@ import { authMiddleware } from '../middleware/auth.js';
 import {
   generatePresignedGetUrl,
   generatePresignedDownloadUrl,
+  getS3ObjectStream,
   uploadObjectToS3,
   getMimeType,
   formatContentDisposition,
@@ -1130,6 +1131,26 @@ studentRouter.get('/courses/:courseId/resources/:resourceId/download', async (re
 
     // 4. Case A: Stored in AWS S3
     if (resource.s3_key) {
+      if (req.query.stream === 'true' || req.query.proxy === 'true') {
+        try {
+          const range = req.headers.range;
+          const s3Obj = await getS3ObjectStream({ key: resource.s3_key, range });
+          res.setHeader('Content-Type', effectiveMimeType);
+          res.setHeader('Content-Disposition', formatContentDisposition(fileName, dispositionType));
+          res.setHeader('Accept-Ranges', 'bytes');
+          res.setHeader('Cache-Control', 'private, max-age=3600');
+          if (s3Obj.ContentRange) {
+            res.status(206);
+            res.setHeader('Content-Range', s3Obj.ContentRange);
+          }
+          if (s3Obj.ContentLength) res.setHeader('Content-Length', s3Obj.ContentLength);
+          if (s3Obj.ETag) res.setHeader('ETag', s3Obj.ETag);
+          return s3Obj.Body.pipe(res);
+        } catch (streamErr) {
+          console.warn('[Student S3 Stream Warning - fallback to presigned redirect]:', streamErr.message);
+        }
+      }
+
       const activeUrl = await generatePresignedDownloadUrl({
         key: resource.s3_key,
         filename: fileName,
@@ -1158,12 +1179,15 @@ studentRouter.get('/courses/:courseId/resources/:resourceId/download', async (re
         });
       }
 
+      const streamUrl = `/api/student/courses/${courseId}/resources/${resource.id}/view?stream=true`;
+
       if (req.query.json === 'true' || req.headers.accept?.includes('application/json')) {
         return res.json({
           success: true,
           url: isInline ? viewUrl : downloadUrl,
           viewUrl,
           downloadUrl,
+          streamUrl,
           fileName,
           fileSize: resource.file_size,
           contentType: effectiveMimeType,

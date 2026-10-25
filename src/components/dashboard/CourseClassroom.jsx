@@ -213,7 +213,7 @@ export const CourseClassroom = ({ courseId, user, onBack, theme = 'dark' }) => {
       setPdfViewerState((prev) => ({
         ...prev,
         viewUrl: data.viewUrl || data.url,
-        downloadUrl: data.downloadUrl || data.url,
+        streamUrl: data.streamUrl || `/api/student/courses/${courseId}/resources/${item.id}/download?stream=true`,
         fileName: data.fileName || prev.fileName,
         fileSize: data.fileSize || prev.fileSize,
         loading: false,
@@ -675,31 +675,15 @@ export const CourseClassroom = ({ courseId, user, onBack, theme = 'dark' }) => {
                   </div>
 
                   {item.resource_type === 'pdf' || item.file_name?.toLowerCase().endsWith('.pdf') ? (
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleViewResource(item)}
-                        className="tm-btn-view-resource"
-                        id={`tm-view-res-${item.id}`}
-                      >
-                        <span>View PDF</span>
-                        <span aria-hidden="true">&rarr;</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadResource(item)}
-                        disabled={downloadingResourceId === item.id}
-                        className="tm-btn-download-resource icon-only"
-                        id={`tm-download-res-${item.id}`}
-                        title="Download PDF File"
-                      >
-                        {downloadingResourceId === item.id ? (
-                          <span className="tm-spinner-inline" />
-                        ) : (
-                          <span aria-hidden="true">&darr;</span>
-                        )}
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleViewResource(item)}
+                      className="tm-btn-view-resource"
+                      id={`tm-view-res-${item.id}`}
+                    >
+                      <span>View PDF</span>
+                      <span aria-hidden="true">&rarr;</span>
+                    </button>
                   ) : (
                     <button
                       type="button"
@@ -964,13 +948,9 @@ export const CourseClassroom = ({ courseId, user, onBack, theme = 'dark' }) => {
         title={pdfViewerState.title}
         fileName={pdfViewerState.fileName}
         fileSize={pdfViewerState.fileSize}
+        streamUrl={pdfViewerState.streamUrl}
         viewUrl={pdfViewerState.viewUrl}
-        downloadUrl={pdfViewerState.downloadUrl}
-        loading={pdfViewerState.loading}
-        error={pdfViewerState.error}
         theme={theme}
-        onRetry={() => pdfViewerState.resource && handleViewResource(pdfViewerState.resource)}
-        onDownload={() => pdfViewerState.resource && handleDownloadResource(pdfViewerState.resource)}
       />
     </div>
   );

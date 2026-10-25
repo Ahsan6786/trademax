@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X,
-  Download,
   ZoomIn,
   ZoomOut,
   Maximize2,
@@ -10,7 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
-  ExternalLink,
   ShieldCheck,
   FileText,
   AlertCircle,
@@ -24,35 +22,198 @@ export const PdfViewerModal = ({
   title = 'Course Document',
   fileName = 'material.pdf',
   fileSize,
+  streamUrl,
   viewUrl,
-  downloadUrl,
-  loading = false,
-  error = null,
-  onRetry,
-  onDownload,
   theme = 'dark',
 }) => {
+  const [pdfDoc, setPdfDoc] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [numPages, setNumPages] = useState(0);
   const [pageInput, setPageInput] = useState('1');
   const [zoomLevel, setZoomLevel] = useState(100);
   const [fitWidth, setFitWidth] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
-  const containerRef = useRef(null);
-  const iframeRef = useRef(null);
+  const [loadingDoc, setLoadingDoc] = useState(false);
+  const [renderingPage, setRenderingPage] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
 
-  // Reset page and zoom when a new document opens
-  useEffect(() => {
-    if (isOpen) {
+  const containerRef = useRef(null);
+  const bodyRef = useRef(null);
+  const canvasRef = useRef(null);
+  const renderTaskRef = useRef(null);
+
+  // Helper to ensure PDF.js script is loaded
+  const ensurePdfJsLoaded = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      if (window.pdfjsLib) {
+        if (!window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.js';
+        }
+        return resolve(window.pdfjsLib);
+      }
+
+      const existingScript = document.querySelector('script[src="/pdfjs/pdf.min.js"]');
+      if (existingScript) {
+        existingScript.addEventListener('load', () => {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.js';
+          resolve(window.pdfjsLib);
+        });
+        existingScript.addEventListener('error', () => reject(new Error('Failed to load local PDF.js engine')));
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = '/pdfjs/pdf.min.js';
+      script.async = true;
+      script.onload = () => {
+        if (window.pdfjsLib) {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.js';
+          resolve(window.pdfjsLib);
+        } else {
+          reject(new Error('PDF.js library failed to initialize'));
+        }
+      };
+      script.onerror = () => reject(new Error('Failed to load PDF viewer script'));
+      document.body.appendChild(script);
+    });
+  }, []);
+
+  // Fetch PDF binary data & load document into PDF.js
+  const loadPdfDocument = useCallback(async () => {
+    const fetchTarget = streamUrl || viewUrl;
+    if (!fetchTarget) {
+      setErrorMsg('No PDF source URL provided.');
+      return;
+    }
+
+    try {
+      setLoadingDoc(true);
+      setErrorMsg(null);
+      setPdfDoc(null);
+      setNumPages(0);
+      setCurrentPage(1);
+
+      const pdfjs = await ensurePdfJsLoaded();
+
+      const token = localStorage.getItem('tm_token');
+      const res = await fetch(fetchTarget, {
+        headers: {
+          Accept: 'application/pdf, application/octet-stream, */*',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        let errDetails = `HTTP ${res.status}`;
+        try {
+          const jsonErr = await res.json();
+          if (jsonErr.error) errDetails = jsonErr.error;
+        } catch {}
+        throw new Error(`Failed to retrieve PDF document (${errDetails}).`);
+      }
+
+      const arrayBuffer = await res.arrayBuffer();
+      if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+        throw new Error('Received empty PDF data from storage.');
+      }
+
+      const loadingTask = pdfjs.getDocument({
+        data: arrayBuffer,
+        cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+        cMapPacked: true,
+      });
+
+      const loadedDoc = await loadingTask.promise;
+      setPdfDoc(loadedDoc);
+      setNumPages(loadedDoc.numPages);
       setCurrentPage(1);
       setPageInput('1');
+    } catch (err) {
+      console.error('[PDF.js Document Load Error]:', err);
+      setErrorMsg(err.message || 'Unable to load PDF document.');
+    } finally {
+      setLoadingDoc(false);
+    }
+  }, [streamUrl, viewUrl, ensurePdfJsLoaded]);
+
+  // Load document whenever modal opens
+  useEffect(() => {
+    if (isOpen) {
+      loadPdfDocument();
       setZoomLevel(100);
       setFitWidth(false);
-      setIframeLoaded(false);
+    } else {
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+        renderTaskRef.current = null;
+      }
+      setPdfDoc(null);
     }
-  }, [isOpen, viewUrl]);
+  }, [isOpen, loadPdfDocument]);
 
-  // Sync page input field when currentPage changes
+  // Render active page onto canvas
+  const renderCurrentPage = useCallback(async () => {
+    if (!pdfDoc || !canvasRef.current) return;
+
+    try {
+      setRenderingPage(true);
+      const page = await pdfDoc.getPage(currentPage);
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const context = canvas.getContext('2d');
+
+      // Cancel previous render if still in-flight
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+        renderTaskRef.current = null;
+      }
+
+      // Calculate scale (fitWidth vs manual zoomLevel)
+      let targetScale = zoomLevel / 100;
+      if (fitWidth && bodyRef.current) {
+        const availableWidth = bodyRef.current.clientWidth - 48; // padding
+        const unscaledViewport = page.getViewport({ scale: 1 });
+        if (unscaledViewport.width > 0 && availableWidth > 0) {
+          targetScale = availableWidth / unscaledViewport.width;
+        }
+      }
+
+      // Device Pixel Ratio for ultra-crisp vector typography
+      const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+      const viewport = page.getViewport({ scale: targetScale * dpr });
+
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      canvas.style.width = `${viewport.width / dpr}px`;
+      canvas.style.height = `${viewport.height / dpr}px`;
+
+      const renderContext = {
+        canvasContext: context,
+        viewport,
+      };
+
+      const renderTask = page.render(renderContext);
+      renderTaskRef.current = renderTask;
+
+      await renderTask.promise;
+      renderTaskRef.current = null;
+    } catch (err) {
+      if (err?.name !== 'RenderingCancelledException') {
+        console.error('[PDF.js Page Render Error]:', err);
+      }
+    } finally {
+      setRenderingPage(false);
+    }
+  }, [pdfDoc, currentPage, zoomLevel, fitWidth]);
+
+  useEffect(() => {
+    if (pdfDoc) {
+      renderCurrentPage();
+    }
+  }, [pdfDoc, currentPage, zoomLevel, fitWidth, renderCurrentPage]);
+
+  // Sync page input field
   useEffect(() => {
     setPageInput(String(currentPage));
   }, [currentPage]);
@@ -70,7 +231,7 @@ export const PdfViewerModal = ({
     };
   }, []);
 
-  // Keyboard shortcut controls
+  // Keyboard controls
   useEffect(() => {
     if (!isOpen) return;
 
@@ -83,20 +244,26 @@ export const PdfViewerModal = ({
         }
       } else if (e.key === '+' || e.key === '=') {
         e.preventDefault();
-        handleZoomIn();
+        setFitWidth(false);
+        setZoomLevel((prev) => Math.min(300, prev + 25));
       } else if (e.key === '-' || e.key === '_') {
         e.preventDefault();
-        handleZoomOut();
+        setFitWidth(false);
+        setZoomLevel((prev) => Math.max(50, prev - 25));
       } else if (e.key === 'ArrowRight' || e.key === 'PageDown') {
-        handleNextPage();
+        if (numPages && currentPage < numPages) {
+          setCurrentPage((prev) => prev + 1);
+        }
       } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-        handlePrevPage();
+        if (currentPage > 1) {
+          setCurrentPage((prev) => prev - 1);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, zoomLevel, currentPage, fitWidth]);
+  }, [isOpen, currentPage, numPages, onClose]);
 
   if (!isOpen) return null;
 
@@ -120,19 +287,23 @@ export const PdfViewerModal = ({
     setFitWidth((prev) => !prev);
   };
 
-  // Page handlers
+  // Page navigation handlers
   const handleNextPage = () => {
-    setCurrentPage((prev) => prev + 1);
+    if (numPages && currentPage < numPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
   };
 
   const handlePrevPage = () => {
-    setCurrentPage((prev) => Math.max(1, prev - 1));
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
   };
 
   const handlePageInputSubmit = (e) => {
     e.preventDefault();
     const parsed = parseInt(pageInput, 10);
-    if (!isNaN(parsed) && parsed >= 1) {
+    if (!isNaN(parsed) && parsed >= 1 && (!numPages || parsed <= numPages)) {
       setCurrentPage(parsed);
     } else {
       setPageInput(String(currentPage));
@@ -157,29 +328,6 @@ export const PdfViewerModal = ({
     }
   };
 
-  // Download handler
-  const handleTriggerDownload = () => {
-    if (onDownload) {
-      onDownload();
-      return;
-    }
-    const targetUrl = downloadUrl || viewUrl;
-    if (!targetUrl) return;
-
-    const link = document.createElement('a');
-    link.href = targetUrl;
-    link.download = fileName || 'material.pdf';
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Construct PDF Open Parameters hash string
-  const pdfParams = `#page=${currentPage}&zoom=${fitWidth ? 'FitH' : zoomLevel}&view=${fitWidth ? 'FitH' : 'Fit'}&navpanes=0&toolbar=1`;
-  const constructedSrc = viewUrl ? `${viewUrl}${viewUrl.includes('#') ? '' : pdfParams}` : '';
-
   return (
     <div
       className={`tm-pdf-modal-backdrop tm-theme-${theme}`}
@@ -192,7 +340,7 @@ export const PdfViewerModal = ({
         className={`tm-pdf-modal-container ${isFullscreen ? 'is-fullscreen' : ''}`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header & Controls Toolbar */}
+        {/* Header & Controls Toolbar (NO DOWNLOAD BUTTONS) */}
         <div className="tm-pdf-modal-header">
           {/* Metadata Section */}
           <div className="tm-pdf-modal-meta">
@@ -205,14 +353,14 @@ export const PdfViewerModal = ({
             {fileSize && <span className="tm-pdf-size-pill">{fileSize}</span>}
           </div>
 
-          {/* Controls: Page & Zoom */}
+          {/* Controls: Page Navigation & Zoom */}
           <div className="tm-pdf-controls-group">
             {/* Page Navigation */}
             <button
               type="button"
               className="tm-pdf-btn-icon"
               onClick={handlePrevPage}
-              disabled={currentPage <= 1 || loading}
+              disabled={currentPage <= 1 || loadingDoc}
               title="Previous Page (Left Arrow)"
             >
               <ChevronLeft size={16} />
@@ -228,13 +376,16 @@ export const PdfViewerModal = ({
                 className="tm-pdf-page-input"
                 title="Type page number and press Enter"
               />
+              <span className="tm-pdf-total-pages">
+                of {numPages || '...'}
+              </span>
             </form>
 
             <button
               type="button"
               className="tm-pdf-btn-icon"
               onClick={handleNextPage}
-              disabled={loading}
+              disabled={!numPages || currentPage >= numPages || loadingDoc}
               title="Next Page (Right Arrow)"
             >
               <ChevronRight size={16} />
@@ -247,7 +398,7 @@ export const PdfViewerModal = ({
               type="button"
               className="tm-pdf-btn-icon"
               onClick={handleZoomOut}
-              disabled={zoomLevel <= 50 || loading}
+              disabled={zoomLevel <= 50 || loadingDoc}
               title="Zoom Out (-)"
             >
               <ZoomOut size={15} />
@@ -258,14 +409,14 @@ export const PdfViewerModal = ({
               onClick={handleResetZoom}
               title="Click to reset zoom to 100%"
             >
-              {fitWidth ? 'Fit' : `${zoomLevel}%`}
+              {fitWidth ? 'Fit Width' : `${zoomLevel}%`}
             </span>
 
             <button
               type="button"
               className="tm-pdf-btn-icon"
               onClick={handleZoomIn}
-              disabled={zoomLevel >= 300 || loading}
+              disabled={zoomLevel >= 300 || loadingDoc}
               title="Zoom In (+)"
             >
               <ZoomIn size={15} />
@@ -275,7 +426,7 @@ export const PdfViewerModal = ({
               type="button"
               className={`tm-pdf-btn-icon ${fitWidth ? 'active' : ''}`}
               onClick={handleToggleFitWidth}
-              title="Fit to Width"
+              title={fitWidth ? 'Exit Fit to Width' : 'Fit to Width'}
             >
               <Maximize2 size={14} />
             </button>
@@ -290,18 +441,8 @@ export const PdfViewerModal = ({
             </button>
           </div>
 
-          {/* Actions: Download, Fullscreen, External, Close */}
+          {/* Actions: Fullscreen & Close (DOWNLOAD REMOVED) */}
           <div className="tm-pdf-modal-actions">
-            <button
-              type="button"
-              className="tm-pdf-btn-download"
-              onClick={handleTriggerDownload}
-              title="Download PDF to device"
-            >
-              <Download size={14} />
-              <span>Download</span>
-            </button>
-
             <button
               type="button"
               className="tm-pdf-btn-icon"
@@ -310,18 +451,6 @@ export const PdfViewerModal = ({
             >
               {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
             </button>
-
-            {viewUrl && (
-              <a
-                href={viewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="tm-pdf-btn-icon"
-                title="Open PDF in new tab"
-              >
-                <ExternalLink size={15} />
-              </a>
-            )}
 
             <button
               type="button"
@@ -334,53 +463,36 @@ export const PdfViewerModal = ({
           </div>
         </div>
 
-        {/* Viewer Body / Content */}
-        <div className="tm-pdf-modal-body">
-          {loading ? (
+        {/* Viewer Body: PDF.js Canvas Page */}
+        <div ref={bodyRef} className="tm-pdf-modal-body">
+          {loadingDoc ? (
             <div className="tm-pdf-state-box">
-              <RefreshCw size={32} className="tm-pdf-spinner" />
+              <RefreshCw size={36} className="tm-pdf-spinner" />
               <h4>Loading Protected PDF Document...</h4>
-              <p>Authorizing secure stream from AWS S3...</p>
+              <p>Fetching and decoding document pages securely in TradeMax...</p>
             </div>
-          ) : error ? (
+          ) : errorMsg ? (
             <div className="tm-pdf-state-box">
               <AlertCircle size={36} color="#ef4444" />
-              <h4>Unable to Preview PDF</h4>
-              <p>{error}</p>
-              <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-                {onRetry && (
-                  <button
-                    type="button"
-                    onClick={onRetry}
-                    className="tm-btn-outline-xs"
-                    style={{ padding: '6px 14px' }}
-                  >
-                    Retry
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={handleTriggerDownload}
-                  className="tm-pdf-btn-download"
-                >
-                  <Download size={14} />
-                  <span>Download File Directly</span>
-                </button>
-              </div>
+              <h4>Unable to Render PDF</h4>
+              <p>{errorMsg}</p>
+              <button
+                type="button"
+                onClick={loadPdfDocument}
+                className="tm-btn-primary"
+                style={{ marginTop: 8 }}
+              >
+                Retry Loading
+              </button>
             </div>
-          ) : viewUrl ? (
-            <iframe
-              ref={iframeRef}
-              key={constructedSrc}
-              src={constructedSrc}
-              title={title || fileName}
-              className="tm-pdf-iframe"
-              onLoad={() => setIframeLoaded(true)}
-            />
           ) : (
-            <div className="tm-pdf-state-box">
-              <AlertCircle size={32} />
-              <p>No preview stream available for this file.</p>
+            <div className="tm-pdf-canvas-container">
+              {renderingPage && (
+                <div className="tm-pdf-render-overlay">
+                  <RefreshCw size={24} className="tm-pdf-spinner" />
+                </div>
+              )}
+              <canvas ref={canvasRef} className="tm-pdf-canvas" />
             </div>
           )}
         </div>
@@ -389,10 +501,10 @@ export const PdfViewerModal = ({
         <div className="tm-pdf-modal-footer">
           <span className="tm-pdf-footer-pill">
             <ShieldCheck size={14} />
-            <span>Encrypted TradeMax S3 Stream (15-min signed token)</span>
+            <span>Protected TradeMax Course Material · In-App Canvas Rendering</span>
           </span>
           <span className="tm-pdf-footer-hint">
-            <span>Use +/- to zoom · Arrow keys to change page · Esc to close</span>
+            <span>Page {currentPage} of {numPages || 1} · Zoom: {fitWidth ? 'Fit' : `${zoomLevel}%`} · Use +/- to zoom · Arrows to change page</span>
           </span>
         </div>
       </div>
