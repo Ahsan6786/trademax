@@ -2313,7 +2313,32 @@ adminRouter.delete('/courses/:courseId/announcements/:announcementId', async (re
  * POST /api/admin/courses/:courseId/resources
  * Upload or attach post/note/PDF/assignment to course
  */
-adminRouter.post('/courses/:courseId/resources', upload.single('file'), async (req, res) => {
+const handleResourceUpload = (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({
+            success: false,
+            error: 'File size exceeds maximum allowed limit (50 MB). Please compress or choose a smaller file.',
+          });
+        }
+        return res.status(400).json({
+          success: false,
+          error: `Upload failed: ${err.message}`,
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        error: err.message || 'Invalid file upload request.',
+      });
+    }
+    next();
+  });
+};
+
+adminRouter.post('/courses/:courseId/resources', handleResourceUpload, async (req, res) => {
+  let uploadedLocalPath = req.file ? req.file.path : null;
   try {
     const courseId = parseInt(req.params.courseId, 10);
     const {
@@ -2325,6 +2350,9 @@ adminRouter.post('/courses/:courseId/resources', upload.single('file'), async (r
     } = req.body;
 
     if (!title || !title.trim()) {
+      if (uploadedLocalPath && fs.existsSync(uploadedLocalPath)) {
+        try { fs.unlinkSync(uploadedLocalPath); } catch {}
+      }
       return res.status(400).json({ success: false, error: 'Resource title is required.' });
     }
 
@@ -2343,28 +2371,33 @@ adminRouter.post('/courses/:courseId/resources', upload.single('file'), async (r
         : `${Math.round(fileSizeBytes / 1024)} KB`;
       contentType = req.file.mimetype || getMimeType(fileName);
 
-      // Attempt direct S3 upload
+      // Attempt direct S3 streaming upload
       const cleanExt = path.extname(fileName).toLowerCase();
       const sanitizedBase = path.basename(fileName, cleanExt).replace(/[^a-zA-Z0-9._-]/g, '_');
       const uniqueFolder = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
       const generatedS3Key = `courses/${courseId}/resources/${uniqueFolder}/${sanitizedBase}${cleanExt}`;
 
       try {
-        const fileBuffer = fs.readFileSync(req.file.path);
+        const fileStream = fs.createReadStream(req.file.path);
         await uploadObjectToS3({
           key: generatedS3Key,
-          body: fileBuffer,
+          body: fileStream,
           contentType,
+          contentLength: fileSizeBytes,
         });
         s3Key = generatedS3Key;
         finalUrl = generatedS3Key;
-        // Clean up temporary local file once stored on S3
-        try { fs.unlinkSync(req.file.path); } catch {}
+        // Clean up temporary local file once successfully stored on S3
+        try {
+          fs.unlinkSync(req.file.path);
+          uploadedLocalPath = null;
+        } catch {}
       } catch (s3Err) {
-        console.warn('[Admin Resource S3 Upload Warning - fallback to local]:', s3Err.message);
+        console.warn('[Admin Resource S3 Upload Warning - fallback to local storage]:', s3Err.message);
         // Fallback to local storage if AWS S3 is not available
         s3Key = null;
         finalUrl = `/uploads/${req.file.filename}`;
+        uploadedLocalPath = null; // Keep local file on disk as finalUrl points to it
       }
     }
 
@@ -2410,10 +2443,15 @@ adminRouter.post('/courses/:courseId/resources', upload.single('file'), async (r
       ]
     );
 
+    console.log(`[Admin Resource Upload Success] Course: ${courseId}, ResourceID: ${resource.id}, File: "${fileName || 'link-only'}", Size: ${fileSize || 'N/A'}, Storage: ${s3Key ? 'AWS S3' : 'Local Disk'}`);
+
     return res.status(201).json({ success: true, resource });
   } catch (err) {
-    console.error('[Admin Resource Upload Error]:', err);
-    return res.status(500).json({ success: false, error: 'Failed to upload resource.' });
+    if (uploadedLocalPath && fs.existsSync(uploadedLocalPath)) {
+      try { fs.unlinkSync(uploadedLocalPath); } catch {}
+    }
+    console.error(`[Admin Resource Upload Error] Course: ${req.params.courseId}:`, err.message);
+    return res.status(500).json({ success: false, error: 'Failed to upload resource. Please try again.' });
   }
 });
 

@@ -114,6 +114,7 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
   // Course Materials Form (Section 12)
   const [isResourceModalOpen, setIsResourceModalOpen] = useState(false);
   const [resourceFile, setResourceFile] = useState(null);
+  const [isUploadingResource, setIsUploadingResource] = useState(false);
   const [resourceForm, setResourceForm] = useState({
     title: '',
     description: '',
@@ -892,13 +893,19 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
       return;
     }
 
+    if (resourceFile && resourceFile.size > 50 * 1024 * 1024) {
+      showToast('Selected file exceeds the 50 MB limit. Please compress or choose a smaller file.', 'error');
+      return;
+    }
+
+    setIsUploadingResource(true);
     try {
       const formData = new FormData();
-      formData.append('title', resourceForm.title);
-      formData.append('description', resourceForm.description);
-      formData.append('resource_type', resourceForm.resource_type);
-      formData.append('batch_name', resourceForm.batch_name);
-      if (resourceForm.resource_url) formData.append('resource_url', resourceForm.resource_url);
+      formData.append('title', resourceForm.title.trim());
+      formData.append('description', resourceForm.description || '');
+      formData.append('resource_type', resourceForm.resource_type || 'pdf');
+      formData.append('batch_name', resourceForm.batch_name || 'All Batches');
+      if (resourceForm.resource_url) formData.append('resource_url', resourceForm.resource_url.trim());
       if (resourceFile) formData.append('file', resourceFile);
 
       const res = await fetch(`/api/admin/courses/${courseId}/resources`, {
@@ -907,14 +914,20 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
         credentials: 'include',
         body: formData,
       });
-      const data = await res.json();
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = { error: `Server returned HTTP ${res.status}. Please check your connection or file size.` };
+      }
 
       if (!res.ok || !data.success) {
         showToast(data.error || 'Failed to attach resource.', 'error');
         return;
       }
 
-      showToast('Resource attached and published.');
+      showToast('Resource attached and published successfully.');
       setIsResourceModalOpen(false);
       setResourceFile(null);
       setResourceForm({
@@ -927,7 +940,12 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
       });
       fetchWorkspace();
     } catch (err) {
-      showToast('Error uploading resource.', 'error');
+      console.error('[Upload Resource Network Error]:', err);
+      showToast(err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')
+        ? 'Network interrupted or server reset the connection during upload. Please verify file size and retry.'
+        : 'Error uploading resource. Please check connection.', 'error');
+    } finally {
+      setIsUploadingResource(false);
     }
   };
 
@@ -2750,12 +2768,29 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
               </div>
 
               <div className="tm-ws-form-group">
-                <label>File Upload (PDF, PPT, PPTX, DOC, DOCX, ZIP, XLS, XLSX)</label>
+                <label>
+                  File Upload (PDF, PPT, PPTX, DOC, DOCX, ZIP, XLS, XLSX)
+                  {resourceFile && (
+                    <span style={{ marginLeft: 8, fontSize: '0.8rem', color: '#10b981' }}>
+                      ({resourceFile.name} — {(resourceFile.size / (1024 * 1024)).toFixed(2)} MB)
+                    </span>
+                  )}
+                </label>
                 <input
                   type="file"
+                  disabled={isUploadingResource}
                   accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.zip,.rar,.7z"
                   onChange={(e) => {
-                    if (e.target.files?.[0]) setResourceFile(e.target.files[0]);
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      if (f.size > 50 * 1024 * 1024) {
+                        showToast(`File size is ${(f.size / (1024 * 1024)).toFixed(1)} MB. Maximum allowed upload is 50 MB.`, 'error');
+                        e.target.value = '';
+                        setResourceFile(null);
+                        return;
+                      }
+                      setResourceFile(f);
+                    }
                   }}
                 />
               </div>
@@ -2764,6 +2799,7 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
                 <label>Or External Document Link</label>
                 <input
                   type="url"
+                  disabled={isUploadingResource}
                   value={resourceForm.resource_url}
                   onChange={(e) =>
                     setResourceForm({ ...resourceForm, resource_url: e.target.value })
@@ -2776,12 +2812,13 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
                 <button
                   type="button"
                   className="tm-btn-outline-xs"
-                  onClick={() => setIsResourceModalOpen(false)}
+                  disabled={isUploadingResource}
+                  onClick={() => !isUploadingResource && setIsResourceModalOpen(false)}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="tm-btn-primary">
-                  Attach Material
+                <button type="submit" className="tm-btn-primary" disabled={isUploadingResource}>
+                  {isUploadingResource ? 'Uploading & Processing...' : 'Attach Material'}
                 </button>
               </div>
             </form>

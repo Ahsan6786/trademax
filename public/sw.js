@@ -1,4 +1,4 @@
-const CACHE_NAME = 'trademax-v1.1.0';
+const CACHE_NAME = 'trademax-v1.1.2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -37,9 +37,24 @@ self.addEventListener('activate', (event) => {
 
 // Fetch: Network-only for API, Network-first with cache fallback for pages
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
+  // CRITICAL: Ignore non-http schemes (e.g. chrome-extension://, moz-extension://, data:, blob:)
+  if (!event.request || !event.request.url || !event.request.url.startsWith('http')) {
+    return;
+  }
 
-  // STRICT RULE: Never cache API requests or sensitive student data
+  let url;
+  try {
+    url = new URL(event.request.url);
+  } catch {
+    return;
+  }
+
+  // Only handle requests targeting our own origin
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // STRICT RULE: Never cache or intercept API requests or non-GET methods
   if (url.pathname.startsWith('/api/') || event.request.method !== 'GET') {
     return;
   }

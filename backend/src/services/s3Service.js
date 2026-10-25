@@ -72,12 +72,18 @@ export function formatContentDisposition(filename = 'download', type = 'attachme
 /**
  * Upload a buffer or stream directly to S3
  */
-export async function uploadObjectToS3({ key, body, contentType = 'application/octet-stream' }) {
+export async function uploadObjectToS3({
+  key,
+  body,
+  contentType = 'application/octet-stream',
+  contentLength,
+}) {
   const command = new PutObjectCommand({
     Bucket: S3_BUCKET,
     Key: key,
     Body: body,
     ContentType: contentType,
+    ...(contentLength !== undefined && contentLength !== null ? { ContentLength: contentLength } : {}),
   });
   return await s3Client.send(command);
 }

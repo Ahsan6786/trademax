@@ -1152,8 +1152,14 @@ studentRouter.get('/courses/:courseId/resources/:resourceId/download', async (re
         // Opportunistic upload to S3 if reachable
         try {
           const s3Key = `courses/${courseId}/resources/${resource.id}/${encodeURIComponent(fileName)}`;
-          const fileBuf = fs.readFileSync(filePath);
-          await uploadObjectToS3({ key: s3Key, body: fileBuf, contentType: mimeType });
+          const fileStat = fs.statSync(filePath);
+          const fileStream = fs.createReadStream(filePath);
+          await uploadObjectToS3({
+            key: s3Key,
+            body: fileStream,
+            contentType: mimeType,
+            contentLength: fileStat.size,
+          });
           await pool.query(
             'UPDATE course_resources SET s3_key = $1, content_type = $2 WHERE id = $3',
             [s3Key, mimeType, resource.id]

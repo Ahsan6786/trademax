@@ -106,7 +106,28 @@ app.use((req, res) => {
 
 // Global Error Handler
 app.use((err, req, res, next) => {
-  console.error('[Unhandled Server Error]:', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  if (err.name === 'MulterError') {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({
+        success: false,
+        error: 'File size exceeds maximum allowed limit (50 MB).',
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      error: `Upload error: ${err.message}`,
+    });
+  }
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({
+      success: false,
+      error: 'Request payload too large.',
+    });
+  }
+  console.error('[Unhandled Server Error]:', err.message || err);
   res.status(500).json({
     success: false,
     error: 'Internal server error occurred.',

@@ -343,4 +343,75 @@ describe('Course Material Upload & Download Functionality Suite', () => {
 
     try { fs.unlinkSync(legacyPath); } catch {}
   });
+
+  it('11. Admin uploads large PDF (5 MB) - streams cleanly without connection reset', async () => {
+    // 5 MB simulated PDF payload
+    const fiveMbBuffer = Buffer.alloc(5 * 1024 * 1024, '%PDF-1.4\n5MB-PDF-BODY\n');
+    const filename = 'Institutional Order Flow Mastery - 5MB.pdf';
+    const formData = new FormData();
+    formData.append('title', 'Institutional Order Flow Mastery 5MB');
+    formData.append('description', 'Comprehensive 5MB institutional manual');
+    formData.append('resource_type', 'pdf');
+    formData.append('batch_name', 'November');
+    formData.append('file', new Blob([fiveMbBuffer], { type: 'application/pdf' }), filename);
+
+    const res = await fetch(`${API_BASE}/admin/courses/${testCourse.id}/resources`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: formData,
+    });
+
+    const data = await res.json();
+    assert.equal(res.status, 201);
+    assert.equal(data.success, true);
+    assert.equal(data.resource.file_name, filename);
+    assert.equal(Number(data.resource.file_size_bytes), 5 * 1024 * 1024);
+    assert.equal(data.resource.file_size, '5.0 MB');
+    uploadedResources.push(data.resource);
+  });
+
+  it('12. Upload exceeding 50 MB limit returns clean HTTP 413 rather than connection reset', async () => {
+    // 51 MB simulated buffer to trigger Multer LIMIT_FILE_SIZE
+    const oversizedBuffer = Buffer.alloc(51 * 1024 * 1024, 'X');
+    const filename = 'Excessive Course File - 51MB.pdf';
+    const formData = new FormData();
+    formData.append('title', 'Oversized Course Resource');
+    formData.append('file', new Blob([oversizedBuffer], { type: 'application/pdf' }), filename);
+
+    const res = await fetch(`${API_BASE}/admin/courses/${testCourse.id}/resources`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: formData,
+    });
+
+    const data = await res.json();
+    assert.equal(res.status, 413, `Expected HTTP 413, received ${res.status}`);
+    assert.equal(data.success, false);
+    assert.ok(data.error.toLowerCase().includes('50 mb') || data.error.toLowerCase().includes('exceeds'));
+  });
+
+  it('13. Upload with disallowed file extension returns clean HTTP 400', async () => {
+    const invalidBuffer = Buffer.from('#!/bin/bash\necho "malicious"');
+    const filename = 'script.sh';
+    const formData = new FormData();
+    formData.append('title', 'Disallowed Script File');
+    formData.append('file', new Blob([invalidBuffer], { type: 'application/x-sh' }), filename);
+
+    const res = await fetch(`${API_BASE}/admin/courses/${testCourse.id}/resources`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: formData,
+    });
+
+    const data = await res.json();
+    assert.equal(res.status, 400);
+    assert.equal(data.success, false);
+    assert.ok(data.error.includes('Invalid file type') || data.error.includes('Upload failed'));
+  });
 });
