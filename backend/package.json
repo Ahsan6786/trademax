@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node --test --test-concurrency=1 tests/push-notifications-motivation.test.js tests/manual-payments.test.js tests/support-tickets.test.js tests/e2e-security-audit.test.js"
+    "test": "node --test --test-concurrency=1 tests/push-notifications-motivation.test.js tests/manual-payments.test.js tests/support-tickets.test.js tests/e2e-security-audit.test.js tests/course-materials-download.test.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1152.0",

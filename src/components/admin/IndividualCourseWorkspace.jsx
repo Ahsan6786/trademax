@@ -951,6 +951,17 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
     }
   };
 
+  const handleAdminDownloadResource = (item) => {
+    if (!item) return;
+    if (item.resource_url && /^https?:\/\//i.test(item.resource_url) && !item.s3_key) {
+      window.open(item.resource_url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    const token = localStorage.getItem('tm_token');
+    const downloadEndpoint = `/api/admin/courses/${courseId}/resources/${item.id}/download${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    window.open(downloadEndpoint, '_blank');
+  };
+
   // =========================================================================
   // SECTION 13: STUDENTS MANAGEMENT
   // =========================================================================
@@ -1794,17 +1805,15 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
                             {item.file_size ? `${item.file_size} · ` : ''}
                             {new Date(item.created_at).toLocaleDateString()}
                           </span>
-                          {item.resource_url && (
-                            <a
-                              href={item.resource_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="tm-btn-outline-xs"
-                            >
-                              <ExternalLink size={12} />
-                              <span>View / Download</span>
-                            </a>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleAdminDownloadResource(item)}
+                            className="tm-btn-outline-xs"
+                            title="Download or View Material"
+                          >
+                            <ExternalLink size={12} />
+                            <span>View / Download</span>
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -2707,9 +2716,12 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
                     }
                   >
                     <option value="pdf">PDF Document</option>
-                    <option value="worksheet">Excel / Worksheet</option>
-                    <option value="notes">Lecture Notes</option>
-                    <option value="assignment">Assignment</option>
+                    <option value="presentation">Presentation (PPT / PPTX)</option>
+                    <option value="document">Word Document (DOC / DOCX)</option>
+                    <option value="worksheet">Excel / Spreadsheet (XLS / XLSX)</option>
+                    <option value="archive">ZIP / Compressed Archive</option>
+                    <option value="notes">Lecture Notes / Study Material</option>
+                    <option value="assignment">Assignment / Practice Tasks</option>
                   </select>
                 </div>
 
@@ -2738,9 +2750,10 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
               </div>
 
               <div className="tm-ws-form-group">
-                <label>File Upload (PDF/Doc/ZIP)</label>
+                <label>File Upload (PDF, PPT, PPTX, DOC, DOCX, ZIP, XLS, XLSX)</label>
                 <input
                   type="file"
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.zip,.rar,.7z"
                   onChange={(e) => {
                     if (e.target.files?.[0]) setResourceFile(e.target.files[0]);
                   }}

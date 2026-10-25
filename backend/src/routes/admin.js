@@ -15,6 +15,10 @@ import {
   generatePresignedPartUrl,
   completeMultipart,
   abortMultipart,
+  uploadObjectToS3,
+  generatePresignedDownloadUrl,
+  getMimeType,
+  formatContentDisposition,
 } from '../services/s3Service.js';
 import {
   saveAdminQrCode,
@@ -2316,6 +2320,7 @@ adminRouter.post('/courses/:courseId/resources', upload.single('file'), async (r
       title,
       description = '',
       resource_type = 'pdf',
+      batch_name = 'All Batches',
       resource_url: rawUrl,
     } = req.body;
 
@@ -2326,14 +2331,41 @@ adminRouter.post('/courses/:courseId/resources', upload.single('file'), async (r
     let finalUrl = rawUrl ? rawUrl.trim() : '';
     let fileName = null;
     let fileSize = null;
+    let fileSizeBytes = null;
+    let contentType = null;
+    let s3Key = null;
 
     if (req.file) {
-      finalUrl = `/uploads/${req.file.filename}`;
       fileName = req.file.originalname;
-      const sizeBytes = req.file.size;
-      fileSize = sizeBytes > 1024 * 1024
-        ? `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`
-        : `${Math.round(sizeBytes / 1024)} KB`;
+      fileSizeBytes = req.file.size;
+      fileSize = fileSizeBytes > 1024 * 1024
+        ? `${(fileSizeBytes / (1024 * 1024)).toFixed(1)} MB`
+        : `${Math.round(fileSizeBytes / 1024)} KB`;
+      contentType = req.file.mimetype || getMimeType(fileName);
+
+      // Attempt direct S3 upload
+      const cleanExt = path.extname(fileName).toLowerCase();
+      const sanitizedBase = path.basename(fileName, cleanExt).replace(/[^a-zA-Z0-9._-]/g, '_');
+      const uniqueFolder = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+      const generatedS3Key = `courses/${courseId}/resources/${uniqueFolder}/${sanitizedBase}${cleanExt}`;
+
+      try {
+        const fileBuffer = fs.readFileSync(req.file.path);
+        await uploadObjectToS3({
+          key: generatedS3Key,
+          body: fileBuffer,
+          contentType,
+        });
+        s3Key = generatedS3Key;
+        finalUrl = generatedS3Key;
+        // Clean up temporary local file once stored on S3
+        try { fs.unlinkSync(req.file.path); } catch {}
+      } catch (s3Err) {
+        console.warn('[Admin Resource S3 Upload Warning - fallback to local]:', s3Err.message);
+        // Fallback to local storage if AWS S3 is not available
+        s3Key = null;
+        finalUrl = `/uploads/${req.file.filename}`;
+      }
     }
 
     if (!finalUrl && !req.file) {
@@ -2341,8 +2373,11 @@ adminRouter.post('/courses/:courseId/resources', upload.single('file'), async (r
     }
 
     const insertRes = await pool.query(
-      `INSERT INTO course_resources (course_id, title, description, resource_type, resource_url, file_name, file_size, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO course_resources (
+         course_id, title, description, resource_type, resource_url, s3_key,
+         file_name, file_size, file_size_bytes, content_type, batch_name, created_by
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
       [
         courseId,
@@ -2350,8 +2385,12 @@ adminRouter.post('/courses/:courseId/resources', upload.single('file'), async (r
         description ? description.trim() : null,
         resource_type.trim(),
         finalUrl,
+        s3Key,
         fileName,
         fileSize,
+        fileSizeBytes,
+        contentType,
+        batch_name || 'All Batches',
         req.user.id,
       ]
     );
@@ -2360,13 +2399,14 @@ adminRouter.post('/courses/:courseId/resources', upload.single('file'), async (r
 
     // Auto-generate notification for enrolled students
     await pool.query(
-      `INSERT INTO course_notifications (course_id, title, message, type, reference_id)
-       VALUES ($1, $2, $3, 'resource', $4)`,
+      `INSERT INTO course_notifications (course_id, title, message, type, reference_id, batch_name)
+       VALUES ($1, $2, $3, 'resource', $4, $5)`,
       [
         courseId,
         `New Resource Uploaded: ${title.trim()}`,
-        `A new resource is available for download in Posts & Resources.`,
+        `A new study material "${title.trim()}" is now available for download.`,
         resource.id,
+        batch_name || 'All Batches',
       ]
     );
 
@@ -2374,6 +2414,117 @@ adminRouter.post('/courses/:courseId/resources', upload.single('file'), async (r
   } catch (err) {
     console.error('[Admin Resource Upload Error]:', err);
     return res.status(500).json({ success: false, error: 'Failed to upload resource.' });
+  }
+});
+
+/**
+ * GET /api/admin/courses/:courseId/resources/:resourceId/download
+ * Secure download for admins to inspect or preview course materials
+ */
+adminRouter.get('/courses/:courseId/resources/:resourceId/download', async (req, res) => {
+  try {
+    const courseId = parseInt(req.params.courseId, 10);
+    const resourceId = parseInt(req.params.resourceId, 10);
+
+    const resourceRes = await pool.query(
+      'SELECT * FROM course_resources WHERE id = $1 AND course_id = $2',
+      [resourceId, courseId]
+    );
+
+    if (resourceRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Course material not found.' });
+    }
+
+    const resource = resourceRes.rows[0];
+    const fileName = resource.file_name || `${resource.title || 'material'}.pdf`;
+    const mimeType = resource.content_type || getMimeType(fileName);
+
+    // 1. S3 Stored Resource
+    if (resource.s3_key) {
+      const downloadUrl = await generatePresignedDownloadUrl({
+        key: resource.s3_key,
+        filename: fileName,
+        contentType: mimeType,
+        expiresIn: 900,
+      });
+
+      if (req.query.json === 'true' || req.headers.accept?.includes('application/json')) {
+        return res.json({
+          success: true,
+          downloadUrl,
+          fileName,
+          fileSize: resource.file_size,
+          contentType: mimeType,
+        });
+      }
+
+      return res.redirect(302, downloadUrl);
+    }
+
+    // 2. Legacy / Local Disk Stored Resource
+    if (resource.resource_url && resource.resource_url.startsWith('/uploads/')) {
+      const filePath = path.resolve(uploadDir, path.basename(resource.resource_url));
+      if (fs.existsSync(filePath)) {
+        // Opportunistic upload to S3 if reachable
+        try {
+          const s3Key = `courses/${courseId}/resources/${resource.id}/${encodeURIComponent(fileName)}`;
+          const fileBuf = fs.readFileSync(filePath);
+          await uploadObjectToS3({ key: s3Key, body: fileBuf, contentType: mimeType });
+          await pool.query(
+            'UPDATE course_resources SET s3_key = $1, content_type = $2 WHERE id = $3',
+            [s3Key, mimeType, resource.id]
+          );
+          resource.s3_key = s3Key;
+          const downloadUrl = await generatePresignedDownloadUrl({
+            key: s3Key,
+            filename: fileName,
+            contentType: mimeType,
+            expiresIn: 900,
+          });
+          if (req.query.json === 'true' || req.headers.accept?.includes('application/json')) {
+            return res.json({
+              success: true,
+              downloadUrl,
+              fileName,
+              fileSize: resource.file_size,
+              contentType: mimeType,
+            });
+          }
+          return res.redirect(302, downloadUrl);
+        } catch (uploadErr) {
+          // Fall back to direct file stream
+        }
+
+        const safeAscii = fileName.replace(/["\\]/g, '').replace(/[^\x20-\x7E]/g, '_');
+        const encodedUtf8 = encodeURIComponent(fileName);
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Content-Disposition', `attachment; filename="${safeAscii}"; filename*=UTF-8''${encodedUtf8}`);
+        const stat = fs.statSync(filePath);
+        res.setHeader('Content-Length', stat.size);
+        return fs.createReadStream(filePath).pipe(res);
+      }
+    }
+
+    // 3. External Resource Link (e.g. Google Drive)
+    if (resource.resource_url && /^https?:\/\//i.test(resource.resource_url)) {
+      if (req.query.json === 'true' || req.headers.accept?.includes('application/json')) {
+        return res.json({
+          success: true,
+          downloadUrl: resource.resource_url,
+          fileName,
+          isExternal: true,
+        });
+      }
+      return res.redirect(302, resource.resource_url);
+    }
+
+    return res.status(404).json({
+      success: false,
+      error: 'The requested material file is not available on the server.',
+    });
+  } catch (err) {
+    console.error('[Admin Material Download Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to process material download.' });
   }
 });
 
@@ -2386,12 +2537,24 @@ adminRouter.delete('/courses/:courseId/resources/:resourceId', async (req, res) 
     const courseId = parseInt(req.params.courseId, 10);
     const resourceId = parseInt(req.params.resourceId, 10);
 
-    // Optionally remove local file if in /uploads
-    const resRow = await pool.query('SELECT resource_url FROM course_resources WHERE id = $1 AND course_id = $2', [resourceId, courseId]);
-    if (resRow.rows.length > 0 && resRow.rows[0].resource_url && resRow.rows[0].resource_url.startsWith('/uploads/')) {
-      const filePath = path.resolve(uploadDir, path.basename(resRow.rows[0].resource_url));
-      if (fs.existsSync(filePath)) {
-        try { fs.unlinkSync(filePath); } catch {}
+    const resRow = await pool.query(
+      'SELECT resource_url, s3_key FROM course_resources WHERE id = $1 AND course_id = $2',
+      [resourceId, courseId]
+    );
+    if (resRow.rows.length > 0) {
+      const resource = resRow.rows[0];
+      if (resource.s3_key) {
+        try {
+          await deleteS3Object({ key: resource.s3_key });
+        } catch (s3Err) {
+          console.warn('[Admin Delete Resource S3 Warning]:', s3Err.message);
+        }
+      }
+      if (resource.resource_url && resource.resource_url.startsWith('/uploads/')) {
+        const filePath = path.resolve(uploadDir, path.basename(resource.resource_url));
+        if (fs.existsSync(filePath)) {
+          try { fs.unlinkSync(filePath); } catch {}
+        }
       }
     }
 

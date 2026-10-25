@@ -613,6 +613,9 @@ export const initDb = async () => {
       ALTER TABLE course_resources ADD COLUMN IF NOT EXISTS batch_name VARCHAR(100) DEFAULT 'All Batches';
       ALTER TABLE course_resources ADD COLUMN IF NOT EXISTS s3_key VARCHAR(500);
       ALTER TABLE course_resources ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;
+      ALTER TABLE course_resources ADD COLUMN IF NOT EXISTS content_type VARCHAR(100);
+      ALTER TABLE course_resources ADD COLUMN IF NOT EXISTS file_size_bytes BIGINT;
+      CREATE INDEX IF NOT EXISTS idx_course_resources_s3_key ON course_resources(s3_key);
 
       -- Additive columns for course_notifications
       ALTER TABLE course_notifications ADD COLUMN IF NOT EXISTS batch_name VARCHAR(100) DEFAULT 'All Batches';

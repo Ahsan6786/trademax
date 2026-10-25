@@ -1,9 +1,21 @@
 import { Router } from 'express';
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { pool } from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
-import { generatePresignedGetUrl } from '../services/s3Service.js';
+import {
+  generatePresignedGetUrl,
+  generatePresignedDownloadUrl,
+  uploadObjectToS3,
+  getMimeType,
+  formatContentDisposition,
+} from '../services/s3Service.js';
 import { getPrivateScreenshotFilePath } from '../services/storageService.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadDir = path.resolve(__dirname, '../../uploads');
 
 export const studentRouter = Router();
 
@@ -608,11 +620,11 @@ studentRouter.get('/courses/:courseId/classroom', async (req, res) => {
     // 6. Query Course Posts, Notes, PDFs & Assignments (Batch Restricted)
     const resourcesRes = await pool.query(
       isAdmin
-        ? `SELECT id, title, batch_name, description, resource_type, resource_url, s3_key, file_name, file_size, created_at
+        ? `SELECT id, title, batch_name, description, resource_type, resource_url, s3_key, file_name, file_size, content_type, created_at
            FROM course_resources
            WHERE course_id = $1
            ORDER BY created_at DESC`
-        : `SELECT id, title, batch_name, description, resource_type, resource_url, file_name, file_size, created_at
+        : `SELECT id, title, batch_name, description, resource_type, resource_url, s3_key, file_name, file_size, content_type, created_at
            FROM course_resources
            WHERE course_id = $1
              AND (batch_name = $2 OR batch_name = 'All Batches' OR batch_name IS NULL)
@@ -1032,5 +1044,188 @@ studentRouter.get('/payment-claims/:id/screenshot', async (req, res) => {
     console.error('[Student Screenshot Error]:', err);
     return res.status(500).json({ success: false, error: 'Failed to load screenshot.' });
   }
+});
+
+/**
+ * GET /api/student/courses/:courseId/resources/:resourceId/download
+ * Secure, authenticated download endpoint for enrolled students and admins
+ */
+studentRouter.get('/courses/:courseId/resources/:resourceId/download', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+    const courseId = parseInt(req.params.courseId, 10);
+    const resourceId = parseInt(req.params.resourceId, 10);
+
+    if (isNaN(courseId) || isNaN(resourceId)) {
+      return res.status(400).json({ success: false, error: 'Invalid course or resource identifier.' });
+    }
+
+    // 1. Check Course Enrollment & Batch Authorization (Students only)
+    let studentBatch = 'All Batches';
+    if (!isAdmin) {
+      const userEmail = (req.user.email || '').toLowerCase().trim();
+      const enrollRes = await pool.query(
+        `SELECT id, batch_name, enrollment_status, payment_status
+         FROM enrollments
+         WHERE (user_id = $1 OR LOWER(email) = $2)
+           AND course_id = $3
+           AND enrollment_status = 'enrolled'
+         LIMIT 1`,
+        [userId, userEmail, courseId]
+      );
+
+      if (enrollRes.rows.length === 0) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied. You must be actively enrolled in this course to download materials.',
+        });
+      }
+      studentBatch = enrollRes.rows[0].batch_name || 'All Batches';
+    }
+
+    // 2. Query the requested course resource
+    const resourceRes = await pool.query(
+      `SELECT * FROM course_resources WHERE id = $1 AND course_id = $2 LIMIT 1`,
+      [resourceId, courseId]
+    );
+
+    if (resourceRes.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'The requested course material could not be found.',
+      });
+    }
+
+    const resource = resourceRes.rows[0];
+
+    // 3. Verify Batch Assignment & Publication Status (Students only)
+    if (!isAdmin) {
+      if (resource.is_published === false) {
+        return res.status(403).json({
+          success: false,
+          error: 'This material is not yet published.',
+        });
+      }
+
+      if (
+        resource.batch_name &&
+        resource.batch_name !== 'All Batches' &&
+        resource.batch_name !== studentBatch
+      ) {
+        return res.status(403).json({
+          success: false,
+          error: `This material is reserved for students in batch "${resource.batch_name}".`,
+        });
+      }
+    }
+
+    const fileName = resource.file_name || `${resource.title || 'course-material'}.pdf`;
+    const mimeType = resource.content_type || getMimeType(fileName);
+
+    // 4. Case A: Stored in AWS S3
+    if (resource.s3_key) {
+      const downloadUrl = await generatePresignedDownloadUrl({
+        key: resource.s3_key,
+        filename: fileName,
+        contentType: mimeType,
+        expiresIn: 900, // 15 mins
+      });
+
+      if (req.query.json === 'true' || req.headers.accept?.includes('application/json')) {
+        return res.json({
+          success: true,
+          downloadUrl,
+          fileName,
+          fileSize: resource.file_size,
+          contentType: mimeType,
+        });
+      }
+
+      return res.redirect(302, downloadUrl);
+    }
+
+    // 5. Case B: Stored Locally on Disk
+    if (resource.resource_url && resource.resource_url.startsWith('/uploads/')) {
+      const filePath = path.resolve(uploadDir, path.basename(resource.resource_url));
+      if (fs.existsSync(filePath)) {
+        // Opportunistic upload to S3 if reachable
+        try {
+          const s3Key = `courses/${courseId}/resources/${resource.id}/${encodeURIComponent(fileName)}`;
+          const fileBuf = fs.readFileSync(filePath);
+          await uploadObjectToS3({ key: s3Key, body: fileBuf, contentType: mimeType });
+          await pool.query(
+            'UPDATE course_resources SET s3_key = $1, content_type = $2 WHERE id = $3',
+            [s3Key, mimeType, resource.id]
+          );
+          resource.s3_key = s3Key;
+          const downloadUrl = await generatePresignedDownloadUrl({
+            key: s3Key,
+            filename: fileName,
+            contentType: mimeType,
+            expiresIn: 900,
+          });
+
+          if (req.query.json === 'true' || req.headers.accept?.includes('application/json')) {
+            return res.json({
+              success: true,
+              downloadUrl,
+              fileName,
+              fileSize: resource.file_size,
+              contentType: mimeType,
+            });
+          }
+
+          return res.redirect(302, downloadUrl);
+        } catch (s3Err) {
+          // Fall back to direct local file stream
+        }
+
+        const safeAscii = fileName.replace(/["\\]/g, '').replace(/[^\x20-\x7E]/g, '_');
+        const encodedUtf8 = encodeURIComponent(fileName);
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Content-Disposition', `attachment; filename="${safeAscii}"; filename*=UTF-8''${encodedUtf8}`);
+        const stat = fs.statSync(filePath);
+        res.setHeader('Content-Length', stat.size);
+        return fs.createReadStream(filePath).pipe(res);
+      }
+    }
+
+    // 6. Case C: External URL (e.g. Google Drive / OneDrive)
+    if (resource.resource_url && /^https?:\/\//i.test(resource.resource_url)) {
+      if (req.query.json === 'true' || req.headers.accept?.includes('application/json')) {
+        return res.json({
+          success: true,
+          downloadUrl: resource.resource_url,
+          fileName,
+          isExternal: true,
+        });
+      }
+      return res.redirect(302, resource.resource_url);
+    }
+
+    return res.status(404).json({
+      success: false,
+      error: 'The requested course material file is not available on the storage server.',
+    });
+  } catch (err) {
+    console.error('[Student Resource Download Error]:', err);
+    return res.status(500).json({ success: false, error: 'Failed to process material download request.' });
+  }
+});
+
+/**
+ * GET /api/student/courses/:courseId/resources/:resourceId/download-url
+ * Explicit JSON metadata & download URL retrieval
+ */
+studentRouter.get('/courses/:courseId/resources/:resourceId/download-url', async (req, res) => {
+  req.query.json = 'true';
+  const downloadHandler = studentRouter.stack.find(
+    (layer) => layer.route?.path === '/courses/:courseId/resources/:resourceId/download'
+  )?.route?.stack?.[0]?.handle;
+  if (downloadHandler) {
+    return downloadHandler(req, res);
+  }
+  return res.redirect(307, `/api/student/courses/${req.params.courseId}/resources/${req.params.resourceId}/download?json=true`);
 });
 

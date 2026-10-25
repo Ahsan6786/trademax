@@ -26,6 +26,7 @@ export const CourseClassroom = ({ courseId, user, onBack, theme = 'dark' }) => {
   const [playbackUrl, setPlaybackUrl] = useState('');
   const [loadingPlayback, setLoadingPlayback] = useState(false);
   const [playbackError, setPlaybackError] = useState(null);
+  const [downloadingResourceId, setDownloadingResourceId] = useState(null);
 
   // Fetch secure short-lived playback URL on demand for the active lesson
   const fetchPlaybackUrl = useCallback(async (lesson) => {
@@ -144,6 +145,74 @@ export const CourseClassroom = ({ courseId, user, onBack, theme = 'dark' }) => {
       console.error('[Toggle Progress Error]:', err);
     } finally {
       setTogglingProgress(false);
+    }
+  };
+
+  // Securely download course material with original filename & proper credentials
+  const handleDownloadResource = async (item) => {
+    if (!item) return;
+
+    // External URL fallback (e.g. Google Drive) if not an S3/internal file
+    if (item.resource_url && /^https?:\/\//i.test(item.resource_url) && !item.s3_key) {
+      window.open(item.resource_url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    try {
+      setDownloadingResourceId(item.id);
+
+      const token = localStorage.getItem('tm_token');
+      const downloadEndpoint = `/api/student/courses/${courseId}/resources/${item.id}/download${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+
+      const res = await fetch(downloadEndpoint, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json, */*',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        let errMsg = `Failed to download material (HTTP ${res.status}).`;
+        try {
+          const errJson = await res.json();
+          if (errJson.error) errMsg = errJson.error;
+        } catch {}
+        throw new Error(errMsg);
+      }
+
+      const contentType = res.headers.get('content-type') || '';
+
+      // If backend returned JSON with presigned downloadUrl
+      if (contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data.downloadUrl) {
+          const a = document.createElement('a');
+          a.href = data.downloadUrl;
+          a.download = data.fileName || item.file_name || `${item.title || 'material'}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          return;
+        }
+      }
+
+      // If backend streamed binary blob directly (local disk fallback)
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = item.file_name || `${item.title || 'material'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 15000);
+    } catch (err) {
+      console.error('[Download Resource Error]:', err);
+      alert(err.message || 'Error downloading material. Please try again or contact support.');
+    } finally {
+      setDownloadingResourceId(null);
     }
   };
 
@@ -524,16 +593,25 @@ export const CourseClassroom = ({ courseId, user, onBack, theme = 'dark' }) => {
                     )}
                   </div>
 
-                  <a
-                    href={item.resource_url || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    download={item.file_name || undefined}
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadResource(item)}
+                    disabled={downloadingResourceId === item.id}
                     className="tm-btn-download-resource"
+                    id={`tm-download-res-${item.id}`}
                   >
-                    <span>Download Material</span>
-                    <span aria-hidden="true">&darr;</span>
-                  </a>
+                    {downloadingResourceId === item.id ? (
+                      <>
+                        <span className="tm-spinner-inline" />
+                        <span>Downloading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Download Material</span>
+                        <span aria-hidden="true">&darr;</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               ))
             )}
