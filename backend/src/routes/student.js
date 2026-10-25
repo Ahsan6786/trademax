@@ -534,7 +534,8 @@ studentRouter.get('/courses/:courseId/classroom', async (req, res) => {
       isAdmin
         ? pool.query(
             `SELECT id, module_name, title, description, duration_minutes, sort_order, batch_name,
-                    release_at, (s3_key IS NOT NULL OR video_url IS NOT NULL) as has_video
+                    release_at, availability_days, expires_at,
+                    (s3_key IS NOT NULL OR video_url IS NOT NULL) as has_video
              FROM course_lessons
              WHERE course_id = $1
              ORDER BY sort_order ASC, id ASC`,
@@ -542,12 +543,14 @@ studentRouter.get('/courses/:courseId/classroom', async (req, res) => {
           )
         : pool.query(
             `SELECT id, module_name, title, description, duration_minutes, sort_order, batch_name,
-                    release_at, (s3_key IS NOT NULL OR video_url IS NOT NULL) as has_video
+                    release_at, availability_days, expires_at,
+                    (s3_key IS NOT NULL OR video_url IS NOT NULL) as has_video
              FROM course_lessons
              WHERE course_id = $1
                AND is_published = TRUE
                AND (batch_name = $2 OR batch_name = 'All Batches' OR batch_name IS NULL)
                AND (release_at IS NULL OR release_at <= CURRENT_TIMESTAMP)
+               AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
              ORDER BY sort_order ASC, id ASC`,
             [courseId, studentBatch]
           ),
@@ -722,7 +725,7 @@ const handlePlaybackUrlRequest = async (req, res) => {
     // 2. Lesson Query
     const lessonRes = await pool.query(
       `SELECT id, course_id, title, description, s3_key, video_url, content_type,
-              batch_name, release_at, is_published
+              batch_name, release_at, expires_at, is_published
        FROM course_lessons
        WHERE id = $1 AND course_id = $2
        LIMIT 1`,
@@ -735,7 +738,7 @@ const handlePlaybackUrlRequest = async (req, res) => {
 
     const lesson = lessonRes.rows[0];
 
-    // 3. Authorization Checks (Publication & Release Date)
+    // 3. Authorization Checks (Publication, Release Date & Video Expiry)
     if (!isAdmin) {
       if (!lesson.is_published) {
         return res.status(403).json({
@@ -748,6 +751,14 @@ const handlePlaybackUrlRequest = async (req, res) => {
         return res.status(403).json({
           success: false,
           error: `This lesson is scheduled to be released on ${new Date(lesson.release_at).toLocaleString()}.`,
+        });
+      }
+
+      // Check Video Availability Duration Expiry
+      if (lesson.expires_at && new Date(lesson.expires_at) <= new Date()) {
+        return res.status(403).json({
+          success: false,
+          error: `This video lesson expired on ${new Date(lesson.expires_at).toLocaleDateString()} and is no longer available.`,
         });
       }
 

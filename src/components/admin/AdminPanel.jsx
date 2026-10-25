@@ -1968,7 +1968,7 @@ export const AdminPanel = ({
                           <strong>{course.enrolled_count || 0}</strong> students enrolled
                         </div>
 
-                        <div className="tm-admin-course-card-actions" style={{ flexDirection: 'column' }}>
+                        <div className="tm-admin-course-card-actions">
                           <button
                             type="button"
                             className="tm-admin-open-course-btn"
@@ -1978,44 +1978,42 @@ export const AdminPanel = ({
                             <ExternalLink size={14} />
                             <span>Open Course</span>
                           </button>
-                          <div style={{ display: 'flex', gap: '0.35rem', width: '100%' }}>
+                          <div className="tm-admin-course-card-secondary-actions">
                             <button
                               type="button"
-                              className="tm-btn-outline-xs"
-                              style={{ flex: 1, justifyContent: 'center' }}
+                              className="tm-btn-outline-xs tm-course-btn-students"
                               onClick={() => handleOpenCourseDetails(course.id)}
                               title="View enrolled students list"
                             >
-                              <Eye size={13} /> Students
+                              <Eye size={13} /> <span>Students</span>
                             </button>
                             <button
                               type="button"
-                              className="tm-btn-outline-xs"
-                              style={{ flex: 1, justifyContent: 'center' }}
+                              className="tm-btn-outline-xs tm-course-btn-edit"
                               onClick={() => {
                                 setEditingCourse(course);
                                 setIsCourseModalOpen(true);
                               }}
                               title="Edit course details"
                             >
-                              <Edit size={13} /> Edit
+                              <Edit size={13} /> <span>Edit</span>
                             </button>
                             <button
                               type="button"
-                              className="tm-btn-outline-xs"
-                              style={{ flex: 1, justifyContent: 'center' }}
+                              className="tm-btn-outline-xs tm-course-btn-publish"
                               onClick={() => handleTogglePublishCourse(course)}
                               title={course.is_published ? 'Unpublish course' : 'Publish course'}
                             >
-                              {course.is_published ? 'Unpublish' : 'Publish'}
+                              <span>{course.is_published ? 'Unpublish' : 'Publish'}</span>
                             </button>
                             <button
                               type="button"
-                              className="tm-btn-outline-xs danger"
+                              className="tm-btn-outline-xs danger tm-course-btn-delete"
                               onClick={() => handleDeleteCourse(course)}
                               title="Delete course"
                             >
                               <Trash2 size={13} />
+                              <span className="tm-delete-text-mobile">Delete</span>
                             </button>
                           </div>
                         </div>

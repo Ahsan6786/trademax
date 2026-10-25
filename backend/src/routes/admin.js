@@ -1472,7 +1472,8 @@ adminRouter.get('/courses/:courseId/manage', async (req, res) => {
     const lessonsRes = await pool.query(
       `SELECT id, course_id, module_name, title, description, s3_key, video_url,
               duration_minutes, sort_order, batch_name, original_filename,
-              content_type, file_size, release_at, is_published, created_at, updated_at
+              content_type, file_size, release_at, availability_days, expires_at,
+              is_published, created_at, updated_at
        FROM course_lessons
        WHERE course_id = $1
        ORDER BY sort_order ASC, id ASC`,
@@ -1609,17 +1610,30 @@ adminRouter.post('/courses/:courseId/videos/initiate-upload', async (req, res) =
       .replace(/[^a-z0-9_-]/g, '-');
     const s3Key = `courses/${courseId}/batches/${batchSlug}/videos/${videoId}/original${cleanExt}`;
 
+    const MAX_VIDEO_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB limit
+    if (Number(fileSize) > MAX_VIDEO_BYTES) {
+      return res.status(400).json({
+        success: false,
+        error: 'Video file size exceeds the maximum allowed capacity of 5 GB.',
+      });
+    }
+
     const isMultipart = Number(fileSize) > 100 * 1024 * 1024;
 
     if (isMultipart) {
       const { uploadId } = await initiateMultipart({ key: s3Key, contentType });
+      // Use 25MB parts for files > 2GB to reduce chunk roundtrips, otherwise 10MB parts
+      const partSize = Number(fileSize) > 2 * 1024 * 1024 * 1024
+        ? 25 * 1024 * 1024
+        : 10 * 1024 * 1024;
+
       return res.status(200).json({
         success: true,
         uploadType: 'multipart',
         uploadId,
         s3Key,
         videoId,
-        partSize: 10 * 1024 * 1024,
+        partSize,
       });
     } else {
       const uploadUrl = await generatePresignedPutUrl({
@@ -1665,6 +1679,23 @@ adminRouter.post('/courses/:courseId/videos/multipart-part-url', async (req, res
 });
 
 /**
+ * Calculate lesson expiration date from publication/upload date
+ */
+function computeLessonExpiry(availabilityDays, releaseAt) {
+  if (availabilityDays === undefined || availabilityDays === null || availabilityDays === '') {
+    return { availabilityDays: null, expiresAt: null };
+  }
+  const parsed = parseInt(availabilityDays, 10);
+  if (isNaN(parsed) || parsed <= 0) {
+    return { availabilityDays: null, expiresAt: null };
+  }
+  const baseDate = releaseAt ? new Date(releaseAt) : new Date();
+  const validBase = isNaN(baseDate.getTime()) ? new Date() : baseDate;
+  const expiresAt = new Date(validBase.getTime() + parsed * 24 * 60 * 60 * 1000).toISOString();
+  return { availabilityDays: parsed, expiresAt };
+}
+
+/**
  * POST /api/admin/courses/:courseId/videos/complete-upload
  * Step 3 of Secure S3 Direct Upload:
  * Verifies S3 storage object via HeadObject and saves metadata to PostgreSQL
@@ -1689,6 +1720,7 @@ adminRouter.post('/courses/:courseId/videos/complete-upload', async (req, res) =
       contentType = 'video/mp4',
       fileSize,
       lessonId = null,
+      availability_days = null,
     } = req.body;
 
     if (!s3Key) {
@@ -1713,6 +1745,7 @@ adminRouter.post('/courses/:courseId/videos/complete-upload', async (req, res) =
 
     const actualSize = s3Meta.contentLength || fileSize || 0;
     const actualType = s3Meta.contentType || contentType || 'video/mp4';
+    const { availabilityDays, expiresAt } = computeLessonExpiry(availability_days, release_at);
 
     let savedLesson;
 
@@ -1731,8 +1764,10 @@ adminRouter.post('/courses/:courseId/videos/complete-upload', async (req, res) =
              sort_order = COALESCE($10, sort_order),
              release_at = $11,
              is_published = COALESCE($12, is_published),
+             availability_days = $13,
+             expires_at = $14,
              updated_at = CURRENT_TIMESTAMP
-         WHERE id = $13 AND course_id = $14
+         WHERE id = $15 AND course_id = $16
          RETURNING *`,
         [
           s3Key,
@@ -1747,6 +1782,8 @@ adminRouter.post('/courses/:courseId/videos/complete-upload', async (req, res) =
           parseInt(sort_order, 10) || 1,
           release_at || null,
           Boolean(is_published),
+          availabilityDays,
+          expiresAt,
           parseInt(lessonId, 10),
           courseId,
         ]
@@ -1757,8 +1794,9 @@ adminRouter.post('/courses/:courseId/videos/complete-upload', async (req, res) =
         `INSERT INTO course_lessons (
            course_id, module_name, title, description, s3_key,
            original_filename, content_type, file_size, duration_minutes,
-           sort_order, batch_name, release_at, is_published, created_by
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+           sort_order, batch_name, release_at, is_published, created_by,
+           availability_days, expires_at
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
          RETURNING *`,
         [
           courseId,
@@ -1775,10 +1813,11 @@ adminRouter.post('/courses/:courseId/videos/complete-upload', async (req, res) =
           release_at || null,
           Boolean(is_published),
           req.user?.id || null,
+          availabilityDays,
+          expiresAt,
         ]
       );
       savedLesson = insertRes.rows[0];
-
       if (savedLesson.is_published) {
         await pool.query(
           `INSERT INTO course_notifications (course_id, title, message, type, reference_id, batch_name)
@@ -1905,17 +1944,21 @@ adminRouter.post('/courses/:courseId/lessons', async (req, res) => {
       sort_order = 1,
       release_at = null,
       is_published = true,
+      availability_days = null,
     } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ success: false, error: 'Lesson title is required.' });
     }
 
+    const { availabilityDays, expiresAt } = computeLessonExpiry(availability_days, release_at);
+
     const insertRes = await pool.query(
       `INSERT INTO course_lessons (
          course_id, module_name, title, description, video_url, s3_key,
-         batch_name, duration_minutes, sort_order, release_at, is_published, created_by
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         batch_name, duration_minutes, sort_order, release_at, is_published, created_by,
+         availability_days, expires_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING *`,
       [
         courseId,
@@ -1930,6 +1973,8 @@ adminRouter.post('/courses/:courseId/lessons', async (req, res) => {
         release_at || null,
         Boolean(is_published),
         req.user?.id || null,
+        availabilityDays,
+        expiresAt,
       ]
     );
 
@@ -1974,7 +2019,18 @@ adminRouter.put('/courses/:courseId/lessons/:lessonId', async (req, res) => {
       sort_order,
       release_at,
       is_published,
+      availability_days,
     } = req.body;
+
+    let hasDaysUpdate = availability_days !== undefined;
+    let calculatedDays = null;
+    let calculatedExpiresAt = null;
+
+    if (hasDaysUpdate) {
+      const expiry = computeLessonExpiry(availability_days, release_at);
+      calculatedDays = expiry.availabilityDays;
+      calculatedExpiresAt = expiry.expiresAt;
+    }
 
     const updateRes = await pool.query(
       `UPDATE course_lessons
@@ -1988,8 +2044,10 @@ adminRouter.put('/courses/:courseId/lessons/:lessonId', async (req, res) => {
            sort_order = COALESCE($8, sort_order),
            release_at = $9,
            is_published = COALESCE($10, is_published),
+           availability_days = CASE WHEN $11::boolean THEN $12::integer ELSE availability_days END,
+           expires_at = CASE WHEN $11::boolean THEN $13::timestamptz ELSE expires_at END,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $11 AND course_id = $12
+       WHERE id = $14 AND course_id = $15
        RETURNING *`,
       [
         module_name !== undefined ? module_name.trim() : null,
@@ -2002,6 +2060,9 @@ adminRouter.put('/courses/:courseId/lessons/:lessonId', async (req, res) => {
         sort_order !== undefined ? parseInt(sort_order, 10) : null,
         release_at !== undefined ? release_at : null,
         is_published !== undefined ? Boolean(is_published) : null,
+        hasDaysUpdate,
+        calculatedDays,
+        calculatedExpiresAt,
         lessonId,
         courseId,
       ]

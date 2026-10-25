@@ -592,8 +592,11 @@ export const initDb = async () => {
       ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS release_at TIMESTAMP WITH TIME ZONE;
       ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
       ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS module_id INTEGER REFERENCES course_modules(id) ON DELETE SET NULL;
+      ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS availability_days INTEGER DEFAULT NULL;
+      ALTER TABLE course_lessons ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
       CREATE INDEX IF NOT EXISTS idx_course_lessons_s3_key ON course_lessons(s3_key);
       CREATE INDEX IF NOT EXISTS idx_course_lessons_batch ON course_lessons(course_id, batch_name);
+      CREATE INDEX IF NOT EXISTS idx_course_lessons_expires_at ON course_lessons(expires_at);
 
       -- Additive columns for live_classes (Google Meet & instructions)
       ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS instructions TEXT;

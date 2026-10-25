@@ -51,6 +51,7 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
     duration_minutes: 45,
     sort_order: 1,
     release_at: '',
+    availability_days: '',
     is_published: true,
   });
   const [videoFile, setVideoFile] = useState(null);
@@ -59,6 +60,20 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
   const [uploadStatus, setUploadStatus] = useState('idle'); // idle | authorizing | uploading | verifying | done | error
   const [uploadError, setUploadError] = useState(null);
   const uploadXhrRef = useRef(null);
+  const activeMultipartRef = useRef(null);
+  const isCancelledRef = useRef(false);
+
+  // Maximum allowed video file capacity: 5 GB
+  const MAX_VIDEO_BYTES = 5 * 1024 * 1024 * 1024;
+
+  const formatFileSize = (bytes) => {
+    if (!bytes || isNaN(bytes)) return '';
+    const num = Number(bytes);
+    if (num >= 1024 * 1024 * 1024) {
+      return `${(num / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+    }
+    return `${(num / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   // Video Preview Modal
   const [previewModal, setPreviewModal] = useState({
@@ -233,6 +248,7 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
         duration_minutes: lesson.duration_minutes || 45,
         sort_order: lesson.sort_order || 1,
         release_at: releaseVal,
+        availability_days: lesson.availability_days !== null && lesson.availability_days !== undefined ? String(lesson.availability_days) : '',
         is_published: Boolean(lesson.is_published),
       });
     } else {
@@ -247,17 +263,39 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
         duration_minutes: 45,
         sort_order: nextSort,
         release_at: '',
+        availability_days: '',
         is_published: true,
       });
     }
     setIsLessonModalOpen(true);
   };
 
-  const handleCancelUpload = () => {
+  const handleCancelUpload = async () => {
+    isCancelledRef.current = true;
     if (uploadXhrRef.current) {
-      uploadXhrRef.current.abort();
+      try {
+        uploadXhrRef.current.abort();
+      } catch (e) {
+        console.warn('XHR abort error:', e);
+      }
       uploadXhrRef.current = null;
     }
+
+    if (activeMultipartRef.current) {
+      const { s3Key, uploadId, targetCourseId } = activeMultipartRef.current;
+      activeMultipartRef.current = null;
+      try {
+        await fetch(`/api/admin/courses/${targetCourseId}/videos/abort-upload`, {
+          method: 'POST',
+          headers: getAuthHeaders(true),
+          credentials: 'include',
+          body: JSON.stringify({ s3Key, uploadId }),
+        });
+      } catch (err) {
+        console.warn('[S3 Abort Upload Error]:', err);
+      }
+    }
+
     setIsUploading(false);
     setUploadStatus('idle');
     setUploadProgress(0);
@@ -276,16 +314,22 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
       return;
     }
 
+    if (videoFile && videoFile.size > MAX_VIDEO_BYTES) {
+      showToast(`Selected file (${formatFileSize(videoFile.size)}) exceeds maximum allowed limit of 5 GB.`, 'error');
+      return;
+    }
+
     try {
       setIsUploading(true);
       setUploadProgress(0);
       setUploadError(null);
+      isCancelledRef.current = false;
 
       // Path A: Direct AWS S3 Video Upload
       if (videoFile) {
         setUploadStatus('authorizing');
 
-        // 1. Request presigned S3 upload URL from backend
+        // 1. Request presigned S3 upload authorization from backend
         const initRes = await fetch(`/api/admin/courses/${courseId}/videos/initiate-upload`, {
           method: 'POST',
           headers: getAuthHeaders(true),
@@ -307,66 +351,189 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
 
         const { uploadUrl, s3Key, uploadType, uploadId } = initData;
 
-        // 2. Direct upload to AWS S3 using XMLHttpRequest
+        // 2. Direct upload to AWS S3
         setUploadStatus('uploading');
-        await new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          uploadXhrRef.current = xhr;
 
-          xhr.upload.onprogress = (evt) => {
-            if (evt.lengthComputable) {
-              const pct = Math.round((evt.loaded / evt.total) * 100);
-              setUploadProgress(pct);
+        if (uploadType === 'multipart') {
+          // Track active multipart upload for cancellation cleanup
+          activeMultipartRef.current = { s3Key, uploadId, targetCourseId: courseId };
+
+          const partSize = initData.partSize || (videoFile.size > 2 * 1024 * 1024 * 1024 ? 25 * 1024 * 1024 : 10 * 1024 * 1024);
+          const totalParts = Math.ceil(videoFile.size / partSize);
+          const completedParts = [];
+          let uploadedBytesBeforeCurrent = 0;
+
+          for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+            if (isCancelledRef.current) {
+              throw new Error('Upload was cancelled.');
             }
-          };
 
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              resolve();
-            } else {
-              reject(new Error(`AWS S3 rejected upload (Status ${xhr.status}).`));
+            const start = (partNumber - 1) * partSize;
+            const end = Math.min(start + partSize, videoFile.size);
+            const chunk = videoFile.slice(start, end);
+            const chunkLength = end - start;
+
+            // Step 2a: Request presigned URL for this chunk
+            const partUrlRes = await fetch(`/api/admin/courses/${courseId}/videos/multipart-part-url`, {
+              method: 'POST',
+              headers: getAuthHeaders(true),
+              credentials: 'include',
+              body: JSON.stringify({
+                s3Key,
+                uploadId,
+                partNumber,
+              }),
+            });
+
+            const partUrlData = await partUrlRes.json();
+            if (!partUrlRes.ok || !partUrlData.success || !partUrlData.partUrl) {
+              throw new Error(partUrlData.error || `Failed to authorize upload for part ${partNumber}/${totalParts}.`);
             }
-          };
 
-          xhr.onerror = () => reject(new Error('Network error during S3 upload. Check connection.'));
-          xhr.onabort = () => reject(new Error('Upload was aborted by user.'));
+            // Step 2b: Upload chunk via XMLHttpRequest with progress tracking
+            const etag = await new Promise((resolvePart, rejectPart) => {
+              const xhr = new XMLHttpRequest();
+              uploadXhrRef.current = xhr;
 
-          xhr.open('PUT', uploadUrl, true);
-          xhr.setRequestHeader('Content-Type', videoFile.type || 'video/mp4');
-          xhr.send(videoFile);
-        });
+              xhr.upload.onprogress = (evt) => {
+                if (evt.lengthComputable) {
+                  const totalLoaded = uploadedBytesBeforeCurrent + evt.loaded;
+                  const pct = Math.min(99, Math.round((totalLoaded / videoFile.size) * 100));
+                  setUploadProgress(pct);
+                }
+              };
 
-        // 3. Confirm with backend to verify HeadObject and persist metadata
-        setUploadStatus('verifying');
-        const compRes = await fetch(`/api/admin/courses/${courseId}/videos/complete-upload`, {
-          method: 'POST',
-          headers: getAuthHeaders(true),
-          credentials: 'include',
-          body: JSON.stringify({
-            uploadType,
-            s3Key,
-            uploadId,
-            title: lessonForm.title.trim(),
-            description: lessonForm.description,
-            module_name: lessonForm.module_name,
-            batch_name: lessonForm.batch_name,
-            duration_minutes: lessonForm.duration_minutes,
-            sort_order: lessonForm.sort_order,
-            release_at: lessonForm.release_at || null,
-            is_published: lessonForm.is_published,
-            original_filename: videoFile.name,
-            contentType: videoFile.type || 'video/mp4',
-            fileSize: videoFile.size,
-            lessonId: editingLesson ? editingLesson.id : null,
-          }),
-        });
+              xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                  const rawEtag = xhr.getResponseHeader('ETag') || xhr.getResponseHeader('etag');
+                  if (!rawEtag) {
+                    rejectPart(new Error(`AWS S3 did not return ETag for part ${partNumber}. Check S3 CORS configuration.`));
+                  } else {
+                    resolvePart(rawEtag);
+                  }
+                } else {
+                  rejectPart(new Error(`AWS S3 rejected part ${partNumber} (Status ${xhr.status}).`));
+                }
+              };
 
-        const compData = await compRes.json();
-        if (!compRes.ok || !compData.success) {
-          throw new Error(compData.error || 'Failed to record video in database.');
+              xhr.onerror = () => rejectPart(new Error(`Network error while uploading part ${partNumber}/${totalParts}.`));
+              xhr.onabort = () => rejectPart(new Error('Upload was cancelled.'));
+
+              xhr.open('PUT', partUrlData.partUrl, true);
+              xhr.send(chunk);
+            });
+
+            completedParts.push({
+              partNumber,
+              etag,
+            });
+            uploadedBytesBeforeCurrent += chunkLength;
+          }
+
+          // Step 3: Complete multipart upload and verify in PostgreSQL
+          setUploadStatus('verifying');
+          setUploadProgress(100);
+
+          const compRes = await fetch(`/api/admin/courses/${courseId}/videos/complete-upload`, {
+            method: 'POST',
+            headers: getAuthHeaders(true),
+            credentials: 'include',
+            body: JSON.stringify({
+              uploadType: 'multipart',
+              s3Key,
+              uploadId,
+              parts: completedParts,
+              title: lessonForm.title.trim(),
+              description: lessonForm.description,
+              module_name: lessonForm.module_name,
+              batch_name: lessonForm.batch_name,
+              duration_minutes: lessonForm.duration_minutes,
+              sort_order: lessonForm.sort_order,
+              release_at: lessonForm.release_at || null,
+              is_published: lessonForm.is_published,
+              original_filename: videoFile.name,
+              contentType: videoFile.type || 'video/mp4',
+              fileSize: videoFile.size,
+              lessonId: editingLesson ? editingLesson.id : null,
+              availability_days: lessonForm.availability_days ? parseInt(lessonForm.availability_days, 10) : null,
+            }),
+          });
+
+          const compData = await compRes.json();
+          if (!compRes.ok || !compData.success) {
+            throw new Error(compData.error || 'Failed to record video in database.');
+          }
+
+          activeMultipartRef.current = null;
+          showToast('Video successfully uploaded to private AWS S3 and recorded in PostgreSQL.');
+        } else {
+          // Standard Single PUT Upload (<= 100MB)
+          if (!uploadUrl) {
+            throw new Error('Backend did not provide a valid S3 upload URL.');
+          }
+
+          await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            uploadXhrRef.current = xhr;
+
+            xhr.upload.onprogress = (evt) => {
+              if (evt.lengthComputable) {
+                const pct = Math.min(99, Math.round((evt.loaded / evt.total) * 100));
+                setUploadProgress(pct);
+              }
+            };
+
+            xhr.onload = () => {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                resolve();
+              } else {
+                reject(new Error(`AWS S3 rejected upload (Status ${xhr.status}).`));
+              }
+            };
+
+            xhr.onerror = () => reject(new Error('Network error during S3 upload. Check connection.'));
+            xhr.onabort = () => reject(new Error('Upload was cancelled.'));
+
+            xhr.open('PUT', uploadUrl, true);
+            xhr.setRequestHeader('Content-Type', videoFile.type || 'video/mp4');
+            xhr.send(videoFile);
+          });
+
+          // Confirm with backend to verify HeadObject and persist metadata
+          setUploadStatus('verifying');
+          setUploadProgress(100);
+
+          const compRes = await fetch(`/api/admin/courses/${courseId}/videos/complete-upload`, {
+            method: 'POST',
+            headers: getAuthHeaders(true),
+            credentials: 'include',
+            body: JSON.stringify({
+              uploadType: 'put',
+              s3Key,
+              uploadId,
+              title: lessonForm.title.trim(),
+              description: lessonForm.description,
+              module_name: lessonForm.module_name,
+              batch_name: lessonForm.batch_name,
+              duration_minutes: lessonForm.duration_minutes,
+              sort_order: lessonForm.sort_order,
+              release_at: lessonForm.release_at || null,
+              is_published: lessonForm.is_published,
+              original_filename: videoFile.name,
+              contentType: videoFile.type || 'video/mp4',
+              fileSize: videoFile.size,
+              lessonId: editingLesson ? editingLesson.id : null,
+              availability_days: lessonForm.availability_days ? parseInt(lessonForm.availability_days, 10) : null,
+            }),
+          });
+
+          const compData = await compRes.json();
+          if (!compRes.ok || !compData.success) {
+            throw new Error(compData.error || 'Failed to record video in database.');
+          }
+
+          showToast('Video successfully uploaded to private AWS S3 and recorded in PostgreSQL.');
         }
-
-        showToast('Video successfully uploaded to private AWS S3 and recorded in PostgreSQL.');
       } else {
         // Path B: Metadata update or legacy link update
         const url = editingLesson
@@ -378,7 +545,10 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
           method,
           headers: getAuthHeaders(true),
           credentials: 'include',
-          body: JSON.stringify(lessonForm),
+          body: JSON.stringify({
+            ...lessonForm,
+            availability_days: lessonForm.availability_days ? parseInt(lessonForm.availability_days, 10) : null,
+          }),
         });
         const data = await res.json();
         if (!res.ok || !data.success) {
@@ -393,6 +563,16 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
       fetchWorkspace();
     } catch (err) {
       console.error('[Lesson Save Error]:', err);
+      if (activeMultipartRef.current) {
+        const { s3Key, uploadId, targetCourseId } = activeMultipartRef.current;
+        activeMultipartRef.current = null;
+        fetch(`/api/admin/courses/${targetCourseId}/videos/abort-upload`, {
+          method: 'POST',
+          headers: getAuthHeaders(true),
+          credentials: 'include',
+          body: JSON.stringify({ s3Key, uploadId }),
+        }).catch(() => {});
+      }
       setUploadError(err.message);
       showToast(err.message, 'error');
     } finally {
@@ -1232,7 +1412,7 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
                               <span className="tm-s3-badge" title={lesson.s3_key}>
                                 <ShieldCheck size={12} /> AWS S3 ENCRYPTED
                                 {lesson.file_size
-                                  ? ` (${(lesson.file_size / (1024 * 1024)).toFixed(1)} MB)`
+                                  ? ` (${formatFileSize(lesson.file_size)})`
                                   : ''}
                               </span>
                             ) : (
@@ -1248,6 +1428,23 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
                             {lesson.release_at && (
                               <span className="tm-release-tag">
                                 📅 Release: {new Date(lesson.release_at).toLocaleDateString()}
+                              </span>
+                            )}
+
+                            {lesson.expires_at ? (
+                              <span
+                                className={`tm-expiry-badge ${new Date(lesson.expires_at) <= new Date() ? 'expired' : 'active'}`}
+                                title={`Expires: ${new Date(lesson.expires_at).toLocaleString()}`}
+                              >
+                                {new Date(lesson.expires_at) <= new Date() ? (
+                                  <>⚠️ EXPIRED ({new Date(lesson.expires_at).toLocaleDateString()})</>
+                                ) : (
+                                  <>⏳ Expires: {new Date(lesson.expires_at).toLocaleDateString()}</>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="tm-expiry-badge forever" title="Always Available / Never Expires">
+                                ♾️ Never Expires
                               </span>
                             )}
                           </div>
@@ -1942,12 +2139,18 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
                   <input
                     type="file"
                     id="s3-video-file-input"
-                    accept="video/mp4,video/webm,video/quicktime,video/mkv"
+                    accept="video/mp4,video/webm,video/quicktime,video/mkv,video/x-matroska"
                     style={{ display: 'none' }}
                     disabled={isUploading}
                     onChange={(e) => {
-                      if (e.target.files?.[0]) {
-                        setVideoFile(e.target.files[0]);
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (file.size > MAX_VIDEO_BYTES) {
+                          showToast(`Selected file (${formatFileSize(file.size)}) exceeds maximum allowed capacity of 5 GB.`, 'error');
+                          e.target.value = '';
+                          return;
+                        }
+                        setVideoFile(file);
                       }
                     }}
                   />
@@ -1959,14 +2162,14 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
                           {videoFile.name}
                         </strong>
                         <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                          {(videoFile.size / (1024 * 1024)).toFixed(2)} MB · {videoFile.type || 'video/mp4'}
+                          {formatFileSize(videoFile.size)} · {videoFile.type || 'video/mp4'}
                         </span>
                       </div>
                     ) : (
                       <div>
-                        <span>Drag & drop or click to choose video file</span>
+                        <span>Drag & drop or click to choose video file (up to 5 GB)</span>
                         <span style={{ display: 'block', fontSize: '0.78rem', color: '#64748b' }}>
-                          MP4, WebM, MOV supported · Uploads directly to private S3 bucket
+                          MP4, WebM, MOV, MKV supported · Direct secure upload to private S3 bucket
                         </span>
                       </div>
                     )}
@@ -2050,6 +2253,48 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
                     <option value="false">Draft (Unpublished)</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Video Visibility Duration (Auto-Expiry) */}
+              <div className="tm-ws-form-group">
+                <label>
+                  Video Availability Duration
+                  <span style={{ fontSize: '0.8rem', color: '#94a3b8', marginLeft: '6px' }}>
+                    (Auto-expires and locks for students after this period)
+                  </span>
+                </label>
+                <select
+                  value={lessonForm.availability_days || ''}
+                  onChange={(e) => setLessonForm({ ...lessonForm, availability_days: e.target.value })}
+                  disabled={isUploading}
+                >
+                  <option value="">Always Available (Forever / Hamesha Ke Liye) — Default</option>
+                  <option value="2">2 Days</option>
+                  <option value="4">4 Days</option>
+                  <option value="5">5 Days</option>
+                  <option value="6">6 Days</option>
+                  <option value="7">7 Days</option>
+                  <option value="10">10 Days</option>
+                  <option value="15">15 Days</option>
+                  <option value="30">30 Days</option>
+                  <option value="60">60 Days</option>
+                  <option value="90">90 Days</option>
+                </select>
+                {lessonForm.availability_days ? (
+                  <span style={{ display: 'block', fontSize: '0.78rem', color: '#38bdf8', marginTop: '5px' }}>
+                    ⏳ Video access will automatically expire {lessonForm.availability_days} days after {lessonForm.release_at ? 'scheduled release' : 'publication/upload'}.
+                  </span>
+                ) : (
+                  <span style={{ display: 'block', fontSize: '0.78rem', color: '#64748b', marginTop: '5px' }}>
+                    ♾️ Video will remain permanently accessible to enrolled students.
+                  </span>
+                )}
+                {editingLesson?.expires_at && (
+                  <span style={{ display: 'block', fontSize: '0.78rem', color: new Date(editingLesson.expires_at) <= new Date() ? '#ef4444' : '#f59e0b', marginTop: '3px' }}>
+                    Current Expiry: {new Date(editingLesson.expires_at).toLocaleString()}
+                    {new Date(editingLesson.expires_at) <= new Date() ? ' (Expired)' : ''}
+                  </span>
+                )}
               </div>
 
               <div className="tm-ws-modal-actions">

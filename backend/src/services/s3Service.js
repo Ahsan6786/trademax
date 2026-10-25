@@ -130,15 +130,23 @@ export async function generatePresignedPartUrl({ key, uploadId, partNumber, expi
  * Complete multipart upload
  */
 export async function completeMultipart({ key, uploadId, parts }) {
+  const sortedParts = [...parts]
+    .map((p) => {
+      const rawEtag = String(p.etag || p.ETag || '').trim();
+      const cleanEtag = rawEtag.replace(/^"|"$/g, '');
+      return {
+        ETag: cleanEtag ? `"${cleanEtag}"` : rawEtag,
+        PartNumber: Number(p.partNumber || p.PartNumber),
+      };
+    })
+    .sort((a, b) => a.PartNumber - b.PartNumber);
+
   const command = new CompleteMultipartUploadCommand({
     Bucket: S3_BUCKET,
     Key: key,
     UploadId: uploadId,
     MultipartUpload: {
-      Parts: parts.map((p) => ({
-        ETag: p.etag || p.ETag,
-        PartNumber: p.partNumber || p.PartNumber,
-      })),
+      Parts: sortedParts,
     },
   });
   const res = await s3Client.send(command);
