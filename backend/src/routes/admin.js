@@ -21,6 +21,7 @@ import {
   getMimeType,
   formatContentDisposition,
 } from '../services/s3Service.js';
+import { deliverResource, UPLOAD_DIR, isLocalUploadFallbackAllowed } from '../services/resourceDelivery.js';
 import {
   saveAdminQrCode,
   getPrivateScreenshotFilePath,
@@ -29,7 +30,7 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const uploadDir = path.resolve(__dirname, '../../uploads');
+const uploadDir = UPLOAD_DIR;
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -2394,8 +2395,25 @@ adminRouter.post('/courses/:courseId/resources', handleResourceUpload, async (re
           uploadedLocalPath = null;
         } catch {}
       } catch (s3Err) {
-        console.warn('[Admin Resource S3 Upload Warning - fallback to local storage]:', s3Err.message);
-        // Fallback to local storage if AWS S3 is not available
+        if (!isLocalUploadFallbackAllowed()) {
+          console.error(
+            `[Admin Resource S3 Upload FAILED] Course: ${courseId}, File: "${fileName}" - refusing ephemeral local storage:`,
+            s3Err.message
+          );
+          if (uploadedLocalPath && fs.existsSync(uploadedLocalPath)) {
+            try { fs.unlinkSync(uploadedLocalPath); } catch {}
+          }
+          uploadedLocalPath = null;
+          return res.status(502).json({
+            success: false,
+            error: 'Permanent file storage (S3) is unavailable, so the file was not saved. Please try again or contact support.',
+          });
+        }
+        console.warn(
+          '[Admin Resource S3 Upload Warning - STORING ON LOCAL DISK, NOT PERSISTENT ACROSS DEPLOYS]:',
+          s3Err.message
+        );
+        // Fallback to local storage (non-production only)
         s3Key = null;
         finalUrl = `/uploads/${req.file.filename}`;
         uploadedLocalPath = null; // Keep local file on disk as finalUrl points to it
@@ -2475,168 +2493,7 @@ adminRouter.get('/courses/:courseId/resources/:resourceId/download', async (req,
     }
 
     const resource = resourceRes.rows[0];
-    const fileName = resource.file_name || `${resource.title || 'material'}.pdf`;
-    const mimeType = resource.content_type || getMimeType(fileName);
-
-    const isInline = req.query.inline === 'true' || req.query.view === 'true';
-    const isPdf = mimeType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
-    const effectiveMimeType = isPdf ? 'application/pdf' : mimeType;
-    const dispositionType = isInline ? 'inline' : 'attachment';
-
-    // 1. S3 Stored Resource
-    if (resource.s3_key) {
-      if (req.query.stream === 'true' || req.query.proxy === 'true') {
-        try {
-          const range = req.headers.range;
-          const s3Obj = await getS3ObjectStream({ key: resource.s3_key, range });
-          res.setHeader('Content-Type', effectiveMimeType);
-          res.setHeader('Content-Disposition', formatContentDisposition(fileName, dispositionType));
-          res.setHeader('Accept-Ranges', 'bytes');
-          res.setHeader('Cache-Control', 'private, max-age=3600');
-          if (s3Obj.ContentRange) {
-            res.status(206);
-            res.setHeader('Content-Range', s3Obj.ContentRange);
-          }
-          if (s3Obj.ContentLength) res.setHeader('Content-Length', s3Obj.ContentLength);
-          if (s3Obj.ETag) res.setHeader('ETag', s3Obj.ETag);
-          return s3Obj.Body.pipe(res);
-        } catch (streamErr) {
-          console.warn('[Admin S3 Stream Warning - fallback to presigned redirect]:', streamErr.message);
-        }
-      }
-
-      const activeUrl = await generatePresignedDownloadUrl({
-        key: resource.s3_key,
-        filename: fileName,
-        contentType: effectiveMimeType,
-        dispositionType,
-        expiresIn: 900,
-      });
-
-      let downloadUrl = activeUrl;
-      let viewUrl = activeUrl;
-      if (isInline) {
-        // Also provide a dedicated attachment download URL
-        downloadUrl = await generatePresignedDownloadUrl({
-          key: resource.s3_key,
-          filename: fileName,
-          contentType: effectiveMimeType,
-          dispositionType: 'attachment',
-          expiresIn: 900,
-        });
-      } else {
-        viewUrl = await generatePresignedDownloadUrl({
-          key: resource.s3_key,
-          filename: fileName,
-          contentType: effectiveMimeType,
-          dispositionType: 'inline',
-          expiresIn: 900,
-        });
-      }
-
-      const streamUrl = `/api/admin/courses/${courseId}/resources/${resource.id}/view?stream=true`;
-
-      if (req.query.json === 'true' || req.headers.accept?.includes('application/json')) {
-        return res.json({
-          success: true,
-          url: isInline ? viewUrl : downloadUrl,
-          viewUrl,
-          downloadUrl,
-          streamUrl,
-          fileName,
-          fileSize: resource.file_size,
-          contentType: effectiveMimeType,
-          isPdf,
-          isInline,
-        });
-      }
-
-      return res.redirect(302, isInline ? viewUrl : downloadUrl);
-    }
-
-    // 2. Legacy / Local Disk Stored Resource
-    if (resource.resource_url && resource.resource_url.startsWith('/uploads/')) {
-      const filePath = path.resolve(uploadDir, path.basename(resource.resource_url));
-      if (fs.existsSync(filePath)) {
-        // Opportunistic upload to S3 if reachable
-        try {
-          const s3Key = `courses/${courseId}/resources/${resource.id}/${encodeURIComponent(fileName)}`;
-          const fileStat = fs.statSync(filePath);
-          const fileStream = fs.createReadStream(filePath);
-          await uploadObjectToS3({
-            key: s3Key,
-            body: fileStream,
-            contentType: effectiveMimeType,
-            contentLength: fileStat.size,
-          });
-          await pool.query(
-            'UPDATE course_resources SET s3_key = $1, content_type = $2 WHERE id = $3',
-            [s3Key, effectiveMimeType, resource.id]
-          );
-          resource.s3_key = s3Key;
-
-          const viewUrl = await generatePresignedDownloadUrl({
-            key: s3Key,
-            filename: fileName,
-            contentType: effectiveMimeType,
-            dispositionType: 'inline',
-            expiresIn: 900,
-          });
-          const downloadUrl = await generatePresignedDownloadUrl({
-            key: s3Key,
-            filename: fileName,
-            contentType: effectiveMimeType,
-            dispositionType: 'attachment',
-            expiresIn: 900,
-          });
-
-          if (req.query.json === 'true' || req.headers.accept?.includes('application/json')) {
-            return res.json({
-              success: true,
-              url: isInline ? viewUrl : downloadUrl,
-              viewUrl,
-              downloadUrl,
-              fileName,
-              fileSize: resource.file_size,
-              contentType: effectiveMimeType,
-              isPdf,
-              isInline,
-            });
-          }
-          return res.redirect(302, isInline ? viewUrl : downloadUrl);
-        } catch (uploadErr) {
-          // Fall back to direct file stream
-        }
-
-        res.setHeader('Content-Type', effectiveMimeType);
-        res.setHeader('Content-Disposition', formatContentDisposition(fileName, dispositionType));
-        const stat = fs.statSync(filePath);
-        res.setHeader('Content-Length', stat.size);
-        return fs.createReadStream(filePath).pipe(res);
-      }
-    }
-
-    // 3. External Resource Link (e.g. Google Drive)
-    if (resource.resource_url && /^https?:\/\//i.test(resource.resource_url)) {
-      if (req.query.json === 'true' || req.headers.accept?.includes('application/json')) {
-        return res.json({
-          success: true,
-          url: resource.resource_url,
-          viewUrl: resource.resource_url,
-          downloadUrl: resource.resource_url,
-          fileName,
-          isExternal: true,
-          isPdf,
-          isInline,
-        });
-      }
-      return res.redirect(302, resource.resource_url);
-    }
-
-    return res.status(404).json({
-      success: false,
-      error: 'The requested material file is not available on the server.',
-    });
+    return await deliverResource({ req, res, resource, courseId, scope: 'admin' });
   } catch (err) {
     console.error('[Admin Material Download Error]:', err);
     return res.status(500).json({ success: false, error: 'Failed to process material download.' });

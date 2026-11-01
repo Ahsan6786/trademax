@@ -344,6 +344,57 @@ describe('Course Material Upload & Download Functionality Suite', () => {
     try { fs.unlinkSync(legacyPath); } catch {}
   });
 
+  it('10b. Missing local file returns clean 404 RESOURCE_FILE_MISSING (no 500, no data loss)', async () => {
+    const r = await pool.query(
+      `INSERT INTO course_resources (course_id, title, resource_type, resource_url, s3_key, file_name, content_type, batch_name)
+       VALUES ($1, 'Vanished Doc', 'pdf', '/uploads/does-not-exist-xyz.pdf', NULL, 'Vanished.pdf', 'application/pdf', 'All Batches')
+       RETURNING id`,
+      [testCourse.id]
+    );
+    const res = await fetch(`${API_BASE}/student/courses/${testCourse.id}/resources/${r.rows[0].id}/download`, {
+      headers: { Authorization: `Bearer ${enrolledToken}` },
+      redirect: 'manual',
+    });
+    const data = await res.json();
+    assert.equal(res.status, 404);
+    assert.equal(data.code, 'RESOURCE_FILE_MISSING');
+    const still = await pool.query('SELECT id FROM course_resources WHERE id = $1', [r.rows[0].id]);
+    assert.equal(still.rows.length, 1);
+  });
+
+  it('10c. External links (https, scheme-less, Google Drive) redirect correctly', async () => {
+    const cases = [
+      ['https://example.com/file.pdf', 'https://example.com/file.pdf'],
+      ['example.com/file.pdf', 'https://example.com/file.pdf'],
+      [
+        'https://drive.google.com/file/d/ABC_123-x/view?usp=sharing',
+        'https://drive.google.com/uc?export=download&id=ABC_123-x',
+      ],
+    ];
+    for (const [stored, expected] of cases) {
+      const r = await pool.query(
+        `INSERT INTO course_resources (course_id, title, resource_type, resource_url, s3_key, file_name, batch_name)
+         VALUES ($1, 'Ext Link', 'link', $2, NULL, 'x.pdf', 'All Batches') RETURNING id`,
+        [testCourse.id, stored]
+      );
+      const res = await fetch(`${API_BASE}/student/courses/${testCourse.id}/resources/${r.rows[0].id}/download`, {
+        headers: { Authorization: `Bearer ${enrolledToken}` },
+        redirect: 'manual',
+      });
+      assert.equal(res.status, 302, stored);
+      assert.equal(res.headers.get('location'), expected);
+    }
+  });
+
+  it('10d. Resource from another course is not reachable via a different course id', async () => {
+    const pdf = uploadedResources[0];
+    const res = await fetch(`${API_BASE}/student/courses/${testCourse.id + 9999}/resources/${pdf.id}/download`, {
+      headers: { Authorization: `Bearer ${enrolledToken}` },
+      redirect: 'manual',
+    });
+    assert.ok([403, 404].includes(res.status));
+  });
+
   it('11. Admin uploads large PDF (5 MB) - streams cleanly without connection reset', async () => {
     // 5 MB simulated PDF payload
     const fiveMbBuffer = Buffer.alloc(5 * 1024 * 1024, '%PDF-1.4\n5MB-PDF-BODY\n');
