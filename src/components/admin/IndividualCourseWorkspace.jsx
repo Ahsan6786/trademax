@@ -33,6 +33,8 @@ import {
 import './IndividualCourseWorkspace.css';
 import { PdfViewerModal } from '../common/PdfViewerModal';
 
+const DOCUMENT_UPLOAD_DISABLED_MSG = 'Document uploading is currently disabled.';
+
 export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) => {
   // 8 Required Sections (Section 7)
   const [activeSection, setActiveSection] = useState('overview');
@@ -903,6 +905,10 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
   // =========================================================================
   const handleSaveResource = async (e) => {
     e.preventDefault();
+    // Document uploading is currently disabled (also enforced by the backend).
+    showToast(DOCUMENT_UPLOAD_DISABLED_MSG, 'error');
+    return;
+    // eslint-disable-next-line no-unreachable
     if (!resourceForm.title.trim()) {
       showToast('Resource title is required.', 'error');
       return;
@@ -934,11 +940,18 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
       try {
         data = await res.json();
       } catch {
-        data = { error: `Server returned HTTP ${res.status}. Please check your connection or file size.` };
+        const byStatus = {
+          401: 'Your admin session expired. Please log in again.',
+          403: 'You do not have permission to upload materials.',
+          413: 'File is too large for the server (limit 50 MB). Please compress it or choose a smaller file.',
+          502: 'The server is unreachable or restarting. Please try again in a moment.',
+          504: 'The upload timed out. Please try again or use a smaller file.',
+        };
+        data = { error: byStatus[res.status] || `Server returned HTTP ${res.status}.` };
       }
 
       if (!res.ok || !data.success) {
-        showToast(data.error || 'Failed to attach resource.', 'error');
+        showToast(`Upload failed: ${data.error || 'Could not attach the document.'}`, 'error');
         return;
       }
 
@@ -957,8 +970,8 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
     } catch (err) {
       console.error('[Upload Resource Network Error]:', err);
       showToast(err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')
-        ? 'Network interrupted or server reset the connection during upload. Please verify file size and retry.'
-        : 'Error uploading resource. Please check connection.', 'error');
+        ? 'Upload failed: network interrupted or the server reset the connection. Please verify file size and retry.'
+        : 'Upload failed: could not reach the server. Please check your connection.', 'error');
     } finally {
       setIsUploadingResource(false);
     }
@@ -1865,7 +1878,7 @@ export const IndividualCourseWorkspace = ({ courseId, onBack, theme = 'dark' }) 
                   <button
                     type="button"
                     className="tm-btn-primary"
-                    onClick={() => setIsResourceModalOpen(true)}
+                    onClick={() => showToast(DOCUMENT_UPLOAD_DISABLED_MSG, 'error')}
                   >
                     <Plus size={16} />
                     <span>Attach Material / PDF</span>

@@ -2339,7 +2339,15 @@ const handleResourceUpload = (req, res, next) => {
   });
 };
 
-adminRouter.post('/courses/:courseId/resources', handleResourceUpload, async (req, res) => {
+// Course document/resource uploading is currently disabled. Runs before multer so no file is written.
+const rejectResourceUploads = (req, res) =>
+  res.status(403).json({
+    success: false,
+    code: 'DOCUMENT_UPLOAD_DISABLED',
+    error: 'Document uploading is currently disabled.',
+  });
+
+adminRouter.post('/courses/:courseId/resources', rejectResourceUploads, handleResourceUpload, async (req, res) => {
   let uploadedLocalPath = req.file ? req.file.path : null;
   try {
     const courseId = parseInt(req.params.courseId, 10);
@@ -2406,7 +2414,7 @@ adminRouter.post('/courses/:courseId/resources', handleResourceUpload, async (re
           uploadedLocalPath = null;
           return res.status(502).json({
             success: false,
-            error: 'Permanent file storage (S3) is unavailable, so the file was not saved. Please try again or contact support.',
+            error: `Permanent file storage (S3) rejected the upload [${s3Err.name || 'S3Error'}: ${s3Err.message}]. Check the server's AWS role/credentials, bucket and region.`,
           });
         }
         console.warn(
